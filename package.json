@@ -1,28 +1,28 @@
 {
-  "name": "horse-racing-api",
-  "version": "1.0.0",
-  "description": "Express REST API with Drizzle ORM, PostgreSQL, and JWT auth",
-  "main": "app.js",
-  "type": "module",
-  "scripts": {
-    "dev": "nodemon app.js",
-    "start": "node app.js",
-    "db:push": "drizzle-kit push",
-    "db:studio": "drizzle-kit studio"
-  },
-  "dependencies": {
-    "bcryptjs": "^3.0.3",
-    "dotenv": "^17.4.2",
-    "drizzle-orm": "^0.45.2",
-    "express": "^5.2.1",
-    "express-rate-limit": "^8.5.2",
-    "jsonwebtoken": "^9.0.3",
-    "morgan": "^1.10.1",
-    "pg": "^8.21.0",
-    "zod": "^4.4.3"
-  },
-  "devDependencies": {
-    "drizzle-kit": "^0.31.10",
-    "nodemon": "^3.1.14"
-  }
+    "name": "horse-racing-api",
+    "version": "1.0.0",
+    "description": "Express REST API with Drizzle ORM, PostgreSQL, and JWT auth",
+    "main": "app.js",
+    "type": "module",
+    "scripts": {
+        "dev": "nodemon app.js",
+        "start": "node app.js",
+        "db:push": "drizzle-kit push",
+        "db:studio": "drizzle-kit studio"
+    },
+    "dependencies": {
+        "bcryptjs": "^3.0.3",
+        "dotenv": "^17.4.2",
+        "drizzle-orm": "^0.45.2",
+        "express": "^5.2.1",
+        "express-rate-limit": "^8.5.2",
+        "jsonwebtoken": "^9.0.3",
+        "morgan": "^1.10.1",
+        "pg": "^8.21.0",
+        "zod": "^4.4.3"
+    },
+    "devDependencies": {
+        "drizzle-kit": "^0.31.10",
+        "nodemon": "^3.1.14"
+    }
 }
