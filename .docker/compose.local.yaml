@@ -1,0 +1,34 @@
+services:
+  postgres:
+    image: postgres:latest
+    container_name: horse-racing-database
+    restart: unless-stopped
+    environment:
+      PGDATA: /var/lib/postgresql/18/docker
+      POSTGRES_DB: ${DB_DATABASE}
+      POSTGRES_USER: ${DB_USERNAME}
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+    ports:
+      - "5432:5432"
+    volumes:
+      - horse_racing_psql:/var/lib/postgresql
+    networks:
+      - api
+  cloudbeaver:
+    image: dbeaver/cloudbeaver:latest
+    container_name: horse-racing-cloudbeaver
+    restart: on-failure:5
+    ports:
+      - 8978:8978
+    volumes:
+      - cloudbeaver:/opt/cloudbeaver/workspace
+    networks:
+      - api
+
+volumes:
+  horse_racing_psql:
+  cloudbeaver:
+networks:
+  api:
+    name: horse-racing-api
+    external: true
