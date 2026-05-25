@@ -18,8 +18,8 @@ export const rolesEnum = pgEnum("roles", [
 export const statusEnums = pgEnum("status", ["pending", "active", "locked"]);
 
 export const users = pgTable("users", {
-    id: uuid("id").primaryKey(),
-    full_name: varchar("name", { length: 255 }).notNull(),
+    id: uuid("id").defaultRandom().primaryKey(),
+    full_name: varchar("full_name", { length: 255 }).notNull(),
     email: varchar("email", { length: 255 }).notNull().unique(),
     password: text("password").notNull(),
     phone: varchar("phone", { length: 15 }).notNull(),
