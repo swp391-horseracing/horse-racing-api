@@ -15,7 +15,7 @@ export const rolesEnum = pgEnum("roles", [
     "admin",
 ]);
 
-export const statusEnums = pgEnum("statis", ["pending", "active", "locked"]);
+export const statusEnums = pgEnum("status", ["pending", "active", "locked"]);
 
 export const users = pgTable("users", {
     id: uuid("id").primaryKey(),
