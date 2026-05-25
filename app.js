@@ -1,6 +1,7 @@
 import "dotenv/config";
 import express from "express";
 import morgan from "morgan";
+import { errorMiddleware } from "./src/middleware/error.js";
 import router from "./src/route/index.js";
 
 const app = express();
@@ -11,7 +12,7 @@ app.use(express.json());
 
 app.use("/api", router);
 
-app.get("/health", (_req, res) => res.json({ status: "ok" }));
+app.use(errorMiddleware);
 
 app.listen(PORT, () => {
     console.log(`Server running on http://localhost:${PORT}`);
