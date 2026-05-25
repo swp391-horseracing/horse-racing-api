@@ -12,8 +12,8 @@ permissions:
   contents: read
 
 jobs:
-  check-javascript:
-    name: Check Javascript
+  check-format-lint:
+    name: Check Format & Lint
     runs-on: ubuntu-latest
 
     steps:
