@@ -87,9 +87,7 @@
         "users_email_unique": {
           "name": "users_email_unique",
           "nullsNotDistinct": false,
-          "columns": [
-            "email"
-          ]
+          "columns": ["email"]
         }
       },
       "policies": {},
@@ -101,22 +99,12 @@
     "public.roles": {
       "name": "roles",
       "schema": "public",
-      "values": [
-        "horse_owner",
-        "jockey",
-        "referee",
-        "spectator",
-        "admin"
-      ]
+      "values": ["horse_owner", "jockey", "referee", "spectator", "admin"]
     },
     "public.status": {
       "name": "status",
       "schema": "public",
-      "values": [
-        "pending",
-        "active",
-        "locked"
-      ]
+      "values": ["pending", "active", "locked"]
     }
   },
   "schemas": {},
