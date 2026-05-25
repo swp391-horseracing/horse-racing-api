@@ -20,6 +20,7 @@ export const register = async (
             .returning({ id: users.id });
 
         res.status(201).json({ message: "Account created", user });
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
     } catch (err: any) {
         if (err.cause.code == "23505") {
             return res.status(409).json({ message: "Email already in use" });
