@@ -33,6 +33,7 @@ services:
       JWT_EXPIRES_IN: ${JWT_EXPIRES_IN}
 
       PORT: ${PORT}
+      DATABASE_URL: ${DATABASE_URL}
     ports:
       - ${PORT}:${PORT}
     networks:
