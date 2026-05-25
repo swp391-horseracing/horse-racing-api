@@ -25,8 +25,8 @@ export const users = pgTable("users", {
     phone: varchar("phone", { length: 15 }).notNull(),
     address: varchar("address", { length: 225 }),
     avatar_url: text("avatar_url"),
-    role: rolesEnum(),
-    status: statusEnums(),
+    role: rolesEnum().notNull(),
+    status: statusEnums().default("pending").notNull(),
     createdAt: timestamp("created_at").defaultNow(),
     updatedAt: timestamp("updated_at"),
 });
