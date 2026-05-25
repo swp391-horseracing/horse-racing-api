@@ -1,8 +1,8 @@
 import "dotenv/config";
-import express from "express";
+import express, { Request, Response, NextFunction } from "express";
 import morgan from "morgan";
-import { errorMiddleware } from "./src/middleware/error.js";
-import router from "./src/route/index.js";
+import { errorMiddleware } from "./middleware/error.js";
+import router from "./route/index.js";
 
 const app = express();
 const PORT = process.env.PORT || 3000;
