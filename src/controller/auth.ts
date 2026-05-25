@@ -1,9 +1,13 @@
 import bcrypt from "bcryptjs";
-import db from "../../config/db.js";
+import db from "../config/db.js";
 import { users } from "../schema/user.js";
+import { NextFunction, Request, Response } from "express";
 
-/** @type {import('express').RequestHandler} */
-export const register = async (req, res, next) => {
+export const register = async (
+    req: Request,
+    res: Response,
+    next: NextFunction,
+) => {
     try {
         const { full_name, email, password, role } = req.body;
 
@@ -16,7 +20,8 @@ export const register = async (req, res, next) => {
             .returning({ id: users.id });
 
         res.status(201).json({ message: "Account created", user });
-    } catch (err) {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    } catch (err: any) {
         if (err.cause.code == "23505") {
             return res.status(409).json({ message: "Email already in use" });
         }
