@@ -1,5 +1,5 @@
 {
-  "id": "e35b0af3-d536-4e30-ad45-6610cf6f16d6",
+  "id": "b90de9e9-116c-4a0e-9afe-759b39542b4a",
   "prevId": "00000000-0000-0000-0000-000000000000",
   "version": "7",
   "dialect": "postgresql",
@@ -12,10 +12,11 @@
           "name": "id",
           "type": "uuid",
           "primaryKey": true,
-          "notNull": true
+          "notNull": true,
+          "default": "gen_random_uuid()"
         },
-        "name": {
-          "name": "name",
+        "full_name": {
+          "name": "full_name",
           "type": "varchar(255)",
           "primaryKey": false,
           "notNull": true
@@ -36,7 +37,7 @@
           "name": "phone",
           "type": "varchar(15)",
           "primaryKey": false,
-          "notNull": true
+          "notNull": false
         },
         "address": {
           "name": "address",
@@ -55,14 +56,15 @@
           "type": "roles",
           "typeSchema": "public",
           "primaryKey": false,
-          "notNull": false
+          "notNull": true
         },
         "status": {
           "name": "status",
-          "type": "statis",
+          "type": "status",
           "typeSchema": "public",
           "primaryKey": false,
-          "notNull": false
+          "notNull": true,
+          "default": "'pending'"
         },
         "created_at": {
           "name": "created_at",
@@ -85,7 +87,9 @@
         "users_email_unique": {
           "name": "users_email_unique",
           "nullsNotDistinct": false,
-          "columns": ["email"]
+          "columns": [
+            "email"
+          ]
         }
       },
       "policies": {},
@@ -97,12 +101,22 @@
     "public.roles": {
       "name": "roles",
       "schema": "public",
-      "values": ["horse_owner", "jockey", "referee", "spectator", "admin"]
+      "values": [
+        "horse_owner",
+        "jockey",
+        "referee",
+        "spectator",
+        "admin"
+      ]
     },
-    "public.statis": {
-      "name": "statis",
+    "public.status": {
+      "name": "status",
       "schema": "public",
-      "values": ["pending", "active", "locked"]
+      "values": [
+        "pending",
+        "active",
+        "locked"
+      ]
     }
   },
   "schemas": {},
