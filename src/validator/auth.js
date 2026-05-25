@@ -1,0 +1,13 @@
+import { z } from "zod";
+
+const registerSchema = z.object({
+    full_name: z.string().min(2, "Full name is required"),
+    email: z.email("Invalid email address"),
+    password: z.string().min(6, "Password must be at least 6 characters"),
+    role: z.enum(
+        ["spectator", "jockey", "horse_owner"],
+        "Role must be either spectator, jockey or horse_owner",
+    ),
+});
+
+export { registerSchema };
