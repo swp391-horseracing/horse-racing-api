@@ -5,11 +5,12 @@ WORKDIR /app
 COPY package*.json ./
 
 RUN npm ci
-RUN npm prune --production
 
 COPY . .
 
 RUN npm run build
+
+RUN npm prune --production
 
 FROM node:26-alpine3.22
 
