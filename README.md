@@ -35,3 +35,9 @@ DATABASE_URL=
 ```bash
 npx drizzle-kit migrate
 ```
+
+### Run The Applications
+
+```bash
+npm run dev
+```
