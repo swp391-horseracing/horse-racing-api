@@ -69,12 +69,12 @@ npm run dev
 
 ## Available Scripts
 
-| Script | Description |
-|---|---|
-| `npm run dev` | Start the server in development mode with hot reload (nodemon) |
-| `npm run build` | Compile TypeScript to JavaScript |
-| `npm run start` | Run the compiled production build |
-| `npm run db:push` | Push schema changes directly to the database |
-| `npm run db:studio` | Open Drizzle Studio (visual DB browser) |
-| `npm run lint` | Run ESLint |
-| `npm run format:write` | Format code with Prettier |
+| Script                 | Description                                                    |
+| ---------------------- | -------------------------------------------------------------- |
+| `npm run dev`          | Start the server in development mode with hot reload (nodemon) |
+| `npm run build`        | Compile TypeScript to JavaScript                               |
+| `npm run start`        | Run the compiled production build                              |
+| `npm run db:push`      | Push schema changes directly to the database                   |
+| `npm run db:studio`    | Open Drizzle Studio (visual DB browser)                        |
+| `npm run lint`         | Run ESLint                                                     |
+| `npm run format:write` | Format code with Prettier                                      |
