@@ -36,6 +36,13 @@
       "when": 1780230481584,
       "tag": "0004_conscious_champions",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1780232121419,
+      "tag": "0005_flawless_flatman",
+      "breakpoints": true
     }
   ]
 }
