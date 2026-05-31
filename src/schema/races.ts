@@ -1,7 +1,6 @@
 import {
     pgTable,
     varchar,
-    text,
     timestamp,
     uuid,
     pgEnum,
@@ -26,7 +25,7 @@ export const raceStatusEnums = pgEnum("race_status", [
 
 export const races = pgTable("races", {
     id: uuid("id").defaultRandom().primaryKey(),
-    tournamentId: uuid("id").references(() => tournaments.id),
+    tournamentId: uuid("tournament_id").references(() => tournaments.id),
     name: varchar("name", { length: 255 }).notNull(),
     raceNumber: integer("race_number").notNull(),
     round: roundEnums("round").notNull(),
