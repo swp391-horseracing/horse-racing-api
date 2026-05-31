@@ -3,7 +3,7 @@ import {
     OpenApiGeneratorV3,
 } from "@asteasolutions/zod-to-openapi";
 
-const registry = new OpenAPIRegistry();
+export const registry = new OpenAPIRegistry();
 
 export function generateOpenApiDoc() {
     const generator = new OpenApiGeneratorV3(registry.definitions);
