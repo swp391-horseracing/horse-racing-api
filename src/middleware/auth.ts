@@ -39,7 +39,9 @@ export const authMiddleware = async (
             .where(eq(users.id, payload.id));
 
         if (!user || user.token_version !== payload.tokenVersion) {
-            return res.status(401).json({ message: "Token has been invalidated" });
+            return res
+                .status(401)
+                .json({ message: "Token has been invalidated" });
         }
 
         req.user = payload;

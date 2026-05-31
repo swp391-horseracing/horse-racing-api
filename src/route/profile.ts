@@ -7,6 +7,11 @@ import { authMiddleware } from "../middleware/auth.js";
 const router = Router();
 
 router.get("/:id", authMiddleware, getProfile);
-router.patch("/:id", authMiddleware, validate(updateProfileSchema), updateProfile);
+router.patch(
+    "/:id",
+    authMiddleware,
+    validate(updateProfileSchema),
+    updateProfile,
+);
 
 export default router;
