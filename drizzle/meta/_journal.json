@@ -15,6 +15,27 @@
       "when": 1780216977544,
       "tag": "0001_flawless_young_avengers",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1780228999258,
+      "tag": "0002_dashing_mongoose",
+      "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1780229896583,
+      "tag": "0003_fuzzy_shen",
+      "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1780230481584,
+      "tag": "0004_conscious_champions",
+      "breakpoints": true
     }
   ]
 }
