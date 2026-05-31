@@ -5,11 +5,10 @@ import {
     uuid,
     pgEnum,
     integer,
-    date,
 } from "drizzle-orm/pg-core";
 import { tournaments } from "./tournament";
 
-export const roundEnums = pgEnum("round", ["qualifier, semifinal", "final"]);
+export const roundEnums = pgEnum("round", ["qualifier", "semifinal", "final"]);
 export const trackConditionsEnums = pgEnum("track_condition", [
     "dry",
     "wet",
@@ -31,7 +30,7 @@ export const races = pgTable("races", {
     round: roundEnums("round").notNull(),
     distanceMeters: integer("distance_meters").notNull(),
     trackCondition: trackConditionsEnums("track_condition").notNull(),
-    scheduleAt: date("schedule_at").notNull(),
+    scheduleAt: timestamp("schedule_at").notNull(),
     venue: varchar("venue", { length: 255 }).notNull(),
     landCount: integer("land_count").notNull(),
     status: raceStatusEnums("status").notNull(),
