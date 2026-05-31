@@ -2,7 +2,7 @@ import bcrypt from "bcryptjs";
 import { eq, sql } from "drizzle-orm";
 import { NextFunction, Request, Response } from "express";
 import db from "../config/db.js";
-import { users } from "../schema/user.js";
+import { users } from "../schema/users.js";
 
 export const getProfile = async (
     req: Request,
@@ -10,12 +10,17 @@ export const getProfile = async (
     next: NextFunction,
 ) => {
     try {
-        const { id } = req.params;
+        const id = req.params.id as string;
+        const requester = req.user!;
+
+        if (requester.id !== id && requester.role !== "admin") {
+            return res.status(403).json({ message: "Forbidden" });
+        }
 
         const [user] = await db
             .select({
                 id: users.id,
-                full_name: users.full_name,
+                full_name: users.fullName,
                 email: users.email,
                 phone: users.phone,
                 address: users.address,
@@ -45,7 +50,7 @@ export const updateProfile = async (
     next: NextFunction,
 ) => {
     try {
-        const { id } = req.params;
+        const id = req.params.id as string;
 
         if (req.user!.id !== id) {
             return res.status(403).json({ message: "Forbidden" });
@@ -54,11 +59,21 @@ export const updateProfile = async (
         const { full_name, email, password, phone, address, avatar_url } =
             req.body;
 
-        const set: Partial<typeof users.$inferInsert> & {
-            token_version?: ReturnType<typeof sql>;
-        } = {};
+        if (
+            full_name === undefined &&
+            email === undefined &&
+            password === undefined &&
+            phone === undefined &&
+            address === undefined &&
+            avatar_url === undefined
+        ) {
+            return res.status(400).json({ message: "No fields to update" });
+        }
 
-        if (full_name !== undefined) set.full_name = full_name;
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const set: Record<string, any> = {};
+
+        if (full_name !== undefined) set.fullName = full_name;
         if (email !== undefined) set.email = email;
         if (password !== undefined) {
             const salt = await bcrypt.genSalt(10);
@@ -80,7 +95,7 @@ export const updateProfile = async (
             .where(eq(users.id, id))
             .returning({
                 id: users.id,
-                full_name: users.full_name,
+                full_name: users.fullName,
                 email: users.email,
                 role: users.role,
                 status: users.status,

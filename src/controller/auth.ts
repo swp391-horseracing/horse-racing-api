@@ -1,8 +1,9 @@
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 import { eq, sql } from "drizzle-orm";
+import config from "../config/config.js";
 import db from "../config/db.js";
-import { users } from "../schema/user.js";
+import { users } from "../schema/users.js";
 import { NextFunction, Request, Response } from "express";
 
 export const register = async (
@@ -67,7 +68,7 @@ export const login = async (
             token,
             user: {
                 id: user.id,
-                full_name: user.full_name,
+                full_name: user.fullName,
                 email: user.email,
                 role: user.role,
                 status: user.status,

@@ -3,7 +3,7 @@ import jwt from "jsonwebtoken";
 import { eq } from "drizzle-orm";
 import config from "../config/config.js";
 import db from "../config/db.js";
-import { users } from "../schema/user.js";
+import { users } from "../schema/users.js";
 
 export const authMiddleware = async (
     req: Request,
@@ -19,7 +19,19 @@ export const authMiddleware = async (
     const token = authHeader.split(" ")[1];
 
     try {
-        const payload = jwt.verify(token ?? "", config().JWT_SECRET) as Express.User;
+        const decoded = jwt.verify(token ?? "", config().JWT_SECRET);
+
+        if (
+            typeof decoded !== "object" ||
+            typeof decoded.id !== "string" ||
+            typeof decoded.email !== "string" ||
+            typeof decoded.role !== "string" ||
+            typeof decoded.tokenVersion !== "number"
+        ) {
+            return res.status(401).json({ message: "Invalid token payload" });
+        }
+
+        const payload = decoded as Express.User;
 
         const [user] = await db
             .select({ token_version: users.token_version })
