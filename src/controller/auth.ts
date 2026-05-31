@@ -1,6 +1,6 @@
 import bcrypt from "bcryptjs";
 import db from "../config/db.js";
-import { users } from "../schema/user.js";
+import { users } from "../schema/users.js";
 import { NextFunction, Request, Response } from "express";
 
 export const register = async (
