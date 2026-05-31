@@ -10,7 +10,8 @@
     "build": "npx tsc",
     "db:push": "npx drizzle-kit push",
     "db:studio": "npx drizzle-kit studio",
-    "db:migrate": "npx drizzle-kit generate && npx drizzle-kit migrate",
+    "db:generate": "npx drizzle-kit generate",
+    "db:migrate": "npx drizzle-kit migrate",
     "format:check": "npx prettier --check .",
     "format:write": "npx prettier --write .",
     "lint": "npx eslint ."

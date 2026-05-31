@@ -30,6 +30,7 @@ jobs:
           docker compose -f .docker/compose.build.yaml push
   migrate:
     name: Migrate Database
+    needs: [build]
     runs-on: self-hosted
     permissions:
       contents: read
@@ -46,11 +47,11 @@ jobs:
 
       - name: Migrate Database
         run: |
-          npm run migrate
+          npm run db:migrate
 
   deploy:
     name: Deploy
-    needs: [build]
+    needs: [build, migrate]
     runs-on: self-hosted
     permissions:
       contents: read
