@@ -1,6 +1,6 @@
 {
-  "id": "1991fe50-8c47-434d-8a73-28a986f60d7b",
-  "prevId": "00000000-0000-0000-0000-000000000000",
+  "id": "3f96ac09-2b68-4d66-a01e-5d4cce554820",
+  "prevId": "1991fe50-8c47-434d-8a73-28a986f60d7b",
   "version": "7",
   "dialect": "postgresql",
   "tables": {
@@ -230,6 +230,13 @@
         "id": {
           "name": "id",
           "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "tournament_id": {
+          "name": "tournament_id",
+          "type": "uuid",
           "primaryKey": false,
           "notNull": false
         },
@@ -300,11 +307,11 @@
       },
       "indexes": {},
       "foreignKeys": {
-        "races_id_tournaments_id_fk": {
-          "name": "races_id_tournaments_id_fk",
+        "races_tournament_id_tournaments_id_fk": {
+          "name": "races_tournament_id_tournaments_id_fk",
           "tableFrom": "races",
           "tableTo": "tournaments",
-          "columnsFrom": ["id"],
+          "columnsFrom": ["tournament_id"],
           "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
