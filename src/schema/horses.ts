@@ -11,7 +11,7 @@ import { users } from "./users";
 
 export const horses = pgTable("horses", {
     id: uuid("id").defaultRandom().primaryKey(),
-    ownerId: uuid("id").references(() => users.id),
+    ownerId: uuid("owner_id").references(() => users.id),
     name: varchar("name", { length: 255 }).notNull().unique(),
     breed: varchar("breed", { length: 255 }).notNull(),
     birthDate: date("birth_date"),
