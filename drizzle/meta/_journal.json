@@ -43,6 +43,13 @@
       "when": 1780232121419,
       "tag": "0005_flawless_flatman",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1780236761181,
+      "tag": "0006_sparkling_ultimo",
+      "breakpoints": true
     }
   ]
 }
