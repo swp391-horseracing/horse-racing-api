@@ -13,11 +13,6 @@ export const getProfile = async (
 ) => {
     try {
         const id = req.params.id as string;
-        const requester = req.user!;
-
-        if (requester.id !== id && requester.role !== "admin") {
-            return res.status(403).json({ message: "Forbidden" });
-        }
 
         const [user] = await db
             .select({
@@ -54,7 +49,7 @@ export const updateProfile = async (
     try {
         const id = req.params.id as string;
 
-        if (req.user!.id !== id) {
+        if (req.user!.id !== id && req.user!.role !== "admin") {
             return res.status(403).json({ message: "Forbidden" });
         }
 
@@ -125,7 +120,6 @@ export const updateProfile = async (
             response.token = jwt.sign(
                 {
                     id: updated.id,
-                    email: updated.email,
                     role: updated.role,
                     tokenVersion: updated.token_version,
                 },
