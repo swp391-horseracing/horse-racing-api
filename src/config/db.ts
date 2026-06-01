@@ -3,7 +3,11 @@ import { Pool } from "pg";
 import config from "./config.js";
 
 const pool = new Pool({
-    connectionString: config().DATABASE_URL,
+    host: config().DB_HOST,
+    port: Number(config().DB_PORT),
+    user: config().DB_USERNAME,
+    password: config().DB_PASSWORD,
+    database: config().DB_DATABASE,
 });
 
 const db = drizzle(pool);
