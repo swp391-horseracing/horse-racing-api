@@ -64,5 +64,3 @@ jobs:
         run: docker image prune -a -f
       - name: Deploy Api
         run: docker compose -f .docker/compose.yaml -p horse-racing-api up -d
-      - name: Migrate Database
-        run: docker compose exec -T api 
