@@ -7,7 +7,7 @@ import {
     pgEnum,
     date,
 } from "drizzle-orm/pg-core";
-import { users } from "./users";
+import { users } from "./users.js";
 
 export const tournamentStatusEnums = pgEnum("tournament_status", [
     "upcoming",

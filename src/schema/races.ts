@@ -6,7 +6,7 @@ import {
     pgEnum,
     integer,
 } from "drizzle-orm/pg-core";
-import { tournaments } from "./tournament";
+import { tournaments } from "./tournament.js";
 
 export const roundEnums = pgEnum("round", ["qualifier", "semifinal", "final"]);
 export const trackConditionsEnums = pgEnum("track_condition", [
