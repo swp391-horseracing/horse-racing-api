@@ -85,7 +85,8 @@ export const updateProfile = async (
         if (address !== undefined) set.address = address;
         if (avatar_url !== undefined) set.avatar_url = avatar_url;
 
-        const credentialsChanged = email !== undefined || password !== undefined;
+        const credentialsChanged =
+            email !== undefined || password !== undefined;
         if (credentialsChanged) {
             set.token_version = sql`${users.token_version} + 1`;
         }
