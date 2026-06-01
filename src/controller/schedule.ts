@@ -30,7 +30,7 @@ export const getRaceSchedule = async (
             .select()
             .from(races)
             .where(
-                sql`${races.scheduleAt} >= ${startDate} AND ${races.scheduleAt} <= ${endDate}`,
+                sql`${races.scheduleAt} >= ${startDate} AND ${races.scheduleAt} < ${endDate}`,
             );
 
         res.json({ race_schedule: raceSchedule });
