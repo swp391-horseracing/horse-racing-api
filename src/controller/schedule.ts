@@ -1,6 +1,6 @@
 import { NextFunction, Request, Response } from "express";
-import db from "../config/db";
-import { races } from "../schema";
+import db from "../config/db.js";
+import { races } from "../schema/index.js";
 import moment from "moment";
 import { sql } from "drizzle-orm";
 

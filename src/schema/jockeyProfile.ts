@@ -1,5 +1,5 @@
 import { pgTable, uuid, decimal, smallint } from "drizzle-orm/pg-core";
-import { users } from "./users";
+import { users } from "./users.js";
 
 export const jockeyProfile = pgTable("jockey_profile", {
     id: uuid("id").defaultRandom().primaryKey(),

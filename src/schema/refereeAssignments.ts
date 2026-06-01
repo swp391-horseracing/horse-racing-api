@@ -1,6 +1,6 @@
 import { pgTable, timestamp, uuid, uniqueIndex } from "drizzle-orm/pg-core";
-import { races } from "./races";
-import { users } from "./users";
+import { races } from "./races.js";
+import { users } from "./users.js";
 
 export const refereeAssignments = pgTable(
     "referee_assignments",
