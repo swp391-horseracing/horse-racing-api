@@ -20,11 +20,12 @@ export const getRaceSchedule = async (
             return res.status(400).json({ message: "Invalid year or month" });
         }
 
-        const startDate = moment(`${y}-${String(m).padStart(2, "0")}-01`);
-        const endDate = moment(`${y}-${String(m).padStart(2, "0")}-01`).add(
-            1,
-            "month",
-        );
+        const startDate = moment(
+            `${y}-${String(m).padStart(2, "0")}-01`,
+        ).format();
+        const endDate = moment(`${y}-${String(m).padStart(2, "0")}-01`)
+            .add(1, "month")
+            .format();
 
         const raceSchedule = await db
             .select()
