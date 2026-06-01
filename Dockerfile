@@ -10,6 +10,8 @@ COPY . .
 
 RUN npm run build
 
+RUN npm run db:generate
+
 RUN npm prune --production
 
 FROM node:26-alpine3.22
@@ -18,6 +20,7 @@ WORKDIR /app
 
 COPY --from=build --chown=node:node /app/node_modules /app/node_modules
 COPY --from=build --chown=node:node /app/dist /app/dist
+COPY --from=build --chown=node:node /app/drizzle /app/drizzle
 
 EXPOSE ${PORT}
 

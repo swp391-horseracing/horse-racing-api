@@ -5,9 +5,13 @@ import { errorMiddleware } from "./middleware/error.js";
 import router from "./route/index.js";
 import { generateOpenApiDoc } from "./docs/openapi.js";
 import swaggerUi from "swagger-ui-express";
+import { migrate } from "drizzle-orm/node-postgres/migrator";
+import db from "./config/db.js";
 
 const app = express();
 const PORT = process.env.PORT || 3000;
+
+await migrate(db, { migrationsFolder: "./drizzle" });
 
 app.use(morgan("dev"));
 app.use(express.json());
