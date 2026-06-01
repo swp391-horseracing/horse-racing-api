@@ -32,7 +32,7 @@ export const races = pgTable("races", {
     trackCondition: trackConditionsEnums("track_condition").notNull(),
     scheduleAt: timestamp("schedule_at").notNull(),
     venue: varchar("venue", { length: 255 }).notNull(),
-    landCount: integer("land_count").notNull(),
+    laneCount: integer("lane_count").notNull(),
     status: raceStatusEnums("status").notNull(),
     createdAt: timestamp("created_at").defaultNow().notNull(),
 });
