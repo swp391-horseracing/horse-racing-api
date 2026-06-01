@@ -1,1 +1,0 @@
-ALTER TABLE "jockey_profile" RENAME COLUMN "weightKg" TO "weight_kg";

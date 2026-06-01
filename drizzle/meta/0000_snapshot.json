@@ -1,5 +1,5 @@
 {
-  "id": "1991fe50-8c47-434d-8a73-28a986f60d7b",
+  "id": "f87ba2fc-831e-48df-8312-df60606a0069",
   "prevId": "00000000-0000-0000-0000-000000000000",
   "version": "7",
   "dialect": "postgresql",
@@ -10,6 +10,13 @@
       "columns": {
         "id": {
           "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "owner_id": {
+          "name": "owner_id",
           "type": "uuid",
           "primaryKey": false,
           "notNull": false
@@ -73,12 +80,16 @@
       },
       "indexes": {},
       "foreignKeys": {
-        "horses_id_users_id_fk": {
-          "name": "horses_id_users_id_fk",
+        "horses_owner_id_users_id_fk": {
+          "name": "horses_owner_id_users_id_fk",
           "tableFrom": "horses",
           "tableTo": "users",
-          "columnsFrom": ["id"],
-          "columnsTo": ["id"],
+          "columnsFrom": [
+            "owner_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
           "onDelete": "no action",
           "onUpdate": "no action"
         }
@@ -88,7 +99,108 @@
         "horses_name_unique": {
           "name": "horses_name_unique",
           "nullsNotDistinct": false,
-          "columns": ["name"]
+          "columns": [
+            "name"
+          ]
+        }
+      },
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.users": {
+      "name": "users",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "full_name": {
+          "name": "full_name",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "email": {
+          "name": "email",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "password": {
+          "name": "password",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "phone": {
+          "name": "phone",
+          "type": "varchar(15)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "address": {
+          "name": "address",
+          "type": "varchar(225)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "avatar_url": {
+          "name": "avatar_url",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "role": {
+          "name": "role",
+          "type": "roles",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "status": {
+          "name": "status",
+          "type": "status",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'pending'"
+        },
+        "token_version": {
+          "name": "token_version",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 1
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": false,
+          "default": "now()"
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": false
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {
+        "users_email_unique": {
+          "name": "users_email_unique",
+          "nullsNotDistinct": false,
+          "columns": [
+            "email"
+          ]
         }
       },
       "policies": {},
@@ -112,8 +224,8 @@
           "primaryKey": false,
           "notNull": true
         },
-        "weightKg": {
-          "name": "weightKg",
+        "weight_kg": {
+          "name": "weight_kg",
           "type": "numeric(5, 2)",
           "primaryKey": false,
           "notNull": true
@@ -131,8 +243,12 @@
           "name": "jockey_profile_user_id_users_id_fk",
           "tableFrom": "jockey_profile",
           "tableTo": "users",
-          "columnsFrom": ["user_id"],
-          "columnsTo": ["id"],
+          "columnsFrom": [
+            "user_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
           "onDelete": "no action",
           "onUpdate": "no action"
         }
@@ -211,8 +327,12 @@
           "name": "notifications_user_id_users_id_fk",
           "tableFrom": "notifications",
           "tableTo": "users",
-          "columnsFrom": ["user_id"],
-          "columnsTo": ["id"],
+          "columnsFrom": [
+            "user_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
           "onDelete": "no action",
           "onUpdate": "no action"
         }
@@ -229,6 +349,13 @@
       "columns": {
         "id": {
           "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "tournament_id": {
+          "name": "tournament_id",
           "type": "uuid",
           "primaryKey": false,
           "notNull": false
@@ -267,7 +394,7 @@
         },
         "schedule_at": {
           "name": "schedule_at",
-          "type": "date",
+          "type": "timestamp",
           "primaryKey": false,
           "notNull": true
         },
@@ -277,8 +404,8 @@
           "primaryKey": false,
           "notNull": true
         },
-        "land_count": {
-          "name": "land_count",
+        "lane_count": {
+          "name": "lane_count",
           "type": "integer",
           "primaryKey": false,
           "notNull": true
@@ -300,12 +427,16 @@
       },
       "indexes": {},
       "foreignKeys": {
-        "races_id_tournaments_id_fk": {
-          "name": "races_id_tournaments_id_fk",
+        "races_tournament_id_tournaments_id_fk": {
+          "name": "races_tournament_id_tournaments_id_fk",
           "tableFrom": "races",
           "tableTo": "tournaments",
-          "columnsFrom": ["id"],
-          "columnsTo": ["id"],
+          "columnsFrom": [
+            "tournament_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
           "onDelete": "no action",
           "onUpdate": "no action"
         }
@@ -353,14 +484,40 @@
           "default": "now()"
         }
       },
-      "indexes": {},
+      "indexes": {
+        "uq_referee_race_idx": {
+          "name": "uq_referee_race_idx",
+          "columns": [
+            {
+              "expression": "race_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "referee_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": true,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
       "foreignKeys": {
         "referee_assignments_race_id_races_id_fk": {
           "name": "referee_assignments_race_id_races_id_fk",
           "tableFrom": "referee_assignments",
           "tableTo": "races",
-          "columnsFrom": ["race_id"],
-          "columnsTo": ["id"],
+          "columnsFrom": [
+            "race_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
           "onDelete": "no action",
           "onUpdate": "no action"
         },
@@ -368,8 +525,12 @@
           "name": "referee_assignments_referee_id_users_id_fk",
           "tableFrom": "referee_assignments",
           "tableTo": "users",
-          "columnsFrom": ["referee_id"],
-          "columnsTo": ["id"],
+          "columnsFrom": [
+            "referee_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
           "onDelete": "no action",
           "onUpdate": "no action"
         },
@@ -377,25 +538,18 @@
           "name": "referee_assignments_assigned_by_users_id_fk",
           "tableFrom": "referee_assignments",
           "tableTo": "users",
-          "columnsFrom": ["assigned_by"],
-          "columnsTo": ["id"],
+          "columnsFrom": [
+            "assigned_by"
+          ],
+          "columnsTo": [
+            "id"
+          ],
           "onDelete": "no action",
           "onUpdate": "no action"
         }
       },
       "compositePrimaryKeys": {},
-      "uniqueConstraints": {
-        "referee_assignments_race_id_unique": {
-          "name": "referee_assignments_race_id_unique",
-          "nullsNotDistinct": false,
-          "columns": ["race_id"]
-        },
-        "referee_assignments_referee_id_unique": {
-          "name": "referee_assignments_referee_id_unique",
-          "nullsNotDistinct": false,
-          "columns": ["referee_id"]
-        }
-      },
+      "uniqueConstraints": {},
       "policies": {},
       "checkConstraints": {},
       "isRLSEnabled": false
@@ -481,8 +635,12 @@
           "name": "tournaments_created_by_users_id_fk",
           "tableFrom": "tournaments",
           "tableTo": "users",
-          "columnsFrom": ["created_by"],
-          "columnsTo": ["id"],
+          "columnsFrom": [
+            "created_by"
+          ],
+          "columnsTo": [
+            "id"
+          ],
           "onDelete": "no action",
           "onUpdate": "no action"
         }
@@ -492,113 +650,57 @@
       "policies": {},
       "checkConstraints": {},
       "isRLSEnabled": false
-    },
-    "public.users": {
-      "name": "users",
-      "schema": "",
-      "columns": {
-        "id": {
-          "name": "id",
-          "type": "uuid",
-          "primaryKey": true,
-          "notNull": true,
-          "default": "gen_random_uuid()"
-        },
-        "full_name": {
-          "name": "full_name",
-          "type": "varchar(255)",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "email": {
-          "name": "email",
-          "type": "varchar(255)",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "password": {
-          "name": "password",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "phone": {
-          "name": "phone",
-          "type": "varchar(15)",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "address": {
-          "name": "address",
-          "type": "varchar(225)",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "avatar_url": {
-          "name": "avatar_url",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "role": {
-          "name": "role",
-          "type": "roles",
-          "typeSchema": "public",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "status": {
-          "name": "status",
-          "type": "status",
-          "typeSchema": "public",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "'pending'"
-        },
-        "created_at": {
-          "name": "created_at",
-          "type": "timestamp",
-          "primaryKey": false,
-          "notNull": false,
-          "default": "now()"
-        },
-        "updated_at": {
-          "name": "updated_at",
-          "type": "timestamp",
-          "primaryKey": false,
-          "notNull": false
-        }
-      },
-      "indexes": {},
-      "foreignKeys": {},
-      "compositePrimaryKeys": {},
-      "uniqueConstraints": {
-        "users_email_unique": {
-          "name": "users_email_unique",
-          "nullsNotDistinct": false,
-          "columns": ["email"]
-        }
-      },
-      "policies": {},
-      "checkConstraints": {},
-      "isRLSEnabled": false
     }
   },
   "enums": {
+    "public.roles": {
+      "name": "roles",
+      "schema": "public",
+      "values": [
+        "horse_owner",
+        "jockey",
+        "referee",
+        "spectator",
+        "admin"
+      ]
+    },
+    "public.status": {
+      "name": "status",
+      "schema": "public",
+      "values": [
+        "pending",
+        "active",
+        "locked"
+      ]
+    },
     "public.race_status": {
       "name": "race_status",
       "schema": "public",
-      "values": ["scheduled", "pre_race", "ongoing", "completed", "cancelled"]
+      "values": [
+        "scheduled",
+        "pre_race",
+        "ongoing",
+        "completed",
+        "cancelled"
+      ]
     },
     "public.round": {
       "name": "round",
       "schema": "public",
-      "values": ["qualifier, semifinal", "final"]
+      "values": [
+        "qualifier",
+        "semifinal",
+        "final"
+      ]
     },
     "public.track_condition": {
       "name": "track_condition",
       "schema": "public",
-      "values": ["dry", "wet", "muddy"]
+      "values": [
+        "dry",
+        "wet",
+        "muddy"
+      ]
     },
     "public.tournament_status": {
       "name": "tournament_status",
@@ -610,16 +712,6 @@
         "completed",
         "cancelled"
       ]
-    },
-    "public.roles": {
-      "name": "roles",
-      "schema": "public",
-      "values": ["horse_owner", "jockey", "referee", "spectator", "admin"]
-    },
-    "public.status": {
-      "name": "status",
-      "schema": "public",
-      "values": ["pending", "active", "locked"]
     }
   },
   "schemas": {},
