@@ -1,5 +1,5 @@
 import bcrypt from "bcryptjs";
-import { eq, sql } from "drizzle-orm";
+import { eq } from "drizzle-orm";
 import { NextFunction, Request, Response } from "express";
 import db from "../config/db.js";
 import { users } from "../schema/users.js";
@@ -82,10 +82,6 @@ export const updateProfile = async (
         if (phone !== undefined) set.phone = phone;
         if (address !== undefined) set.address = address;
         if (avatar_url !== undefined) set.avatar_url = avatar_url;
-
-        if (email !== undefined || password !== undefined) {
-            set.token_version = sql`${users.token_version} + 1`;
-        }
 
         set.updatedAt = new Date();
 
