@@ -31,6 +31,8 @@ export const getRaceSchedule = async (
             );
 
         res.json({ race_schedule: raceSchedule });
+
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
     } catch (err: any) {
         next(err);
     }
