@@ -84,12 +84,8 @@
           "name": "horses_owner_id_users_id_fk",
           "tableFrom": "horses",
           "tableTo": "users",
-          "columnsFrom": [
-            "owner_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["owner_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         }
@@ -99,9 +95,7 @@
         "horses_name_unique": {
           "name": "horses_name_unique",
           "nullsNotDistinct": false,
-          "columns": [
-            "name"
-          ]
+          "columns": ["name"]
         }
       },
       "policies": {},
@@ -198,9 +192,7 @@
         "users_email_unique": {
           "name": "users_email_unique",
           "nullsNotDistinct": false,
-          "columns": [
-            "email"
-          ]
+          "columns": ["email"]
         }
       },
       "policies": {},
@@ -243,12 +235,8 @@
           "name": "jockey_profile_user_id_users_id_fk",
           "tableFrom": "jockey_profile",
           "tableTo": "users",
-          "columnsFrom": [
-            "user_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["user_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         }
@@ -327,12 +315,8 @@
           "name": "notifications_user_id_users_id_fk",
           "tableFrom": "notifications",
           "tableTo": "users",
-          "columnsFrom": [
-            "user_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["user_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         }
@@ -431,12 +415,8 @@
           "name": "races_tournament_id_tournaments_id_fk",
           "tableFrom": "races",
           "tableTo": "tournaments",
-          "columnsFrom": [
-            "tournament_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["tournament_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         }
@@ -512,12 +492,8 @@
           "name": "referee_assignments_race_id_races_id_fk",
           "tableFrom": "referee_assignments",
           "tableTo": "races",
-          "columnsFrom": [
-            "race_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["race_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         },
@@ -525,12 +501,8 @@
           "name": "referee_assignments_referee_id_users_id_fk",
           "tableFrom": "referee_assignments",
           "tableTo": "users",
-          "columnsFrom": [
-            "referee_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["referee_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         },
@@ -538,12 +510,8 @@
           "name": "referee_assignments_assigned_by_users_id_fk",
           "tableFrom": "referee_assignments",
           "tableTo": "users",
-          "columnsFrom": [
-            "assigned_by"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["assigned_by"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         }
@@ -635,12 +603,8 @@
           "name": "tournaments_created_by_users_id_fk",
           "tableFrom": "tournaments",
           "tableTo": "users",
-          "columnsFrom": [
-            "created_by"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["created_by"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         }
@@ -656,51 +620,27 @@
     "public.roles": {
       "name": "roles",
       "schema": "public",
-      "values": [
-        "horse_owner",
-        "jockey",
-        "referee",
-        "spectator",
-        "admin"
-      ]
+      "values": ["horse_owner", "jockey", "referee", "spectator", "admin"]
     },
     "public.status": {
       "name": "status",
       "schema": "public",
-      "values": [
-        "pending",
-        "active",
-        "locked"
-      ]
+      "values": ["pending", "active", "locked"]
     },
     "public.race_status": {
       "name": "race_status",
       "schema": "public",
-      "values": [
-        "scheduled",
-        "pre_race",
-        "ongoing",
-        "completed",
-        "cancelled"
-      ]
+      "values": ["scheduled", "pre_race", "ongoing", "completed", "cancelled"]
     },
     "public.round": {
       "name": "round",
       "schema": "public",
-      "values": [
-        "qualifier",
-        "semifinal",
-        "final"
-      ]
+      "values": ["qualifier", "semifinal", "final"]
     },
     "public.track_condition": {
       "name": "track_condition",
       "schema": "public",
-      "values": [
-        "dry",
-        "wet",
-        "muddy"
-      ]
+      "values": ["dry", "wet", "muddy"]
     },
     "public.tournament_status": {
       "name": "tournament_status",
