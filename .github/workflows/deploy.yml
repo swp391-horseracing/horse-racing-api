@@ -28,28 +28,6 @@ jobs:
         run: |
           docker compose -f .docker/compose.build.yaml build
           docker compose -f .docker/compose.build.yaml push
-  migrate:
-    name: Migrate Database
-    needs: [build]
-    runs-on: self-hosted
-    permissions:
-      contents: read
-      packages: write
-    env:
-      DATABASE_URL: ${{ secrets.DATABASE_URL }}
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: 26
-          cache: 'npm'
-      - name: Install dependencies
-        run: npm ci
-      - name: Migrate Database
-        run: |
-          npm run db:migrate
 
   deploy:
     name: Deploy
@@ -86,3 +64,5 @@ jobs:
         run: docker image prune -a -f
       - name: Deploy Api
         run: docker compose -f .docker/compose.yaml -p horse-racing-api up -d
+      - name: Migrate Database
+        run: docker compose exec -T api 
