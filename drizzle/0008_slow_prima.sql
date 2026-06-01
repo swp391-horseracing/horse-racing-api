@@ -1,0 +1,1 @@
+ALTER TABLE "races" RENAME COLUMN "land_count" TO "lane_count";
