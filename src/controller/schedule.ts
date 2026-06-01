@@ -1,0 +1,37 @@
+import { NextFunction, Request, Response } from "express";
+import db from "../config/db";
+import { races } from "../schema";
+import moment from "moment";
+import { sql } from "drizzle-orm";
+
+export const getRaceSchedule = async (
+    req: Request,
+    res: Response,
+    next: NextFunction,
+) => {
+    try {
+        const { year, month } = req.query;
+
+        const now = moment();
+        const y = year ? Number(year) : now.year();
+        const m = month ? Number(month) : now.month() + 1; // Need to add 1 here since month is 0-indexed
+
+        const startDate = moment(
+            `${y}-${String(m).padStart(2, "0")}-01`,
+        ).format();
+        const endDate = moment(`${y}-${String(m).padStart(2, "0")}-01`)
+            .add(1, "month")
+            .format();
+
+        const raceSchedule = await db
+            .select()
+            .from(races)
+            .where(
+                sql`${races.scheduleAt} >= ${startDate} AND ${races.scheduleAt} <= ${endDate}`,
+            );
+
+        res.json({ race_schedule: raceSchedule });
+    } catch (err: any) {
+        next(err);
+    }
+};
