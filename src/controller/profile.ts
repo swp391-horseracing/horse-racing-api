@@ -1,6 +1,8 @@
 import bcrypt from "bcryptjs";
-import { eq } from "drizzle-orm";
+import { eq, sql } from "drizzle-orm";
 import { NextFunction, Request, Response } from "express";
+import jwt from "jsonwebtoken";
+import config from "../config/config.js";
 import db from "../config/db.js";
 import { users } from "../schema/users.js";
 
@@ -83,6 +85,11 @@ export const updateProfile = async (
         if (address !== undefined) set.address = address;
         if (avatar_url !== undefined) set.avatar_url = avatar_url;
 
+        const credentialsChanged = email !== undefined || password !== undefined;
+        if (credentialsChanged) {
+            set.token_version = sql`${users.token_version} + 1`;
+        }
+
         set.updatedAt = new Date();
 
         const [updated] = await db
@@ -95,13 +102,38 @@ export const updateProfile = async (
                 email: users.email,
                 role: users.role,
                 status: users.status,
+                token_version: users.token_version,
             });
 
         if (!updated) {
             return res.status(404).json({ message: "User not found" });
         }
 
-        res.json({ message: "Profile updated", user: updated });
+        const response: Record<string, unknown> = {
+            message: "Profile updated",
+            user: {
+                id: updated.id,
+                full_name: updated.full_name,
+                email: updated.email,
+                role: updated.role,
+                status: updated.status,
+            },
+        };
+
+        if (credentialsChanged) {
+            response.token = jwt.sign(
+                {
+                    id: updated.id,
+                    email: updated.email,
+                    role: updated.role,
+                    tokenVersion: updated.token_version,
+                },
+                config().JWT_SECRET,
+                { expiresIn: config().JWT_EXPIRES_IN } as jwt.SignOptions,
+            );
+        }
+
+        res.json(response);
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
     } catch (err: any) {
         if (err?.cause?.code === "23505") {
