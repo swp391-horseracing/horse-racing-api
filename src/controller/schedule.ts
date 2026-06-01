@@ -16,12 +16,15 @@ export const getRaceSchedule = async (
         const y = year ? Number(year) : now.year();
         const m = month ? Number(month) : now.month() + 1; // Need to add 1 here since month is 0-indexed
 
-        const startDate = moment(
-            `${y}-${String(m).padStart(2, "0")}-01`,
-        ).format();
-        const endDate = moment(`${y}-${String(m).padStart(2, "0")}-01`)
-            .add(1, "month")
-            .format();
+        if (!Number.isInteger(y) || !Number.isInteger(m) || m < 1 || m > 12) {
+            return res.status(400).json({ message: "Invalid year or month" });
+        }
+
+        const startDate = moment(`${y}-${String(m).padStart(2, "0")}-01`);
+        const endDate = moment(`${y}-${String(m).padStart(2, "0")}-01`).add(
+            1,
+            "month",
+        );
 
         const raceSchedule = await db
             .select()
