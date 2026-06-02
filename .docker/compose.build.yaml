@@ -1,5 +1,5 @@
 services:
-  smart_lock_api:
+  horse-racing-api:
     image: ${REGISTRY}/api:latest
     build:
       context: ../
