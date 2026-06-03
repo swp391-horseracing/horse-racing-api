@@ -10,8 +10,10 @@ import {
 import { users } from "./users.js";
 
 export const tournamentStatusEnums = pgEnum("tournament_status", [
+    "draft",
     "upcoming",
     "registration_open",
+    "registration_closed",
     "ongoing",
     "completed",
     "cancelled",
@@ -20,13 +22,17 @@ export const tournamentStatusEnums = pgEnum("tournament_status", [
 export const tournaments = pgTable("tournaments", {
     id: uuid("id").defaultRandom().primaryKey(),
     name: varchar("name", { length: 255 }).notNull(),
-    description: text("description").notNull(),
-    rules: text("rules").notNull(),
+    description: text("description"),
+    rules: text("rules"),
+    location: varchar("location", { length: 100 }),
     startDate: date("start_date"),
     endDate: date("end_date"),
-    registrationDeadline: timestamp("registration_deadline").notNull(),
-    status: tournamentStatusEnums(),
-    createdBy: uuid("created_by").references(() => users.id),
+    registrationOpenDate: timestamp("registration_open_date"),
+    registrationCloseDate: timestamp("registration_close_date"),
+    status: tournamentStatusEnums().default("draft").notNull(),
+    createdBy: uuid("created_by")
+        .references(() => users.id)
+        .notNull(),
     createdAt: timestamp().defaultNow(),
     updatedAt: timestamp("updated_at")
         .defaultNow()
