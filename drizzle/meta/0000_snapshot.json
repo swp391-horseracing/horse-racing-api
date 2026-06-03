@@ -1,5 +1,5 @@
 {
-  "id": "f87ba2fc-831e-48df-8312-df60606a0069",
+  "id": "f5165248-4a4c-43ac-99ba-9d10e9fb15c8",
   "prevId": "00000000-0000-0000-0000-000000000000",
   "version": "7",
   "dialect": "postgresql",
@@ -358,7 +358,7 @@
           "name": "tournament_id",
           "type": "uuid",
           "primaryKey": false,
-          "notNull": false
+          "notNull": true
         },
         "name": {
           "name": "name",
@@ -370,55 +370,68 @@
           "name": "race_number",
           "type": "integer",
           "primaryKey": false,
-          "notNull": true
+          "notNull": false
+        },
+        "round_number": {
+          "name": "round_number",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
         },
         "round": {
           "name": "round",
-          "type": "round",
-          "typeSchema": "public",
+          "type": "varchar(100)",
           "primaryKey": false,
-          "notNull": true
+          "notNull": false
         },
         "distance_meters": {
           "name": "distance_meters",
           "type": "integer",
           "primaryKey": false,
-          "notNull": true
+          "notNull": false
         },
         "track_condition": {
           "name": "track_condition",
           "type": "track_condition",
           "typeSchema": "public",
           "primaryKey": false,
-          "notNull": true
+          "notNull": false
         },
         "schedule_at": {
           "name": "schedule_at",
           "type": "timestamp",
           "primaryKey": false,
-          "notNull": true
+          "notNull": false
         },
         "venue": {
           "name": "venue",
           "type": "varchar(255)",
           "primaryKey": false,
-          "notNull": true
+          "notNull": false
         },
         "lane_count": {
           "name": "lane_count",
           "type": "integer",
           "primaryKey": false,
-          "notNull": true
+          "notNull": false
         },
         "status": {
           "name": "status",
           "type": "race_status",
           "typeSchema": "public",
           "primaryKey": false,
-          "notNull": true
+          "notNull": true,
+          "default": "'draft'"
         },
         "created_at": {
           "name": "created_at",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "updated_at": {
+          "name": "updated_at",
           "type": "timestamp",
           "primaryKey": false,
           "notNull": true,
@@ -575,13 +588,19 @@
           "name": "description",
           "type": "text",
           "primaryKey": false,
-          "notNull": true
+          "notNull": false
         },
         "rules": {
           "name": "rules",
           "type": "text",
           "primaryKey": false,
-          "notNull": true
+          "notNull": false
+        },
+        "location": {
+          "name": "location",
+          "type": "varchar(100)",
+          "primaryKey": false,
+          "notNull": false
         },
         "start_date": {
           "name": "start_date",
@@ -595,24 +614,31 @@
           "primaryKey": false,
           "notNull": false
         },
-        "registration_deadline": {
-          "name": "registration_deadline",
+        "registration_open_date": {
+          "name": "registration_open_date",
           "type": "timestamp",
           "primaryKey": false,
-          "notNull": true
+          "notNull": false
+        },
+        "registration_close_date": {
+          "name": "registration_close_date",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": false
         },
         "status": {
           "name": "status",
           "type": "tournament_status",
           "typeSchema": "public",
           "primaryKey": false,
-          "notNull": false
+          "notNull": true,
+          "default": "'draft'"
         },
         "created_by": {
           "name": "created_by",
           "type": "uuid",
           "primaryKey": false,
-          "notNull": false
+          "notNull": true
         },
         "createdAt": {
           "name": "createdAt",
@@ -650,6 +676,136 @@
       "policies": {},
       "checkConstraints": {},
       "isRLSEnabled": false
+    },
+    "public.race_entries": {
+      "name": "race_entries",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "race_id": {
+          "name": "race_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "horse_id": {
+          "name": "horse_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "jockey_id": {
+          "name": "jockey_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "lane_number": {
+          "name": "lane_number",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "entry_status": {
+          "name": "entry_status",
+          "type": "entry_status",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "confirmed_at": {
+          "name": "confirmed_at",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "race_entries_race_id_races_id_fk": {
+          "name": "race_entries_race_id_races_id_fk",
+          "tableFrom": "race_entries",
+          "tableTo": "races",
+          "columnsFrom": [
+            "race_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "race_entries_horse_id_horses_id_fk": {
+          "name": "race_entries_horse_id_horses_id_fk",
+          "tableFrom": "race_entries",
+          "tableTo": "horses",
+          "columnsFrom": [
+            "horse_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "race_entries_jockey_id_users_id_fk": {
+          "name": "race_entries_jockey_id_users_id_fk",
+          "tableFrom": "race_entries",
+          "tableTo": "users",
+          "columnsFrom": [
+            "jockey_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {
+        "race_entries_race_id_horse_id_unique": {
+          "name": "race_entries_race_id_horse_id_unique",
+          "nullsNotDistinct": false,
+          "columns": [
+            "race_id",
+            "horse_id"
+          ]
+        },
+        "race_entries_race_id_jockey_id_unique": {
+          "name": "race_entries_race_id_jockey_id_unique",
+          "nullsNotDistinct": false,
+          "columns": [
+            "race_id",
+            "jockey_id"
+          ]
+        },
+        "race_entries_race_id_lane_number_unique": {
+          "name": "race_entries_race_id_lane_number_unique",
+          "nullsNotDistinct": false,
+          "columns": [
+            "race_id",
+            "lane_number"
+          ]
+        }
+      },
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
     }
   },
   "enums": {
@@ -677,20 +833,15 @@
       "name": "race_status",
       "schema": "public",
       "values": [
+        "draft",
         "scheduled",
         "pre_race",
         "ongoing",
+        "under_review",
+        "result_confirmed",
         "completed",
+        "postponed",
         "cancelled"
-      ]
-    },
-    "public.round": {
-      "name": "round",
-      "schema": "public",
-      "values": [
-        "qualifier",
-        "semifinal",
-        "final"
       ]
     },
     "public.track_condition": {
@@ -706,11 +857,25 @@
       "name": "tournament_status",
       "schema": "public",
       "values": [
+        "draft",
         "upcoming",
         "registration_open",
+        "registration_closed",
         "ongoing",
         "completed",
         "cancelled"
+      ]
+    },
+    "public.entry_status": {
+      "name": "entry_status",
+      "schema": "public",
+      "values": [
+        "pending",
+        "confirmed",
+        "scratched",
+        "withdrawn",
+        "did_not_finish",
+        "disqualified"
       ]
     }
   },

@@ -1,9 +1,9 @@
 CREATE TYPE "public"."roles" AS ENUM('horse_owner', 'jockey', 'referee', 'spectator', 'admin');--> statement-breakpoint
 CREATE TYPE "public"."status" AS ENUM('pending', 'active', 'locked');--> statement-breakpoint
-CREATE TYPE "public"."race_status" AS ENUM('scheduled', 'pre_race', 'ongoing', 'completed', 'cancelled');--> statement-breakpoint
-CREATE TYPE "public"."round" AS ENUM('qualifier', 'semifinal', 'final');--> statement-breakpoint
+CREATE TYPE "public"."race_status" AS ENUM('draft', 'scheduled', 'pre_race', 'ongoing', 'under_review', 'result_confirmed', 'completed', 'postponed', 'cancelled');--> statement-breakpoint
 CREATE TYPE "public"."track_condition" AS ENUM('dry', 'wet', 'muddy');--> statement-breakpoint
-CREATE TYPE "public"."tournament_status" AS ENUM('upcoming', 'registration_open', 'ongoing', 'completed', 'cancelled');--> statement-breakpoint
+CREATE TYPE "public"."tournament_status" AS ENUM('draft', 'upcoming', 'registration_open', 'registration_closed', 'ongoing', 'completed', 'cancelled');--> statement-breakpoint
+CREATE TYPE "public"."entry_status" AS ENUM('pending', 'confirmed', 'scratched', 'withdrawn', 'did_not_finish', 'disqualified');--> statement-breakpoint
 CREATE TABLE "horses" (
 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
 	"owner_id" uuid,
@@ -56,17 +56,19 @@ CREATE TABLE "notifications" (
 --> statement-breakpoint
 CREATE TABLE "races" (
 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
-	"tournament_id" uuid,
+	"tournament_id" uuid NOT NULL,
 	"name" varchar(255) NOT NULL,
-	"race_number" integer NOT NULL,
-	"round" "round" NOT NULL,
-	"distance_meters" integer NOT NULL,
-	"track_condition" "track_condition" NOT NULL,
-	"schedule_at" timestamp NOT NULL,
-	"venue" varchar(255) NOT NULL,
-	"lane_count" integer NOT NULL,
-	"status" "race_status" NOT NULL,
-	"created_at" timestamp DEFAULT now() NOT NULL
+	"race_number" integer,
+	"round_number" integer,
+	"round" varchar(100),
+	"distance_meters" integer,
+	"track_condition" "track_condition",
+	"schedule_at" timestamp,
+	"venue" varchar(255),
+	"lane_count" integer,
+	"status" "race_status" DEFAULT 'draft' NOT NULL,
+	"created_at" timestamp DEFAULT now() NOT NULL,
+	"updated_at" timestamp DEFAULT now() NOT NULL
 );
 --> statement-breakpoint
 CREATE TABLE "referee_assignments" (
@@ -80,15 +82,31 @@ CREATE TABLE "referee_assignments" (
 CREATE TABLE "tournaments" (
 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
 	"name" varchar(255) NOT NULL,
-	"description" text NOT NULL,
-	"rules" text NOT NULL,
+	"description" text,
+	"rules" text,
+	"location" varchar(100),
 	"start_date" date,
 	"end_date" date,
-	"registration_deadline" timestamp NOT NULL,
-	"status" "tournament_status",
-	"created_by" uuid,
+	"registration_open_date" timestamp,
+	"registration_close_date" timestamp,
+	"status" "tournament_status" DEFAULT 'draft' NOT NULL,
+	"created_by" uuid NOT NULL,
 	"createdAt" timestamp DEFAULT now(),
 	"updated_at" timestamp DEFAULT now() NOT NULL
+);
+--> statement-breakpoint
+CREATE TABLE "race_entries" (
+	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
+	"race_id" uuid NOT NULL,
+	"horse_id" uuid NOT NULL,
+	"jockey_id" uuid,
+	"lane_number" integer NOT NULL,
+	"entry_status" "entry_status" NOT NULL,
+	"confirmed_at" timestamp DEFAULT now() NOT NULL,
+	"updated_at" timestamp DEFAULT now() NOT NULL,
+	CONSTRAINT "race_entries_race_id_horse_id_unique" UNIQUE("race_id","horse_id"),
+	CONSTRAINT "race_entries_race_id_jockey_id_unique" UNIQUE("race_id","jockey_id"),
+	CONSTRAINT "race_entries_race_id_lane_number_unique" UNIQUE("race_id","lane_number")
 );
 --> statement-breakpoint
 ALTER TABLE "horses" ADD CONSTRAINT "horses_owner_id_users_id_fk" FOREIGN KEY ("owner_id") REFERENCES "public"."users"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
@@ -99,4 +117,7 @@ ALTER TABLE "referee_assignments" ADD CONSTRAINT "referee_assignments_race_id_ra
 ALTER TABLE "referee_assignments" ADD CONSTRAINT "referee_assignments_referee_id_users_id_fk" FOREIGN KEY ("referee_id") REFERENCES "public"."users"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "referee_assignments" ADD CONSTRAINT "referee_assignments_assigned_by_users_id_fk" FOREIGN KEY ("assigned_by") REFERENCES "public"."users"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "tournaments" ADD CONSTRAINT "tournaments_created_by_users_id_fk" FOREIGN KEY ("created_by") REFERENCES "public"."users"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "race_entries" ADD CONSTRAINT "race_entries_race_id_races_id_fk" FOREIGN KEY ("race_id") REFERENCES "public"."races"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "race_entries" ADD CONSTRAINT "race_entries_horse_id_horses_id_fk" FOREIGN KEY ("horse_id") REFERENCES "public"."horses"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "race_entries" ADD CONSTRAINT "race_entries_jockey_id_users_id_fk" FOREIGN KEY ("jockey_id") REFERENCES "public"."users"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
 CREATE UNIQUE INDEX "uq_referee_race_idx" ON "referee_assignments" USING btree ("race_id","referee_id");
