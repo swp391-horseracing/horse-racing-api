@@ -7,12 +7,14 @@ import { generateOpenApiDoc } from "./docs/openapi.js";
 import swaggerUi from "swagger-ui-express";
 import { migrate } from "drizzle-orm/node-postgres/migrator";
 import db from "./config/db.js";
+import cors from "cors";
 
 const app = express();
 const PORT = process.env.PORT || 3000;
 
 await migrate(db, { migrationsFolder: "./drizzle" });
 
+app.use(cors());
 app.use(morgan("dev"));
 app.use(express.json());
 
