@@ -8,6 +8,13 @@
       "when": 1780332511806,
       "tag": "0000_living_wong",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1780471814070,
+      "tag": "0001_minor_wrecking_crew",
+      "breakpoints": true
     }
   ]
 }
