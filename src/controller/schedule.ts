@@ -34,7 +34,7 @@ export const getRaceSchedule = async (
                 sql`${races.scheduleAt} >= ${startDate} AND ${races.scheduleAt} < ${endDate}`,
             );
 
-        res.json({ race_schedule: raceSchedule });
+        res.json(raceSchedule);
 
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
     } catch (err: any) {

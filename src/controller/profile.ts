@@ -34,7 +34,7 @@ export const getProfile = async (
             return res.status(404).json({ message: "User not found" });
         }
 
-        res.json({ user });
+        res.json(user);
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
     } catch (err: any) {
         next(err);
