@@ -15,10 +15,14 @@ export const trackConditionsEnums = pgEnum("track_condition", [
     "muddy",
 ]);
 export const raceStatusEnums = pgEnum("race_status", [
+    "draft",
     "scheduled",
     "pre_race",
     "ongoing",
+    "under_review",
+    "result_confirmed",
     "completed",
+    "postponed",
     "cancelled",
 ]);
 
