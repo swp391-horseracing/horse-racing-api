@@ -32,7 +32,8 @@ export const raceEntries = pgTable(
         jockeyId: uuid("jockey_id").references(() => users.id),
         laneNumber: integer("lane_number").notNull(),
         entryStatus: entryStatusEnums("entry_status").notNull(),
-        confirmedAt: timestamp("confirmed_at").defaultNow().notNull(),
+        confirmedAt: timestamp("confirmed_at"),
+        createdAt: timestamp("created_at").defaultNow().notNull(),
         updatedAt: timestamp("updated_at")
             .defaultNow()
             .$onUpdate(() => new Date())
