@@ -24,7 +24,6 @@ export const authMiddleware = async (
         if (
             typeof decoded !== "object" ||
             typeof decoded.id !== "string" ||
-            typeof decoded.email !== "string" ||
             typeof decoded.role !== "string" ||
             typeof decoded.tokenVersion !== "number"
         ) {

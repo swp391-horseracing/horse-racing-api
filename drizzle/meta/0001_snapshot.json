@@ -1,6 +1,6 @@
 {
-  "id": "f5165248-4a4c-43ac-99ba-9d10e9fb15c8",
-  "prevId": "00000000-0000-0000-0000-000000000000",
+  "id": "681ef341-e575-4a7d-a89c-5988aa83f298",
+  "prevId": "f5165248-4a4c-43ac-99ba-9d10e9fb15c8",
   "version": "7",
   "dialect": "postgresql",
   "tables": {
@@ -674,7 +674,12 @@
       "compositePrimaryKeys": {},
       "uniqueConstraints": {},
       "policies": {},
-      "checkConstraints": {},
+      "checkConstraints": {
+        "open_close_date_check": {
+          "name": "open_close_date_check",
+          "value": "\"tournaments\".\"registration_open_date\" < \"tournaments\".\"registration_close_date\""
+        }
+      },
       "isRLSEnabled": false
     },
     "public.race_entries": {
@@ -721,6 +726,12 @@
         },
         "confirmed_at": {
           "name": "confirmed_at",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "created_at": {
+          "name": "created_at",
           "type": "timestamp",
           "primaryKey": false,
           "notNull": true,
