@@ -11,7 +11,6 @@ export const getRace = async (
 ) => {
     try {
         const raceId = req.params.raceId as string;
-        console.log(raceId);
         if (!uuidValidate(raceId)) {
             return res.status(400).json({ message: "Invalid uuid" });
         }
