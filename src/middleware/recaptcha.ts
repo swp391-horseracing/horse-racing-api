@@ -34,7 +34,6 @@ export const verifyRecaptcha = async (
                 },
             },
         );
-        console.log(data);
 
         if (!data.success) {
             return res.status(400).json({
