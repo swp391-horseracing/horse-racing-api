@@ -5,7 +5,7 @@ interface PaginationQuery {
 
 export function getPagination(query: PaginationQuery) {
     const page = Math.max(1, query.page ?? 1);
-    const limit = Math.min(100, query.limit ?? 5); // cap at 100
+    const limit = Math.min(100, query.limit ?? 10); // cap at 100
     const offset = (page - 1) * limit;
     return { page, limit, offset };
 }
