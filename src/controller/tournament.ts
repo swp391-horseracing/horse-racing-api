@@ -52,6 +52,7 @@ export const getTournaments = async (
         return res.json(
             paginatedResponse(tournaments, Number(count[0]?.count ?? 0), p, l),
         );
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
     } catch (err: any) {
         next(err);
     }
@@ -83,6 +84,7 @@ export const getTournament = async (
         }
 
         return res.json(tournament);
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
     } catch (err: any) {
         next(err);
     }
