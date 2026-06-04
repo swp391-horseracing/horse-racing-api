@@ -6,6 +6,57 @@ import { getPagination, paginatedResponse } from "../utils/paginate.js";
 import { validate as uuidValidate } from "uuid";
 import { tournamentsQuerySchema } from "../validator/tournament.js";
 
+export const getTournaments = async (
+    req: Request,
+    res: Response,
+    next: NextFunction,
+) => {
+    try {
+        const parsed = tournamentsQuerySchema.safeParse(req.query);
+        if (!parsed.success) {
+            return res.status(400).json({ message: "Invalid Query" });
+        }
+        const { status, page, limit } = parsed.data;
+        const { page: p, limit: l, offset } = getPagination({ page, limit });
+
+        const [tournaments, count] = await Promise.all([
+            db
+                .select({
+                    id: tournamentsTable.id,
+                    name: tournamentsTable.name,
+                    location: tournamentsTable.location,
+                    startDate: tournamentsTable.startDate,
+                    endDate: tournamentsTable.endDate,
+                    registrationOpenDate: tournamentsTable.registrationOpenDate,
+                    registrationCloseDate:
+                        tournamentsTable.registrationCloseDate,
+                    status: tournamentsTable.status,
+                })
+                .from(tournamentsTable)
+                .where(
+                    and(
+                        ne(tournamentsTable.status, "draft"),
+                        status
+                            ? eq(tournamentsTable.status, status)
+                            : undefined,
+                    ),
+                )
+                .limit(l)
+                .offset(offset),
+            db
+                .select({ count: sql<number>`count(*)` })
+                .from(tournamentsTable)
+                .where(ne(tournamentsTable.status, "draft")),
+        ]);
+
+        return res.json(
+            paginatedResponse(tournaments, Number(count[0]?.count ?? 0), p, l),
+        );
+    } catch (err: any) {
+        next(err);
+    }
+};
+
 export const getTournament = async (
     req: Request,
     res: Response,
