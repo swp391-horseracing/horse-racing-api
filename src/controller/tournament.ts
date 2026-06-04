@@ -46,7 +46,14 @@ export const getTournaments = async (
             db
                 .select({ count: sql<number>`count(*)` })
                 .from(tournamentsTable)
-                .where(ne(tournamentsTable.status, "draft")),
+                .where(
+                    and(
+                        ne(tournamentsTable.status, "draft"),
+                        status
+                            ? eq(tournamentsTable.status, status)
+                            : undefined,
+                    ),
+                ),
         ]);
 
         return res.json(
