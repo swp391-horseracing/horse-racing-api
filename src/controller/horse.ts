@@ -189,7 +189,15 @@ export const retireHorse = async (
                 .where(eq(horses.id, id))
                 .for("update");
 
-            if (!locked || locked.isRetired) {
+            if (!locked) {
+                return {
+                    ok: false as const,
+                    status: 404,
+                    message: "Horse not found",
+                };
+            }
+
+            if (locked.isRetired) {
                 return {
                     ok: false as const,
                     status: 400,
