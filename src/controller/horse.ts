@@ -5,22 +5,6 @@ import db from "../config/db.js";
 import { horses } from "../schema/horses.js";
 import { raceEntries } from "../schema/raceEntries.js";
 
-const hasActiveEntries = async (horseId: string): Promise<boolean> => {
-    const entries = await db
-        .select({ id: raceEntries.id })
-        .from(raceEntries)
-        .where(
-            and(
-                eq(raceEntries.horseId, horseId),
-                or(
-                    eq(raceEntries.entryStatus, "pending"),
-                    eq(raceEntries.entryStatus, "confirmed"),
-                ),
-            ),
-        );
-    return entries.length > 0;
-};
-
 export const getMyHorses = async (
     req: Request,
     res: Response,
@@ -198,26 +182,59 @@ export const retireHorse = async (
             return res.status(403).json({ message: "Forbidden" });
         }
 
-        if (existing.isRetired) {
-            return res
-                .status(400)
-                .json({ message: "Horse is already retired" });
+        const result = await db.transaction(async (tx) => {
+            const [locked] = await tx
+                .select()
+                .from(horses)
+                .where(eq(horses.id, id))
+                .for("update");
+
+            if (!locked || locked.isRetired) {
+                return {
+                    ok: false as const,
+                    status: 400,
+                    message: "Horse is already retired",
+                };
+            }
+
+            const activeEntries = await tx
+                .select({ id: raceEntries.id })
+                .from(raceEntries)
+                .where(
+                    and(
+                        eq(raceEntries.horseId, id),
+                        or(
+                            eq(raceEntries.entryStatus, "pending"),
+                            eq(raceEntries.entryStatus, "confirmed"),
+                        ),
+                    ),
+                );
+
+            if (activeEntries.length > 0) {
+                return {
+                    ok: false as const,
+                    status: 409,
+                    message:
+                        "Profile locked. This horse has active tournament commitments.",
+                };
+            }
+
+            const [updated] = await tx
+                .update(horses)
+                .set({ isRetired: true })
+                .where(eq(horses.id, id))
+                .returning();
+
+            return { ok: true as const, horse: updated };
+        });
+
+        if (!result.ok) {
+            return res.status(result.status).json({ message: result.message });
         }
-
-        if (await hasActiveEntries(id)) {
-            return res.status(409).json({
-                message:
-                    "Profile locked. This horse has active tournament commitments.",
-            });
-        }
-
-        const [retired] = await db
-            .update(horses)
-            .set({ isRetired: true })
-            .where(eq(horses.id, id))
-            .returning();
-
-        res.json({ message: "Horse retired successfully", horse: retired });
+        res.json({
+            message: "Horse retired successfully",
+            horse: result.horse,
+        });
     } catch (err) {
         next(err);
     }
