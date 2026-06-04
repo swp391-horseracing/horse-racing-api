@@ -24,7 +24,7 @@ export const verifyRecaptcha = async (
     }
 
     try {
-        const { data } = await axios.post(
+        const { data } = await axios.post<RecaptchaVerifyResponse>(
             "https://www.google.com/recaptcha/api/siteverify",
             null,
             {
@@ -43,7 +43,11 @@ export const verifyRecaptcha = async (
         }
 
         next();
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
     } catch (err: any) {
-        return res.status(500).json({ message: "Failed to verify reCaptcha" });
+        res.status(500).json({
+            message: "Failed to verify reCaptcha",
+            error: err,
+        });
     }
 };
