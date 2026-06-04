@@ -4,6 +4,11 @@ import { eq } from "drizzle-orm";
 import config from "../config/config.js";
 import db from "../config/db.js";
 import { users } from "../schema/users.js";
+import { Role } from "../types/roles.js";
+
+function isValidRole(role: string): role is Role {
+    return Object.values(Role).includes(role as Role);
+}
 
 export const authMiddleware = async (
     req: Request,
@@ -28,6 +33,10 @@ export const authMiddleware = async (
             typeof decoded.tokenVersion !== "number"
         ) {
             return res.status(401).json({ message: "Invalid token payload" });
+        }
+
+        if (!isValidRole(decoded.role)) {
+            return res.status(403).json({ message: "Invalid Role" });
         }
 
         const payload = decoded as Express.User;
