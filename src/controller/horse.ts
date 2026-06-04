@@ -48,10 +48,7 @@ export const getHorse = async (
             return res.status(400).json({ message: "Invalid uuid" });
         }
 
-        const [horse] = await db
-            .select()
-            .from(horses)
-            .where(eq(horses.id, id));
+        const [horse] = await db.select().from(horses).where(eq(horses.id, id));
 
         if (!horse) {
             return res.status(404).json({ message: "Horse not found" });
@@ -98,7 +95,9 @@ export const addHorse = async (
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
     } catch (err: any) {
         if (err?.cause?.code === "23505") {
-            return res.status(409).json({ message: "Horse name already in use" });
+            return res
+                .status(409)
+                .json({ message: "Horse name already in use" });
         }
         next(err);
     }
@@ -167,7 +166,9 @@ export const updateHorse = async (
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
     } catch (err: any) {
         if (err?.cause?.code === "23505") {
-            return res.status(409).json({ message: "Horse name already in use" });
+            return res
+                .status(409)
+                .json({ message: "Horse name already in use" });
         }
         next(err);
     }
@@ -198,7 +199,9 @@ export const retireHorse = async (
         }
 
         if (existing.isRetired) {
-            return res.status(400).json({ message: "Horse is already retired" });
+            return res
+                .status(400)
+                .json({ message: "Horse is already retired" });
         }
 
         if (await hasActiveEntries(id)) {
