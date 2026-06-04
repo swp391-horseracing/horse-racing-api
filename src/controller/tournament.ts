@@ -14,7 +14,13 @@ export const getTournaments = async (
     try {
         const parsed = tournamentsQuerySchema.safeParse(req.query);
         if (!parsed.success) {
-            return res.status(400).json({ message: "Invalid Query" });
+            return res.status(400).json({
+                message: "Validation Errors",
+                errors: parsed.error.issues.map((issue) => ({
+                    field: issue.path.join("."),
+                    message: issue.message,
+                })),
+            });
         }
         const { status, page, limit } = parsed.data;
         const { page: p, limit: l, offset } = getPagination({ page, limit });
