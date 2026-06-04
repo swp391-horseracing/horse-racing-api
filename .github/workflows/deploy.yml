@@ -50,6 +50,9 @@ jobs:
 
       PORT: ${{ secrets.PORT }}
       DATABASE_URL: ${{ secrets.DATABASE_URL }}
+
+      CAPTCHA_SECRET_KEY: ${{ secrets.CAPTCHA_SECRET_KEY }}
+      NODE_ENV: ${{ secrets.NODE_ENV }}
     steps:
       - name: Checkout code
         uses: actions/checkout@v3
