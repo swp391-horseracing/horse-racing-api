@@ -39,7 +39,8 @@ services:
       DB_PORT: ${DB_PORT}
 
       PORT: ${PORT}
-      DATABASE_URL: ${DATABASE_URL}
+      CAPTCHA_SECRET_KEY: ${CAPTCHA_SECRET_KEY}
+      NODE_ENV: ${NODE_ENV}
     ports:
       - ${PORT}:${PORT}
     networks:

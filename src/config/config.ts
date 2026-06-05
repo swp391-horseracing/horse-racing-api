@@ -11,6 +11,8 @@ interface Env {
     DB_PASSWORD: string;
     DB_HOST: string;
     DB_PORT: string;
+    CAPTCHA_SECRET_KEY: string;
+    NODE_ENV: string;
 }
 if (!process.env.DB_DATABASE) {
     throw new Error("DB_DATABASE is not defined");
@@ -36,6 +38,13 @@ if (!process.env.JWT_EXPIRES_IN) {
     throw new Error("JWT_EXPIRES_IN is not defined");
 }
 
+const nodeEnv = process.env.NODE_ENV?.toLowerCase();
+const isDev = nodeEnv === "dev" || nodeEnv === "development";
+
+if (!isDev && !process.env.CAPTCHA_SECRET_KEY) {
+    throw new Error("CAPTCHA_SECRET_KEY is not defined");
+}
+
 const config = (): Env => {
     return {
         PORT: process.env.PORT ? Number(process.env.PORT) : 3000,
@@ -46,6 +55,8 @@ const config = (): Env => {
         DB_PORT: String(process.env.DB_PORT),
         JWT_SECRET: String(process.env.JWT_SECRET),
         JWT_EXPIRES_IN: String(process.env.JWT_EXPIRES_IN),
+        CAPTCHA_SECRET_KEY: String(process.env.CAPTCHA_SECRET_KEY),
+        NODE_ENV: String(nodeEnv),
     };
 };
 
