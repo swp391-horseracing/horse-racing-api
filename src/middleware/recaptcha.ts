@@ -17,7 +17,7 @@ export const verifyRecaptcha = async (
     if (["dev", "development"].includes(config().NODE_ENV)) {
         return next();
     }
-    const token = req.body?.recaptchaToken;
+    const token = req.body?.captchaToken;
 
     if (!token) {
         return res.status(400).json({ message: "reCaptcha token is required" });
