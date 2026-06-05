@@ -1,21 +1,52 @@
 import { NextFunction, Request, Response } from "express";
-import { eq, and, or } from "drizzle-orm";
+import { eq, and, or, ilike, sql } from "drizzle-orm";
 import { validate as uuidValidate } from "uuid";
 import db from "../config/db.js";
 import { horses } from "../schema/horses.js";
 import { raceEntries } from "../schema/raceEntries.js";
+import { horsesQuerySchema } from "../validator/horse.js";
+import { getPagination, paginatedResponse } from "../utils/paginate.js";
 
-export const getMyHorses = async (
+export const getHorses = async (
     req: Request,
     res: Response,
     next: NextFunction,
 ) => {
     try {
-        const myHorses = await db
-            .select()
-            .from(horses)
-            .where(eq(horses.ownerId, req.user!.id));
-        res.json({ horses: myHorses });
+        const parsed = horsesQuerySchema.safeParse(req.query);
+        if (!parsed.success) {
+            return res.status(400).json({
+                message: "Validation Errors",
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                errors: parsed.error.issues.map((issue: any) => ({
+                    field: issue.path.join("."),
+                    message: issue.message,
+                })),
+            });
+        }
+
+        const { search, breed, isRetired, page, limit } = parsed.data;
+        const { page: p, limit: l, offset } = getPagination({ page, limit });
+
+        const conditions = and(
+            search ? ilike(horses.name, `%${search}%`) : undefined,
+            breed ? eq(horses.breed, breed) : undefined,
+            isRetired !== undefined
+                ? eq(horses.isRetired, isRetired)
+                : undefined,
+        );
+
+        const [data, count] = await Promise.all([
+            db.select().from(horses).where(conditions).limit(l).offset(offset),
+            db
+                .select({ count: sql<number>`count(*)` })
+                .from(horses)
+                .where(conditions),
+        ]);
+
+        return res.json(
+            paginatedResponse(data, Number(count[0]?.count ?? 0), p, l),
+        );
     } catch (err) {
         next(err);
     }
@@ -36,10 +67,6 @@ export const getHorse = async (
 
         if (!horse) {
             return res.status(404).json({ message: "Horse not found" });
-        }
-
-        if (req.user!.role !== "admin" && horse.ownerId !== req.user!.id) {
-            return res.status(403).json({ message: "Forbidden" });
         }
 
         res.json({ horse });
@@ -98,10 +125,7 @@ export const updateHorse = async (
             return res.status(400).json({ message: "Invalid uuid" });
         }
 
-        const [horse] = await db
-            .select()
-            .from(horses)
-            .where(eq(horses.id, id));
+        const [horse] = await db.select().from(horses).where(eq(horses.id, id));
 
         if (!horse) {
             return res.status(404).json({ message: "Horse not found" });
@@ -169,10 +193,7 @@ export const retireHorse = async (
             return res.status(400).json({ message: "Invalid uuid" });
         }
 
-        const [horse] = await db
-            .select()
-            .from(horses)
-            .where(eq(horses.id, id));
+        const [horse] = await db.select().from(horses).where(eq(horses.id, id));
 
         if (!horse) {
             return res.status(404).json({ message: "Horse not found" });

@@ -1,6 +1,6 @@
 import { Router } from "express";
 import {
-    getMyHorses,
+    getHorses,
     getHorse,
     addHorse,
     updateHorse,
@@ -12,8 +12,8 @@ import { authMiddleware } from "../middleware/auth.js";
 
 const router = Router();
 
-router.get("/", authMiddleware, getMyHorses);
-router.get("/:id", authMiddleware, getHorse);
+router.get("/", getHorses);
+router.get("/:id", getHorse);
 router.post("/", authMiddleware, validate(addHorseSchema), addHorse);
 router.patch("/:id", authMiddleware, validate(updateHorseSchema), updateHorse);
 router.post("/:id/retire", authMiddleware, retireHorse);

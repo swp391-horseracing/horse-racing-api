@@ -31,4 +31,15 @@ const updateHorseSchema = z.object({
     healthStatus: z.string().optional(),
 });
 
-export { addHorseSchema, updateHorseSchema };
+const horsesQuerySchema = z.object({
+    search: z.string().optional(),
+    breed: z.string().optional(),
+    isRetired: z
+        .enum(["true", "false"])
+        .transform((v) => v === "true")
+        .optional(),
+    page: z.coerce.number().int().min(1).default(1).optional(),
+    limit: z.coerce.number().int().min(1).max(100).default(10).optional(),
+});
+
+export { addHorseSchema, updateHorseSchema, horsesQuerySchema };
