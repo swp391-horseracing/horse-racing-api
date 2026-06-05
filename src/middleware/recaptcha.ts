@@ -47,7 +47,7 @@ export const verifyRecaptcha = async (
     } catch (err: any) {
         res.status(500).json({
             message: "Failed to verify reCaptcha",
-            error: err,
         });
+        next(err);
     }
 };
