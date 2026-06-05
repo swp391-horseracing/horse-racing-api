@@ -31,9 +31,7 @@ export const getHorses = async (
         const conditions = and(
             search ? ilike(horses.name, `%${search}%`) : undefined,
             breed ? eq(horses.breed, breed) : undefined,
-            isRetired !== undefined
-                ? eq(horses.isRetired, isRetired)
-                : undefined,
+            isRetired ? eq(horses.isRetired, isRetired) : undefined,
         );
 
         const [data, count] = await Promise.all([
