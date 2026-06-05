@@ -38,7 +38,10 @@ if (!process.env.JWT_EXPIRES_IN) {
     throw new Error("JWT_EXPIRES_IN is not defined");
 }
 
-if (!process.env.CAPTCHA_SECRET_KEY) {
+const nodeEnv = process.env.NODE_ENV?.toLowerCase();
+const isDev = nodeEnv === "dev" || nodeEnv === "development";
+
+if (!isDev && !process.env.CAPTCHA_SECRET_KEY) {
     throw new Error("CAPTCHA_SECRET_KEY is not defined");
 }
 
@@ -53,7 +56,7 @@ const config = (): Env => {
         JWT_SECRET: String(process.env.JWT_SECRET),
         JWT_EXPIRES_IN: String(process.env.JWT_EXPIRES_IN),
         CAPTCHA_SECRET_KEY: String(process.env.CAPTCHA_SECRET_KEY),
-        NODE_ENV: String(process.env.NODE_ENV),
+        NODE_ENV: String(nodeEnv),
     };
 };
 
