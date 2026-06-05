@@ -98,20 +98,20 @@ export const updateHorse = async (
             return res.status(400).json({ message: "Invalid uuid" });
         }
 
-        const [existing] = await db
+        const [horse] = await db
             .select()
             .from(horses)
             .where(eq(horses.id, id));
 
-        if (!existing) {
+        if (!horse) {
             return res.status(404).json({ message: "Horse not found" });
         }
 
-        if (req.user!.role !== "admin" && existing.ownerId !== req.user!.id) {
+        if (req.user!.role !== "admin" && horse.ownerId !== req.user!.id) {
             return res.status(403).json({ message: "Forbidden" });
         }
 
-        if (existing.isRetired) {
+        if (horse.isRetired) {
             return res
                 .status(400)
                 .json({ message: "Cannot update a retired horse" });
@@ -132,21 +132,21 @@ export const updateHorse = async (
         }
 
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const set: Record<string, any> = {};
-        if (name !== undefined) set.name = name;
-        if (breed !== undefined) set.breed = breed;
-        if (birthDate !== undefined) set.birthDate = birthDate;
-        if (weightKg !== undefined) set.weightKg = weightKg;
-        if (imageUrl !== undefined) set.imageUrl = imageUrl;
-        if (healthStatus !== undefined) set.healthStatus = healthStatus;
+        const updates: Record<string, any> = {};
+        if (name !== undefined) updates.name = name;
+        if (breed !== undefined) updates.breed = breed;
+        if (birthDate !== undefined) updates.birthDate = birthDate;
+        if (weightKg !== undefined) updates.weightKg = weightKg;
+        if (imageUrl !== undefined) updates.imageUrl = imageUrl;
+        if (healthStatus !== undefined) updates.healthStatus = healthStatus;
 
-        const [updated] = await db
+        const [updatedHorse] = await db
             .update(horses)
-            .set(set)
+            .set(updates)
             .where(eq(horses.id, id))
             .returning();
 
-        res.json({ horse: updated });
+        res.json({ horse: updatedHorse });
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
     } catch (err: any) {
         if (err?.cause?.code === "23505") {
@@ -169,27 +169,27 @@ export const retireHorse = async (
             return res.status(400).json({ message: "Invalid uuid" });
         }
 
-        const [existing] = await db
+        const [horse] = await db
             .select()
             .from(horses)
             .where(eq(horses.id, id));
 
-        if (!existing) {
+        if (!horse) {
             return res.status(404).json({ message: "Horse not found" });
         }
 
-        if (req.user!.role !== "admin" && existing.ownerId !== req.user!.id) {
+        if (req.user!.role !== "admin" && horse.ownerId !== req.user!.id) {
             return res.status(403).json({ message: "Forbidden" });
         }
 
         const result = await db.transaction(async (tx) => {
-            const [locked] = await tx
+            const [lockedHorse] = await tx
                 .select()
                 .from(horses)
                 .where(eq(horses.id, id))
                 .for("update");
 
-            if (!locked) {
+            if (!lockedHorse) {
                 return {
                     ok: false as const,
                     status: 404,
@@ -197,7 +197,7 @@ export const retireHorse = async (
                 };
             }
 
-            if (locked.isRetired) {
+            if (lockedHorse.isRetired) {
                 return {
                     ok: false as const,
                     status: 400,
@@ -227,13 +227,13 @@ export const retireHorse = async (
                 };
             }
 
-            const [updated] = await tx
+            const [updatedHorse] = await tx
                 .update(horses)
                 .set({ isRetired: true })
                 .where(eq(horses.id, id))
                 .returning();
 
-            return { ok: true as const, horse: updated };
+            return { ok: true as const, horse: updatedHorse };
         });
 
         if (!result.ok) {
