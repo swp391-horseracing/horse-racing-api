@@ -5,10 +5,12 @@ import scheduleRoutes from "./schedule.js";
 import raceRoutes from "./race.js";
 import horseRoutes from "./horse.js";
 import tournamentRoutes from "./tournament.js";
+import meRoutes from "./me.js";
 
 const router = Router();
 
 router.use("/auth", authRoutes);
+router.use("/me", meRoutes);
 router.use("/profiles", profileRoutes);
 router.use("/schedules", scheduleRoutes);
 router.use("/races", raceRoutes);
