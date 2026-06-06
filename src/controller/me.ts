@@ -185,6 +185,7 @@ export const getMeRaces = async (
         const { page, limit } = parsed.data;
         const { page: p, limit: l, offset } = getPagination({ page, limit });
 
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         let result: { data: any[]; count: any[] } | undefined;
 
         switch (user.role) {
@@ -263,6 +264,7 @@ const getOwnerRaceDetail = async (userId: string, raceId: string) => {
             venue: races.venue,
             laneCount: races.laneCount,
             status: races.status,
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             horses: sql<any[]>`json_agg(json_build_object(
                     'id', ${horses.id},
                     'name', ${horses.name},
