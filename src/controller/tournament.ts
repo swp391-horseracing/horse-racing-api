@@ -1,7 +1,7 @@
 import { NextFunction, Request, Response } from "express";
 import db from "../config/db.js";
 import { tournaments as tournamentsTable } from "../schema/tournament.js";
-import { and, eq, ne, sql } from "drizzle-orm";
+import { and, asc, desc, eq, ne, sql } from "drizzle-orm";
 import { getPagination, paginatedResponse } from "../utils/paginate.js";
 import { validate as uuidValidate } from "uuid";
 import {
@@ -146,7 +146,8 @@ export const getTournamentRaces = async (
                 .from(races)
                 .where(listRacescondition)
                 .limit(l)
-                .offset(offset),
+                .offset(offset)
+                .orderBy(asc(races.scheduleAt), asc(races.id)),
             db
                 .select({ count: sql<number>`count(*)` })
                 .from(races)
