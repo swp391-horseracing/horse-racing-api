@@ -34,8 +34,8 @@ router.patch(
 );
 router.post(
     "/:id/retire",
-    authorize(Role.ADMIN, Role.HORSE_OWNER),
     authMiddleware,
+    authorize(Role.ADMIN, Role.HORSE_OWNER),
     retireHorse,
 );
 
