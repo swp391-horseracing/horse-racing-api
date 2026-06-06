@@ -1,7 +1,7 @@
 import { NextFunction, Request, Response } from "express";
 import db from "../config/db.js";
 import { tournaments as tournamentsTable } from "../schema/tournament.js";
-import { and, asc, desc, eq, ne, sql } from "drizzle-orm";
+import { and, asc, eq, ne, sql } from "drizzle-orm";
 import { getPagination, paginatedResponse } from "../utils/paginate.js";
 import { validate as uuidValidate } from "uuid";
 import {
