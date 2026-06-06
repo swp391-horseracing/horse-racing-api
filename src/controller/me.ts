@@ -316,6 +316,10 @@ export const getMeRaceDetail = async (
                     .json({ success: false, error: "Invalid user role" });
         }
 
+        if (!result) {
+            return res.status(404).json({ message: "Race not exists" });
+        }
+
         return res.json(result);
     } catch (err) {
         next(err);
