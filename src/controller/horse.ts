@@ -79,10 +79,6 @@ export const addHorse = async (
     next: NextFunction,
 ) => {
     try {
-        if (req.user!.role !== "horse_owner" && req.user!.role !== "admin") {
-            return res.status(403).json({ message: "Forbidden" });
-        }
-
         const { name, breed, birthDate, weightKg, imageUrl, healthStatus } =
             req.body;
 
@@ -129,7 +125,7 @@ export const updateHorse = async (
             return res.status(404).json({ message: "Horse not found" });
         }
 
-        if (req.user!.role !== "admin" && horse.ownerId !== req.user!.id) {
+        if (horse.ownerId !== req.user!.id) {
             return res.status(403).json({ message: "Forbidden" });
         }
 
@@ -197,7 +193,7 @@ export const retireHorse = async (
             return res.status(404).json({ message: "Horse not found" });
         }
 
-        if (req.user!.role !== "admin" && horse.ownerId !== req.user!.id) {
+        if (horse.ownerId !== req.user!.id) {
             return res.status(403).json({ message: "Forbidden" });
         }
 
