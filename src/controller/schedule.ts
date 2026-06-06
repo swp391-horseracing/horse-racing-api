@@ -28,7 +28,14 @@ export const getRaceSchedule = async (
             .format();
 
         const raceSchedule = await db
-            .select()
+            .select({
+                id: races.id,
+                tournamentId: races.tournamentId,
+                name: races.name,
+                scheduledAt: races.scheduleAt,
+                venue: races.venue,
+                status: races.status,
+            })
             .from(races)
             .where(
                 sql`${races.scheduleAt} >= ${startDate} AND ${races.scheduleAt} < ${endDate}`,
