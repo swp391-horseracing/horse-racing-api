@@ -17,8 +17,7 @@ export const getHorses = async (
         if (!parsed.success) {
             return res.status(400).json({
                 message: "Validation Errors",
-                // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                errors: parsed.error.issues.map((issue: any) => ({
+                errors: parsed.error.issues.map((issue) => ({
                     field: issue.path.join("."),
                     message: issue.message,
                 })),
@@ -32,6 +31,54 @@ export const getHorses = async (
             search ? ilike(horses.name, `%${search}%`) : undefined,
             breed ? eq(horses.breed, breed) : undefined,
             isRetired ? eq(horses.isRetired, isRetired) : undefined,
+        );
+
+        const [data, count] = await Promise.all([
+            db.select().from(horses).where(conditions).limit(l).offset(offset),
+            db
+                .select({ count: sql<number>`count(*)` })
+                .from(horses)
+                .where(conditions),
+        ]);
+
+        return res.json(
+            paginatedResponse(data, Number(count[0]?.count ?? 0), p, l),
+        );
+    } catch (err) {
+        next(err);
+    }
+};
+
+export const getOwnerHorses = async (
+    req: Request,
+    res: Response,
+    next: NextFunction,
+) => {
+    try {
+        const ownerId = req.params.ownerId as string;
+        if (!uuidValidate(ownerId)) {
+            return res.status(400).json({ message: "Invalid uuid" });
+        }
+
+        const parsed = horsesQuerySchema.safeParse(req.query);
+        if (!parsed.success) {
+            return res.status(400).json({
+                message: "Validation Errors",
+                errors: parsed.error.issues.map((issue) => ({
+                    field: issue.path.join("."),
+                    message: issue.message,
+                })),
+            });
+        }
+
+        const { search, breed, isRetired, page, limit } = parsed.data;
+        const { page: p, limit: l, offset } = getPagination({ page, limit });
+
+        const conditions = and(
+            search ? ilike(horses.name, `%${search}%`) : undefined,
+            breed ? eq(horses.breed, breed) : undefined,
+            isRetired ? eq(horses.isRetired, isRetired) : undefined,
+            eq(horses.ownerId, ownerId),
         );
 
         const [data, count] = await Promise.all([
@@ -79,10 +126,6 @@ export const addHorse = async (
     next: NextFunction,
 ) => {
     try {
-        if (req.user!.role !== "horse_owner" && req.user!.role !== "admin") {
-            return res.status(403).json({ message: "Forbidden" });
-        }
-
         const { name, breed, birthDate, weightKg, imageUrl, healthStatus } =
             req.body;
 
@@ -129,7 +172,7 @@ export const updateHorse = async (
             return res.status(404).json({ message: "Horse not found" });
         }
 
-        if (req.user!.role !== "admin" && horse.ownerId !== req.user!.id) {
+        if (horse.ownerId !== req.user!.id) {
             return res.status(403).json({ message: "Forbidden" });
         }
 
@@ -197,7 +240,7 @@ export const retireHorse = async (
             return res.status(404).json({ message: "Horse not found" });
         }
 
-        if (req.user!.role !== "admin" && horse.ownerId !== req.user!.id) {
+        if (horse.ownerId !== req.user!.id) {
             return res.status(403).json({ message: "Forbidden" });
         }
 
