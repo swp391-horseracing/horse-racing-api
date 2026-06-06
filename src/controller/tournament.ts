@@ -29,6 +29,11 @@ export const getTournaments = async (
         const { status, page, limit } = parsed.data;
         const { page: p, limit: l, offset } = getPagination({ page, limit });
 
+        const listTournamentsCondition = and(
+            ne(tournamentsTable.status, "draft"),
+            status ? eq(tournamentsTable.status, status) : undefined,
+        );
+
         const [tournaments, count] = await Promise.all([
             db
                 .select({
@@ -43,27 +48,13 @@ export const getTournaments = async (
                     status: tournamentsTable.status,
                 })
                 .from(tournamentsTable)
-                .where(
-                    and(
-                        ne(tournamentsTable.status, "draft"),
-                        status
-                            ? eq(tournamentsTable.status, status)
-                            : undefined,
-                    ),
-                )
+                .where(listTournamentsCondition)
                 .limit(l)
                 .offset(offset),
             db
                 .select({ count: sql<number>`count(*)` })
                 .from(tournamentsTable)
-                .where(
-                    and(
-                        ne(tournamentsTable.status, "draft"),
-                        status
-                            ? eq(tournamentsTable.status, status)
-                            : undefined,
-                    ),
-                ),
+                .where(listTournamentsCondition),
         ]);
 
         return res.json(
@@ -132,6 +123,12 @@ export const getTournamentRaces = async (
             return res.status(400).json({ message: "Invalid uuid" });
         }
 
+        const listRacescondition = and(
+            ne(races.status, "draft"),
+            status ? eq(races.status, status) : undefined,
+            eq(races.tournamentId, tournamentId),
+        );
+
         const [tournamentRaces, count] = await Promise.all([
             db
                 .select({
@@ -147,19 +144,13 @@ export const getTournamentRaces = async (
                     status: races.status,
                 })
                 .from(races)
-                .where(eq(races.tournamentId, tournamentId))
+                .where(listRacescondition)
                 .limit(l)
                 .offset(offset),
             db
                 .select({ count: sql<number>`count(*)` })
                 .from(races)
-                .where(
-                    and(
-                        ne(races.status, "draft"),
-                        status ? eq(races.status, status) : undefined,
-                        eq(races.tournamentId, tournamentId),
-                    ),
-                ),
+                .where(listRacescondition),
         ]);
 
         if (!tournamentRaces) {
