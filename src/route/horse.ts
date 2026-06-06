@@ -5,6 +5,7 @@ import {
     addHorse,
     updateHorse,
     retireHorse,
+    getOwnerHorses,
 } from "../controller/horse.js";
 import { addHorseSchema, updateHorseSchema } from "../validator/horse.js";
 import { validate } from "../middleware/validate.js";
@@ -15,6 +16,7 @@ import { Role } from "../types/roles.js";
 const router = Router();
 
 router.get("/", getHorses);
+router.get("/owner/:ownerId", getOwnerHorses);
 router.get("/:id", getHorse);
 router.post(
     "/",
