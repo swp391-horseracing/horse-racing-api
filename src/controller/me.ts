@@ -1,4 +1,5 @@
 import { NextFunction, Request, Response } from "express";
+import { validate as uuidValidate } from "uuid";
 import db from "../config/db.js";
 import { users } from "../schema/users.js";
 import { and, eq, sql } from "drizzle-orm";
@@ -291,6 +292,10 @@ export const getMeRaceDetail = async (
     try {
         const user = req.user;
         const raceId = req.params.raceId as string;
+
+        if (!uuidValidate(raceId)) {
+            return res.status(400).json({ message: "Invalid uuid" });
+        }
 
         if (!user) {
             return res.status(401).json({ message: "Unauthorized" });
