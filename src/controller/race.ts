@@ -44,6 +44,15 @@ export const getHorseEntries = async (
             return res.status(400).json({ message: "Invalid uuid" });
         }
 
+        const [race] = await db
+            .select()
+            .from(races)
+            .where(eq(races.id, raceId));
+
+        if (!race) {
+            return res.status(404).json({ message: "Race not exist" });
+        }
+
         const horseEntries = await db
             .select({
                 id: horses.id,
