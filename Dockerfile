@@ -21,6 +21,7 @@ WORKDIR /app
 COPY --from=build --chown=node:node /app/node_modules /app/node_modules
 COPY --from=build --chown=node:node /app/dist /app/dist
 COPY --from=build --chown=node:node /app/drizzle /app/drizzle
+COPY --from=build --chown=node:node /app/openapi.yaml /app/openapi.yaml
 
 EXPOSE ${PORT}
 
