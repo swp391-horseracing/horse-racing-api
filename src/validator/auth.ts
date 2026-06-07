@@ -1,7 +1,4 @@
 import { z } from "zod";
-import { extendZodWithOpenApi } from "@asteasolutions/zod-to-openapi";
-
-extendZodWithOpenApi(z);
 
 const registerSchema = z.object({
     fullName: z.string().min(2, "Full name is required"),
