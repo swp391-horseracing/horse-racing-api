@@ -22,12 +22,13 @@ export const getUsers = async (
                 })),
             });
         }
-        const { role, search, page, limit } = parsed.data;
+        const { role, status, search, page, limit } = parsed.data;
         const { page: p, limit: l, offset } = getPagination({ page, limit });
 
         const conditions = and(
             search ? ilike(users.fullName, `%${search}%`) : undefined,
             role ? eq(users.role, role) : undefined,
+            status ? eq(users.status, status) : undefined,
         );
 
         const [data, count] = await Promise.all([

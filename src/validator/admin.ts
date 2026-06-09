@@ -2,6 +2,7 @@ import { z } from "zod";
 
 const usersQuerySchema = z.object({
     search: z.string().optional(),
+    status: z.enum(["pending", "active", "locked"]).optional(),
     role: z
         .enum(["jockey", "spectator", "horse_owner", "referee", "admin"])
         .optional(),
