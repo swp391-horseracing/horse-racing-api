@@ -1,4 +1,5 @@
 import { NextFunction, Request, Response } from "express";
+import { validate as uuidValidate } from "uuid";
 import { usersQuerySchema } from "../validator/admin.js";
 import { users } from "../schema/users.js";
 import { and, eq, ilike, sql } from "drizzle-orm";
@@ -53,6 +54,43 @@ export const getUsers = async (
         return res.json(
             paginatedResponse(data, Number(count[0]?.count ?? 0), p, l),
         );
+    } catch (err) {
+        next(err);
+    }
+};
+
+export const getUser = async (
+    req: Request,
+    res: Response,
+    next: NextFunction,
+) => {
+    try {
+        const userId = req.params.userId as string;
+        if (!uuidValidate(userId)) {
+            return res.status(400).json({ message: "Invalid uuid" });
+        }
+
+        const [user] = await db
+            .select({
+                id: users.id,
+                fullName: users.fullName,
+                email: users.email,
+                phone: users.phone,
+                address: users.address,
+                avatarUrl: users.avatar_url,
+                role: users.role,
+                status: users.status,
+                createdAt: users.createdAt,
+                updatedAt: users.updatedAt,
+            })
+            .from(users)
+            .where(eq(users.id, userId));
+
+        if (!user) {
+            return res.status(404).json({ message: "User not exist" });
+        }
+
+        res.json(user);
     } catch (err) {
         next(err);
     }
