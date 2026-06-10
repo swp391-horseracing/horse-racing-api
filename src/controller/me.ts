@@ -554,7 +554,7 @@ export const inviteJockey = async (
                 };
             }
 
-            // Check no active invitation already exists for this jockey in this race
+            // Check this owner doesn't already have a pending invitation to this jockey for this race
             const [existing] = await tx
                 .select({ id: jockeyInvitations.invitationId })
                 .from(jockeyInvitations)
@@ -562,6 +562,7 @@ export const inviteJockey = async (
                     and(
                         eq(jockeyInvitations.raceId, raceId),
                         eq(jockeyInvitations.jockeyId, jockeyId),
+                        eq(jockeyInvitations.ownerId, user.id),
                         eq(jockeyInvitations.status, "pending"),
                     ),
                 );
@@ -571,7 +572,7 @@ export const inviteJockey = async (
                     ok: false as const,
                     status: 409,
                     message:
-                        "A pending invitation already exists for this jockey in this race",
+                        "You already have a pending invitation to this jockey for this race",
                 };
             }
 
