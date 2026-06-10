@@ -104,23 +104,41 @@ export const updateUserRole = async (
 ) => {
     try {
         const userId = req.params.userId as string;
+        const currUser = req.user;
         const role = req.body.role;
 
         if (!uuidValidate(userId)) {
             return res.status(400).json({ message: "Invalid uuid" });
         }
 
-        const user = await db
+        if (currUser?.id === userId) {
+            return res
+                .status(403)
+                .json({ message: "Cannot change your own role" });
+        }
+
+        const [userRole] = await db
+            .select({ role: users.role })
+            .from(users)
+            .where(eq(users.id, userId));
+
+        if (role == userRole?.role) {
+            return res
+                .status(403)
+                .json({ message: "Role already set to this user" });
+        }
+
+        const updatedUser = await db
             .update(users)
             .set({ role: role })
             .where(eq(users.id, userId))
             .returning();
 
-        if (user.length === 0) {
+        if (updatedUser.length === 0) {
             return res.status(404).json({ message: "User not exist" });
         }
 
-        res.json({ message: "Role updated", userId: user[0]?.id });
+        res.json({ message: "Role updated", userId: updatedUser[0]?.id });
     } catch (err) {
         next(err);
     }
