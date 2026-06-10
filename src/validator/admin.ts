@@ -11,13 +11,11 @@ const usersQuerySchema = z.object({
 });
 
 const updateRoleSchema = z.object({
-    role: z
-        .enum(["jockey", "spectator", "horse_owner", "referee", "admin"])
-        .optional(),
+    role: z.enum(["jockey", "spectator", "horse_owner", "referee", "admin"]),
 });
 
 const updateStatusSchema = z.object({
-    status: z.enum(["active", "locked"]).optional(),
+    status: z.enum(["active", "locked"]),
 });
 
 export { usersQuerySchema, updateRoleSchema, updateStatusSchema };
