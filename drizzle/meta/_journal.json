@@ -15,6 +15,20 @@
       "when": 1780493723382,
       "tag": "0001_tranquil_phil_sheldon",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1749484800000,
+      "tag": "0002_tournament_registrations",
+      "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1749484860000,
+      "tag": "0003_jockey_invitations",
+      "breakpoints": true
     }
   ]
 }

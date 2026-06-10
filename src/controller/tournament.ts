@@ -7,8 +7,11 @@ import { validate as uuidValidate } from "uuid";
 import {
     tournamentRacesQuerySchema,
     tournamentsQuerySchema,
+    registerForTournamentSchema,
 } from "../validator/tournament.js";
 import { races } from "../schema/races.js";
+import { horses } from "../schema/horses.js";
+import { tournamentRegistrations } from "../schema/tournamentRegistrations.js";
 
 export const getTournaments = async (
     req: Request,
@@ -166,6 +169,156 @@ export const getTournamentRaces = async (
                 l,
             ),
         );
+    } catch (err) {
+        next(err);
+    }
+};
+
+export const registerForTournament = async (
+    req: Request,
+    res: Response,
+    next: NextFunction,
+) => {
+    try {
+        const tournamentId = req.params.id as string;
+        if (!uuidValidate(tournamentId)) {
+            return res.status(400).json({ message: "Invalid uuid" });
+        }
+
+        const parsed = registerForTournamentSchema.safeParse(req.body);
+        if (!parsed.success) {
+            return res.status(400).json({
+                message: "Validation Errors",
+                errors: parsed.error.issues.map((i) => ({
+                    field: i.path.join("."),
+                    message: i.message,
+                })),
+            });
+        }
+        const { horseId } = parsed.data;
+
+        const result = await db.transaction(async (tx) => {
+            const [tournament] = await tx
+                .select({
+                    id: tournamentsTable.id,
+                    status: tournamentsTable.status,
+                })
+                .from(tournamentsTable)
+                .where(eq(tournamentsTable.id, tournamentId));
+
+            if (!tournament) {
+                return {
+                    ok: false as const,
+                    status: 404,
+                    message: "Tournament not found",
+                };
+            }
+            if (tournament.status !== "registration_open") {
+                return {
+                    ok: false as const,
+                    status: 409,
+                    message: "Tournament registration is not open",
+                };
+            }
+
+            const [horse] = await tx
+                .select({
+                    id: horses.id,
+                    ownerId: horses.ownerId,
+                    isRetired: horses.isRetired,
+                })
+                .from(horses)
+                .where(eq(horses.id, horseId));
+
+            if (!horse) {
+                return {
+                    ok: false as const,
+                    status: 404,
+                    message: "Horse not found",
+                };
+            }
+            if (horse.ownerId !== req.user!.id) {
+                return {
+                    ok: false as const,
+                    status: 403,
+                    message: "Forbidden",
+                };
+            }
+            if (horse.isRetired) {
+                return {
+                    ok: false as const,
+                    status: 409,
+                    message: "Horse is retired",
+                };
+            }
+
+            const [registration] = await tx
+                .insert(tournamentRegistrations)
+                .values({
+                    tournamentId,
+                    horseId,
+                    ownerId: req.user!.id,
+                })
+                .returning();
+
+            return { ok: true as const, registration };
+        });
+
+        if (!result.ok) {
+            return res.status(result.status).json({ message: result.message });
+        }
+
+        return res.status(201).json({ registration: result.registration });
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    } catch (err: any) {
+        if (err?.cause?.code === "23505") {
+            return res.status(409).json({
+                message: "Horse is already registered for this tournament",
+            });
+        }
+        next(err);
+    }
+};
+
+export const getTournamentRegistration = async (
+    req: Request,
+    res: Response,
+    next: NextFunction,
+) => {
+    try {
+        const { id: tournamentId, regId } = req.params as {
+            id: string;
+            regId: string;
+        };
+        if (!uuidValidate(tournamentId) || !uuidValidate(regId)) {
+            return res.status(400).json({ message: "Invalid uuid" });
+        }
+
+        const [registration] = await db
+            .select({
+                id: tournamentRegistrations.registrationId,
+                tournamentId: tournamentRegistrations.tournamentId,
+                horseId: tournamentRegistrations.horseId,
+                ownerId: tournamentRegistrations.ownerId,
+                status: tournamentRegistrations.status,
+                submittedAt: tournamentRegistrations.submittedAt,
+                reviewedBy: tournamentRegistrations.reviewedBy,
+                reviewedAt: tournamentRegistrations.reviewedAt,
+                rejectReason: tournamentRegistrations.rejectReason,
+            })
+            .from(tournamentRegistrations)
+            .where(
+                and(
+                    eq(tournamentRegistrations.registrationId, regId),
+                    eq(tournamentRegistrations.tournamentId, tournamentId),
+                ),
+            );
+
+        if (!registration) {
+            return res.status(404).json({ message: "Registration not found" });
+        }
+
+        return res.json({ registration });
     } catch (err) {
         next(err);
     }
