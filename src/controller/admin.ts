@@ -96,3 +96,32 @@ export const getUser = async (
         next(err);
     }
 };
+
+export const updateUserRole = async (
+    req: Request,
+    res: Response,
+    next: NextFunction,
+) => {
+    try {
+        const userId = req.params.userId as string;
+        const role = req.body.role;
+
+        if (!uuidValidate(userId)) {
+            return res.status(400).json({ message: "Invalid uuid" });
+        }
+
+        const user = await db
+            .update(users)
+            .set({ role: role })
+            .where(eq(users.id, userId))
+            .returning();
+
+        if (user.length === 0) {
+            return res.status(404).json({ message: "User not exist" });
+        }
+
+        res.json({ message: "Role updated", userId: user[0]?.id });
+    } catch (err) {
+        next(err);
+    }
+};

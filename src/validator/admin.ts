@@ -10,4 +10,10 @@ const usersQuerySchema = z.object({
     limit: z.coerce.number().int().min(1).max(100).default(10).optional(),
 });
 
-export { usersQuerySchema };
+const updateRoleSchema = z.object({
+    role: z
+        .enum(["jockey", "spectator", "horse_owner", "referee", "admin"])
+        .optional(),
+});
+
+export { usersQuerySchema, updateRoleSchema };
