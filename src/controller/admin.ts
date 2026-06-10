@@ -143,3 +143,49 @@ export const updateUserRole = async (
         next(err);
     }
 };
+
+export const updateUserStatus = async (
+    req: Request,
+    res: Response,
+    next: NextFunction,
+) => {
+    const ALLOWED_TRANSITIONS: Record<string, string[]> = {
+        pending: ["active", "locked"],
+        active: ["locked"],
+        locked: ["active"],
+    };
+    try {
+        const userId = req.params.userId as string;
+        const status = req.body.status;
+
+        if (!uuidValidate(userId)) {
+            return res.status(400).json({ message: "Invalid uuid" });
+        }
+
+        const [user] = await db
+            .select({ id: users.id, status: users.status })
+            .from(users)
+            .where(eq(users.id, userId));
+
+        if (!user) {
+            return res.status(404).json({ message: "User not exist" });
+        }
+
+        const allowed = ALLOWED_TRANSITIONS[user.status] ?? [];
+        if (!allowed.includes(status)) {
+            return res.status(403).json({
+                message: `Cannot transition from '${user.status}' to '${status}'`,
+            });
+        }
+
+        const [updatedUser] = await db
+            .update(users)
+            .set({ status: status })
+            .where(eq(users.id, userId))
+            .returning();
+
+        res.json({ message: "Updated user status", userId: updatedUser?.id });
+    } catch (err) {
+        next(err);
+    }
+};

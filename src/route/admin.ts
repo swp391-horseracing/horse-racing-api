@@ -1,10 +1,15 @@
 import { Router } from "express";
 import { Role } from "../types/roles.js";
 import { authMiddleware } from "../middleware/auth.js";
-import { getUser, getUsers, updateUserRole } from "../controller/admin.js";
+import {
+    getUser,
+    getUsers,
+    updateUserRole,
+    updateUserStatus,
+} from "../controller/admin.js";
 import { authorize } from "../middleware/authorize.js";
 import { validate } from "../middleware/validate.js";
-import { updateRoleSchema } from "../validator/admin.js";
+import { updateRoleSchema, updateStatusSchema } from "../validator/admin.js";
 
 const router = Router();
 
@@ -17,5 +22,11 @@ router.patch(
     validate(updateRoleSchema),
     updateUserRole,
 );
-
+router.patch(
+    "/users/:userId/status",
+    authMiddleware,
+    authorize(Role.ADMIN),
+    validate(updateStatusSchema),
+    updateUserStatus,
+);
 export default router;

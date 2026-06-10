@@ -16,4 +16,8 @@ const updateRoleSchema = z.object({
         .optional(),
 });
 
-export { usersQuerySchema, updateRoleSchema };
+const updateStatusSchema = z.object({
+    status: z.enum(["active", "locked"]).optional(),
+});
+
+export { usersQuerySchema, updateRoleSchema, updateStatusSchema };
