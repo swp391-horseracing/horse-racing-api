@@ -10,7 +10,7 @@ const router = Router();
 
 router.get("/users", authMiddleware, authorize(Role.ADMIN), getUsers);
 router.get("/users/:userId", authMiddleware, authorize(Role.ADMIN), getUser);
-router.get(
+router.patch(
     "/users/:userId/role",
     authMiddleware,
     authorize(Role.ADMIN),
