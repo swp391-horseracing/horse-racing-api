@@ -72,20 +72,22 @@ export const getTournament = async (
     next: NextFunction,
 ) => {
     try {
+        const userRole = req.user?.role;
         const tournamendId = req.params.id as string;
-
         if (!uuidValidate(tournamendId)) {
             return res.status(400).json({ message: "Invalid uuid" });
         }
+
+        const conditions = [eq(tournamentsTable.id, tournamendId)];
+        console.log(userRole);
+        if (userRole !== "admin") {
+            conditions.push(ne(tournamentsTable.status, "draft"));
+        }
+
         const [tournament] = await db
             .select()
             .from(tournamentsTable)
-            .where(
-                and(
-                    eq(tournamentsTable.id, tournamendId),
-                    ne(tournamentsTable.status, "draft"),
-                ),
-            );
+            .where(and(...conditions));
 
         if (!tournament) {
             return res.status(404).json({ message: "Tournament not exists" });
