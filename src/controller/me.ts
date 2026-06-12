@@ -2,7 +2,7 @@ import { NextFunction, Request, Response } from "express";
 import { validate as uuidValidate } from "uuid";
 import db from "../config/db.js";
 import { users } from "../schema/users.js";
-import { and, eq, ne, sql } from "drizzle-orm";
+import { and, eq, inArray, isNull, ne, sql } from "drizzle-orm";
 import { jockeyProfile } from "../schema/jockeyProfile.js";
 import { raceEntries } from "../schema/raceEntries.js";
 import { races } from "../schema/races.js";
@@ -754,7 +754,27 @@ export const confirmJockey = async (
                 };
             }
 
-            // Assign the chosen jockey and confirm the race entry
+            // Ensure the race entry exists before confirming
+            const [existingEntry] = await tx
+                .select({ id: raceEntries.id })
+                .from(raceEntries)
+                .where(
+                    and(
+                        eq(raceEntries.raceId, raceId),
+                        eq(raceEntries.horseId, invitation.horseId),
+                    ),
+                );
+
+            if (!existingEntry) {
+                return {
+                    ok: false as const,
+                    status: 404,
+                    message: "Race entry not found",
+                };
+            }
+
+            // Assign the chosen jockey and confirm the race entry, unless
+            // another jockey has already been confirmed for this horse
             const [entry] = await tx
                 .update(raceEntries)
                 .set({
@@ -766,6 +786,7 @@ export const confirmJockey = async (
                     and(
                         eq(raceEntries.raceId, raceId),
                         eq(raceEntries.horseId, invitation.horseId),
+                        isNull(raceEntries.jockeyId),
                     ),
                 )
                 .returning();
@@ -773,12 +794,13 @@ export const confirmJockey = async (
             if (!entry) {
                 return {
                     ok: false as const,
-                    status: 404,
-                    message: "Race entry not found",
+                    status: 409,
+                    message:
+                        "A jockey has already been confirmed for this horse",
                 };
             }
 
-            // Decline the other jockeys who accepted for this horse entry
+            // Decline the other invitations (pending or accepted) for this horse entry
             await tx
                 .update(jockeyInvitations)
                 .set({ status: "declined", respondedAt: new Date() })
@@ -786,7 +808,10 @@ export const confirmJockey = async (
                     and(
                         eq(jockeyInvitations.raceId, raceId),
                         eq(jockeyInvitations.horseId, invitation.horseId),
-                        eq(jockeyInvitations.status, "accepted"),
+                        inArray(jockeyInvitations.status, [
+                            "pending",
+                            "accepted",
+                        ]),
                         ne(jockeyInvitations.invitationId, id),
                     ),
                 );
