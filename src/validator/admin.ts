@@ -10,6 +10,23 @@ const usersQuerySchema = z.object({
     limit: z.coerce.number().int().min(1).max(100).default(10).optional(),
 });
 
+const tournamentsQuerySchema = z.object({
+    search: z.string().optional(),
+    status: z
+        .enum([
+            "draft",
+            "upcoming",
+            "registration_open",
+            "registration_closed",
+            "ongoing",
+            "completed",
+            "cancelled",
+        ])
+        .optional(),
+    page: z.coerce.number().int().min(1).default(1).optional(),
+    limit: z.coerce.number().int().min(1).max(100).default(10).optional(),
+});
+
 const updateRoleSchema = z.object({
     role: z.enum(["jockey", "spectator", "horse_owner", "referee", "admin"]),
 });
@@ -18,4 +35,9 @@ const updateStatusSchema = z.object({
     status: z.enum(["active", "locked"]),
 });
 
-export { usersQuerySchema, updateRoleSchema, updateStatusSchema };
+export {
+    usersQuerySchema,
+    updateRoleSchema,
+    updateStatusSchema,
+    tournamentsQuerySchema,
+};

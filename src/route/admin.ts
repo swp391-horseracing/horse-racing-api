@@ -2,6 +2,7 @@ import { Router } from "express";
 import { Role } from "../types/roles.js";
 import { authMiddleware } from "../middleware/auth.js";
 import {
+    getTournaments,
     getUser,
     getUsers,
     updateUserRole,
@@ -28,5 +29,11 @@ router.patch(
     authorize(Role.ADMIN),
     validate(updateStatusSchema),
     updateUserStatus,
+);
+router.get(
+    "/tournaments",
+    authMiddleware,
+    authorize(Role.ADMIN),
+    getTournaments,
 );
 export default router;
