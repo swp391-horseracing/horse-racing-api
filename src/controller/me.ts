@@ -2,7 +2,7 @@ import { NextFunction, Request, Response } from "express";
 import { validate as uuidValidate } from "uuid";
 import db from "../config/db.js";
 import { users } from "../schema/users.js";
-import { and, eq, sql } from "drizzle-orm";
+import { and, eq, ne, sql } from "drizzle-orm";
 import { jockeyProfile } from "../schema/jockeyProfile.js";
 import { raceEntries } from "../schema/raceEntries.js";
 import { races } from "../schema/races.js";
@@ -644,7 +644,57 @@ export const cancelInvitation = async (
     }
 };
 
-export const confirmInvitation = async (
+export const acceptInvitation = async (
+    req: Request,
+    res: Response,
+    next: NextFunction,
+) => {
+    try {
+        const user = req.user!;
+        const { raceId, id } = req.params as { raceId: string; id: string };
+        if (!uuidValidate(raceId) || !uuidValidate(id)) {
+            return res.status(400).json({ message: "Invalid uuid" });
+        }
+
+        const [invitation] = await db
+            .select({
+                id: jockeyInvitations.invitationId,
+                jockeyId: jockeyInvitations.jockeyId,
+                status: jockeyInvitations.status,
+            })
+            .from(jockeyInvitations)
+            .where(
+                and(
+                    eq(jockeyInvitations.invitationId, id),
+                    eq(jockeyInvitations.raceId, raceId),
+                ),
+            );
+
+        if (!invitation) {
+            return res.status(404).json({ message: "Invitation not found" });
+        }
+        if (invitation.jockeyId !== user.id) {
+            return res.status(403).json({ message: "Forbidden" });
+        }
+        if (invitation.status !== "pending") {
+            return res
+                .status(409)
+                .json({ message: "Only pending invitations can be accepted" });
+        }
+
+        const [updated] = await db
+            .update(jockeyInvitations)
+            .set({ status: "accepted", respondedAt: new Date() })
+            .where(eq(jockeyInvitations.invitationId, id))
+            .returning();
+
+        return res.json({ invitation: updated });
+    } catch (err) {
+        next(err);
+    }
+};
+
+export const confirmJockey = async (
     req: Request,
     res: Response,
     next: NextFunction,
@@ -660,6 +710,7 @@ export const confirmInvitation = async (
             const [invitation] = await tx
                 .select({
                     id: jockeyInvitations.invitationId,
+                    ownerId: jockeyInvitations.ownerId,
                     jockeyId: jockeyInvitations.jockeyId,
                     horseId: jockeyInvitations.horseId,
                     status: jockeyInvitations.status,
@@ -679,64 +730,73 @@ export const confirmInvitation = async (
                     message: "Invitation not found",
                 };
             }
-            if (invitation.jockeyId !== user.id) {
+            if (invitation.ownerId !== user.id) {
                 return {
                     ok: false as const,
                     status: 403,
                     message: "Forbidden",
                 };
             }
-            if (invitation.status !== "pending") {
+            if (invitation.status !== "accepted") {
                 return {
                     ok: false as const,
                     status: 409,
-                    message: "Only pending invitations can be accepted",
+                    message:
+                        "Only invitations accepted by the jockey can be selected",
                 };
             }
 
-            // Mark invitation accepted
-            const [updated] = await tx
-                .update(jockeyInvitations)
-                .set({ status: "accepted", respondedAt: new Date() })
-                .where(eq(jockeyInvitations.invitationId, id))
-                .returning();
-
-            // Assign jockey on the race entry
-            await tx
+            // Assign the chosen jockey and confirm the race entry
+            const [entry] = await tx
                 .update(raceEntries)
-                .set({ jockeyId: user.id })
+                .set({
+                    jockeyId: invitation.jockeyId,
+                    entryStatus: "confirmed",
+                    confirmedAt: new Date(),
+                })
                 .where(
                     and(
                         eq(raceEntries.raceId, raceId),
                         eq(raceEntries.horseId, invitation.horseId),
                     ),
-                );
+                )
+                .returning();
 
-            // Cancel other pending invitations for this jockey in the same race
+            if (!entry) {
+                return {
+                    ok: false as const,
+                    status: 404,
+                    message: "Race entry not found",
+                };
+            }
+
+            // Decline the other jockeys who accepted for this horse entry
             await tx
                 .update(jockeyInvitations)
-                .set({ status: "cancelled" })
+                .set({ status: "declined", respondedAt: new Date() })
                 .where(
                     and(
                         eq(jockeyInvitations.raceId, raceId),
-                        eq(jockeyInvitations.jockeyId, user.id),
-                        eq(jockeyInvitations.status, "pending"),
+                        eq(jockeyInvitations.horseId, invitation.horseId),
+                        eq(jockeyInvitations.status, "accepted"),
+                        ne(jockeyInvitations.invitationId, id),
                     ),
                 );
 
-            return { ok: true as const, invitation: updated };
+            return { ok: true as const, entry };
         });
 
         if (!result.ok) {
             return res.status(result.status).json({ message: result.message });
         }
 
-        return res.json({ invitation: result.invitation });
+        return res.json({ entry: result.entry });
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
     } catch (err: any) {
         if (err?.cause?.code === "23505") {
             return res.status(409).json({
-                message: "Jockey is already assigned to a horse in this race",
+                message:
+                    "This jockey is already assigned to another horse in this race",
             });
         }
         next(err);

@@ -7,7 +7,8 @@ import {
     getRaceInvitations,
     inviteJockey,
     cancelInvitation,
-    confirmInvitation,
+    acceptInvitation,
+    confirmJockey,
 } from "../controller/me.js";
 import { authMiddleware } from "../middleware/auth.js";
 import { authorize } from "../middleware/authorize.js";
@@ -43,10 +44,16 @@ router.delete(
     cancelInvitation,
 );
 router.patch(
-    "/races/:raceId/invitations/:id/confirm",
+    "/races/:raceId/invitations/:id/accept",
     authMiddleware,
     authorize(Role.JOCKEY),
-    confirmInvitation,
+    acceptInvitation,
+);
+router.patch(
+    "/races/:raceId/invitations/:id/confirm",
+    authMiddleware,
+    authorize(Role.HORSE_OWNER),
+    confirmJockey,
 );
 
 export default router;
