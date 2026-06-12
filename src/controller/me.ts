@@ -2,7 +2,7 @@ import { NextFunction, Request, Response } from "express";
 import { validate as uuidValidate } from "uuid";
 import db from "../config/db.js";
 import { users } from "../schema/users.js";
-import { and, eq, ne, sql } from "drizzle-orm";
+import { and, eq, sql } from "drizzle-orm";
 import { jockeyProfile } from "../schema/jockeyProfile.js";
 import { raceEntries } from "../schema/raceEntries.js";
 import { races } from "../schema/races.js";
@@ -608,9 +608,7 @@ export const cancelInvitation = async (
 
         const [invitation] = await db
             .select({
-                id: jockeyInvitations.invitationId,
                 ownerId: jockeyInvitations.ownerId,
-                status: jockeyInvitations.status,
             })
             .from(jockeyInvitations)
             .where(
@@ -626,75 +624,31 @@ export const cancelInvitation = async (
         if (invitation.ownerId !== user.id) {
             return res.status(403).json({ message: "Forbidden" });
         }
-        if (invitation.status !== "pending") {
+
+        const [updated] = await db
+            .update(jockeyInvitations)
+            .set({ status: "cancelled", respondedAt: new Date() })
+            .where(
+                and(
+                    eq(jockeyInvitations.invitationId, id),
+                    eq(jockeyInvitations.status, "pending"),
+                ),
+            )
+            .returning();
+
+        if (!updated) {
             return res
                 .status(409)
                 .json({ message: "Only pending invitations can be cancelled" });
         }
 
-        const [updated] = await db
-            .update(jockeyInvitations)
-            .set({ status: "cancelled" })
-            .where(eq(jockeyInvitations.invitationId, id))
-            .returning();
-
         return res.json({ invitation: updated });
     } catch (err) {
         next(err);
     }
 };
 
-export const acceptInvitation = async (
-    req: Request,
-    res: Response,
-    next: NextFunction,
-) => {
-    try {
-        const user = req.user!;
-        const { raceId, id } = req.params as { raceId: string; id: string };
-        if (!uuidValidate(raceId) || !uuidValidate(id)) {
-            return res.status(400).json({ message: "Invalid uuid" });
-        }
-
-        const [invitation] = await db
-            .select({
-                id: jockeyInvitations.invitationId,
-                jockeyId: jockeyInvitations.jockeyId,
-                status: jockeyInvitations.status,
-            })
-            .from(jockeyInvitations)
-            .where(
-                and(
-                    eq(jockeyInvitations.invitationId, id),
-                    eq(jockeyInvitations.raceId, raceId),
-                ),
-            );
-
-        if (!invitation) {
-            return res.status(404).json({ message: "Invitation not found" });
-        }
-        if (invitation.jockeyId !== user.id) {
-            return res.status(403).json({ message: "Forbidden" });
-        }
-        if (invitation.status !== "pending") {
-            return res
-                .status(409)
-                .json({ message: "Only pending invitations can be accepted" });
-        }
-
-        const [updated] = await db
-            .update(jockeyInvitations)
-            .set({ status: "accepted", respondedAt: new Date() })
-            .where(eq(jockeyInvitations.invitationId, id))
-            .returning();
-
-        return res.json({ invitation: updated });
-    } catch (err) {
-        next(err);
-    }
-};
-
-export const confirmJockey = async (
+export const confirmInvitation = async (
     req: Request,
     res: Response,
     next: NextFunction,
@@ -709,11 +663,8 @@ export const confirmJockey = async (
         const result = await db.transaction(async (tx) => {
             const [invitation] = await tx
                 .select({
-                    id: jockeyInvitations.invitationId,
-                    ownerId: jockeyInvitations.ownerId,
                     jockeyId: jockeyInvitations.jockeyId,
                     horseId: jockeyInvitations.horseId,
-                    status: jockeyInvitations.status,
                 })
                 .from(jockeyInvitations)
                 .where(
@@ -730,73 +681,71 @@ export const confirmJockey = async (
                     message: "Invitation not found",
                 };
             }
-            if (invitation.ownerId !== user.id) {
+            if (invitation.jockeyId !== user.id) {
                 return {
                     ok: false as const,
                     status: 403,
                     message: "Forbidden",
                 };
             }
-            if (invitation.status !== "accepted") {
+
+            // Mark invitation accepted
+            const [updated] = await tx
+                .update(jockeyInvitations)
+                .set({ status: "accepted", respondedAt: new Date() })
+                .where(
+                    and(
+                        eq(jockeyInvitations.invitationId, id),
+                        eq(jockeyInvitations.jockeyId, user.id),
+                        eq(jockeyInvitations.status, "pending"),
+                    ),
+                )
+                .returning();
+
+            if (!updated) {
                 return {
                     ok: false as const,
                     status: 409,
-                    message:
-                        "Only invitations accepted by the jockey can be selected",
+                    message: "Only pending invitations can be accepted",
                 };
             }
 
-            // Assign the chosen jockey and confirm the race entry
-            const [entry] = await tx
+            // Assign jockey on the race entry
+            await tx
                 .update(raceEntries)
-                .set({
-                    jockeyId: invitation.jockeyId,
-                    entryStatus: "confirmed",
-                    confirmedAt: new Date(),
-                })
+                .set({ jockeyId: user.id })
                 .where(
                     and(
                         eq(raceEntries.raceId, raceId),
                         eq(raceEntries.horseId, invitation.horseId),
                     ),
-                )
-                .returning();
+                );
 
-            if (!entry) {
-                return {
-                    ok: false as const,
-                    status: 404,
-                    message: "Race entry not found",
-                };
-            }
-
-            // Decline the other jockeys who accepted for this horse entry
+            // Cancel other pending invitations for this jockey in the same race
             await tx
                 .update(jockeyInvitations)
-                .set({ status: "declined", respondedAt: new Date() })
+                .set({ status: "cancelled", respondedAt: new Date() })
                 .where(
                     and(
                         eq(jockeyInvitations.raceId, raceId),
-                        eq(jockeyInvitations.horseId, invitation.horseId),
-                        eq(jockeyInvitations.status, "accepted"),
-                        ne(jockeyInvitations.invitationId, id),
+                        eq(jockeyInvitations.jockeyId, user.id),
+                        eq(jockeyInvitations.status, "pending"),
                     ),
                 );
 
-            return { ok: true as const, entry };
+            return { ok: true as const, invitation: updated };
         });
 
         if (!result.ok) {
             return res.status(result.status).json({ message: result.message });
         }
 
-        return res.json({ entry: result.entry });
+        return res.json({ invitation: result.invitation });
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
     } catch (err: any) {
         if (err?.cause?.code === "23505") {
             return res.status(409).json({
-                message:
-                    "This jockey is already assigned to another horse in this race",
+                message: "Jockey is already assigned to a horse in this race",
             });
         }
         next(err);

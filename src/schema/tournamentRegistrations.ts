@@ -5,7 +5,9 @@ import {
     timestamp,
     varchar,
     unique,
+    check,
 } from "drizzle-orm/pg-core";
+import { sql } from "drizzle-orm";
 import { tournaments } from "./tournament.js";
 import { horses } from "./horses.js";
 import { users } from "./users.js";
@@ -35,5 +37,11 @@ export const tournamentRegistrations = pgTable(
         reviewedAt: timestamp("reviewed_at"),
         rejectReason: varchar("reject_reason", { length: 500 }),
     },
-    (table) => [unique().on(table.tournamentId, table.horseId)],
+    (table) => [
+        unique().on(table.tournamentId, table.horseId),
+        check(
+            "tournament_registrations_review_state_ck",
+            sql`(${table.status} = 'pending' AND ${table.reviewedBy} IS NULL AND ${table.reviewedAt} IS NULL AND ${table.rejectReason} IS NULL) OR (${table.status} = 'approved' AND ${table.reviewedBy} IS NOT NULL AND ${table.reviewedAt} IS NOT NULL AND ${table.rejectReason} IS NULL) OR (${table.status} = 'rejected' AND ${table.reviewedBy} IS NOT NULL AND ${table.reviewedAt} IS NOT NULL AND ${table.rejectReason} IS NOT NULL)`,
+        ),
+    ],
 );
