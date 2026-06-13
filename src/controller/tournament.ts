@@ -5,6 +5,7 @@ import { and, asc, eq, ne, sql } from "drizzle-orm";
 import { getPagination, paginatedResponse } from "../utils/paginate.js";
 import { validate as uuidValidate } from "uuid";
 import {
+    adminTournamentsQuerySchema,
     tournamentRacesQuerySchema,
     tournamentsQuerySchema,
 } from "../validator/tournament.js";
@@ -16,7 +17,12 @@ export const getTournaments = async (
     next: NextFunction,
 ) => {
     try {
-        const parsed = tournamentsQuerySchema.safeParse(req.query);
+        const userRole = req.user?.role;
+        const schema =
+            userRole === "admin"
+                ? adminTournamentsQuerySchema
+                : tournamentsQuerySchema;
+        const parsed = schema.safeParse(req.query);
         if (!parsed.success) {
             return res.status(400).json({
                 message: "Validation Errors",
@@ -29,10 +35,12 @@ export const getTournaments = async (
         const { status, page, limit } = parsed.data;
         const { page: p, limit: l, offset } = getPagination({ page, limit });
 
-        const listTournamentsCondition = and(
-            ne(tournamentsTable.status, "draft"),
+        const listTournamentsCondition = [
             status ? eq(tournamentsTable.status, status) : undefined,
-        );
+        ];
+        if (userRole !== "admin") {
+            listTournamentsCondition.push(ne(tournamentsTable.status, "draft"));
+        }
 
         const [tournaments, count] = await Promise.all([
             db
@@ -48,13 +56,13 @@ export const getTournaments = async (
                     status: tournamentsTable.status,
                 })
                 .from(tournamentsTable)
-                .where(listTournamentsCondition)
+                .where(and(...listTournamentsCondition))
                 .limit(l)
                 .offset(offset),
             db
                 .select({ count: sql<number>`count(*)` })
                 .from(tournamentsTable)
-                .where(listTournamentsCondition),
+                .where(and(...listTournamentsCondition)),
         ]);
 
         return res.json(
