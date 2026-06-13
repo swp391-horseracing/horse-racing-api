@@ -4,12 +4,12 @@ import {
     getTournamentRaces,
     getTournaments,
 } from "../controller/tournament.js";
-import { authMiddleware } from "../middleware/auth.js";
+import { optionalAuthMiddleware } from "../middleware/optionalAuth.js";
 
 const router = Router();
 
-router.get("/", getTournaments);
-router.get("/:id", authMiddleware, getTournament);
+router.get("/", optionalAuthMiddleware, getTournaments);
+router.get("/:id", optionalAuthMiddleware, getTournament);
 router.get("/:id/races", getTournamentRaces);
 
 export default router;
