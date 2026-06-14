@@ -44,7 +44,7 @@ router.delete(
     cancelInvitation,
 );
 router.patch(
-    "/races/:raceId/invitations/:id/accept",
+    "/invitations/:id/accept",
     authMiddleware,
     authorize(Role.JOCKEY),
     acceptInvitation,

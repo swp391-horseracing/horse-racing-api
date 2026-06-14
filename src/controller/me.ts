@@ -655,8 +655,8 @@ export const acceptInvitation = async (
 ) => {
     try {
         const user = req.user!;
-        const { raceId, id } = req.params as { raceId: string; id: string };
-        if (!uuidValidate(raceId) || !uuidValidate(id)) {
+        const { id } = req.params as { id: string };
+        if (!uuidValidate(id)) {
             return res.status(400).json({ message: "Invalid uuid" });
         }
 
@@ -665,12 +665,7 @@ export const acceptInvitation = async (
                 jockeyId: jockeyInvitations.jockeyId,
             })
             .from(jockeyInvitations)
-            .where(
-                and(
-                    eq(jockeyInvitations.invitationId, id),
-                    eq(jockeyInvitations.raceId, raceId),
-                ),
-            );
+            .where(eq(jockeyInvitations.invitationId, id));
 
         if (!invitation) {
             return res.status(404).json({ message: "Invitation not found" });
