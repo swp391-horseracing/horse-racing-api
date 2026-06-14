@@ -111,10 +111,33 @@ const updateTournamentSchema = tournamentSchema
         }
     });
 
+const updateTournamentStatusSchema = z.object({
+    status: z.enum([
+        "upcoming",
+        "registration_open",
+        "registration_closed",
+        "ongoing",
+        "completed",
+        "cancelled",
+    ]),
+});
+
+const tournamentReadinessSchema = z.object({
+    name: z.string().min(3).max(100),
+    startDate: z.date(),
+    endDate: z.date(),
+    location: z.string().max(200),
+    registrationOpenDate: z.date(),
+    registrationCloseDate: z.date(),
+    maximumParticipants: z.number().int().positive(),
+});
+
 export {
     usersQuerySchema,
     updateRoleSchema,
     updateStatusSchema,
     createTournamentSchema,
     updateTournamentSchema,
+    updateTournamentStatusSchema,
+    tournamentReadinessSchema,
 };
