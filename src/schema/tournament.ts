@@ -5,7 +5,6 @@ import {
     timestamp,
     uuid,
     pgEnum,
-    date,
     check,
     integer,
     real,
