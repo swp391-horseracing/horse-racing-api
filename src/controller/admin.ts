@@ -6,7 +6,6 @@ import { and, eq, ilike, sql } from "drizzle-orm";
 import { getPagination, paginatedResponse } from "../utils/paginate.js";
 import db from "../config/db.js";
 import { tournaments } from "../schema/tournament.js";
-import { tournamentsQuerySchema } from "../validator/admin.js";
 
 export const getUsers = async (
     req: Request,
@@ -192,52 +191,46 @@ export const updateUserStatus = async (
     }
 };
 
-export const getTournaments = async (
+export const createTournament = async (
     req: Request,
     res: Response,
     next: NextFunction,
 ) => {
     try {
-        const parsed = tournamentsQuerySchema.safeParse(req.query);
-        if (!parsed.success) {
-            return res.status(400).json({
-                message: "Validation Errors",
-                errors: parsed.error.issues.map((issue) => ({
-                    field: issue.path.join("."),
-                    message: issue.message,
-                })),
-            });
-        }
-        const { search, status, page, limit } = parsed.data;
-        const { page: p, limit: l, offset } = getPagination({ page, limit });
+        const admin = req.user!;
+        const {
+            name,
+            startDate,
+            endDate,
+            description,
+            rules,
+            location,
+            registrationOpenDate,
+            registrationCloseDate,
+            maximumParticipants,
+            minimumParticipants,
+            prizePool,
+        } = req.body;
 
-        const conditions = and(
-            search ? ilike(tournaments.name, `%${search}%`) : undefined,
-            status ? eq(tournaments.status, status) : undefined,
-        );
-        const [data, count] = await Promise.all([
-            db
-                .select({
-                    id: tournaments.id,
-                    name: tournaments.name,
-                    status: tournaments.status,
-                    createdBy: tournaments.createdBy,
-                    createdAt: tournaments.createdAt,
-                    updatedAt: tournaments.updatedAt,
-                })
-                .from(tournaments)
-                .where(conditions)
-                .limit(l)
-                .offset(offset),
-            db
-                .select({ count: sql<number>`count(*)` })
-                .from(tournaments)
-                .where(conditions),
-        ]);
+        const [newTournament] = await db
+            .insert(tournaments)
+            .values({
+                name,
+                startDate: new Date(startDate),
+                endDate: new Date(endDate),
+                createdBy: admin?.id,
+                description: description ?? null,
+                rules: rules ?? null,
+                location: location ?? null,
+                registrationOpenDate: registrationOpenDate ?? null,
+                registrationCloseDate: registrationCloseDate ?? null,
+                maximumParticipants: maximumParticipants ?? null,
+                minimumParticipants: minimumParticipants ?? null,
+                prizePool: prizePool ?? null,
+            })
+            .returning();
 
-        return res.json(
-            paginatedResponse(data, Number(count[0]?.count ?? 0), p, l),
-        );
+        res.json(newTournament);
     } catch (err) {
         next(err);
     }
