@@ -235,3 +235,34 @@ export const createTournament = async (
         next(err);
     }
 };
+
+export const updateTournament = async (
+    req: Request,
+    res: Response,
+    next: NextFunction,
+) => {
+    try {
+        const tournamentId = req.params.tournamentId as string;
+        if (!uuidValidate(tournamentId)) {
+            return res.status(400).json({ message: "Invalid uuid" });
+        }
+
+        const body = req.body;
+        const [updatedTournament] = await db
+            .update(tournaments)
+            .set({
+                ...body,
+                updatedAt: new Date(),
+            })
+            .where(eq(tournaments.id, tournamentId))
+            .returning();
+
+        if (!updatedTournament) {
+            res.status(404).json({ message: "Tournament not found" });
+        }
+
+        res.json(updatedTournament);
+    } catch (err) {
+        next(err);
+    }
+};

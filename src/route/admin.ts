@@ -5,6 +5,7 @@ import {
     createTournament,
     getUser,
     getUsers,
+    updateTournament,
     updateUserRole,
     updateUserStatus,
 } from "../controller/admin.js";
@@ -14,6 +15,7 @@ import {
     createTournamentSchema,
     updateRoleSchema,
     updateStatusSchema,
+    updateTournamentSchema,
 } from "../validator/admin.js";
 
 const router = Router();
@@ -40,5 +42,12 @@ router.post(
     authorize(Role.ADMIN),
     validate(createTournamentSchema),
     createTournament,
+);
+router.patch(
+    "/tournaments/:tournamentId",
+    authMiddleware,
+    authorize(Role.ADMIN),
+    validate(updateTournamentSchema),
+    updateTournament,
 );
 export default router;
