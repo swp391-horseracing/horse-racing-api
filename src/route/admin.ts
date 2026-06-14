@@ -2,7 +2,7 @@ import { Router } from "express";
 import { Role } from "../types/roles.js";
 import { authMiddleware } from "../middleware/auth.js";
 import {
-    getTournaments,
+    createTournament,
     getUser,
     getUsers,
     updateUserRole,
@@ -10,7 +10,11 @@ import {
 } from "../controller/admin.js";
 import { authorize } from "../middleware/authorize.js";
 import { validate } from "../middleware/validate.js";
-import { updateRoleSchema, updateStatusSchema } from "../validator/admin.js";
+import {
+    createTournamentSchema,
+    updateRoleSchema,
+    updateStatusSchema,
+} from "../validator/admin.js";
 
 const router = Router();
 
@@ -30,10 +34,11 @@ router.patch(
     validate(updateStatusSchema),
     updateUserStatus,
 );
-router.get(
+router.post(
     "/tournaments",
     authMiddleware,
     authorize(Role.ADMIN),
-    getTournaments,
+    validate(createTournamentSchema),
+    createTournament,
 );
 export default router;
