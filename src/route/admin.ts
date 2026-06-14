@@ -6,6 +6,7 @@ import {
     getUser,
     getUsers,
     updateTournament,
+    updateTournamentStatus,
     updateUserRole,
     updateUserStatus,
 } from "../controller/admin.js";
@@ -16,6 +17,7 @@ import {
     updateRoleSchema,
     updateStatusSchema,
     updateTournamentSchema,
+    updateTournamentStatusSchema,
 } from "../validator/admin.js";
 
 const router = Router();
@@ -49,5 +51,12 @@ router.patch(
     authorize(Role.ADMIN),
     validate(updateTournamentSchema),
     updateTournament,
+);
+router.patch(
+    "/tournaments/:tournamentId/status",
+    authMiddleware,
+    authorize(Role.ADMIN),
+    validate(updateTournamentStatusSchema),
+    updateTournamentStatus,
 );
 export default router;

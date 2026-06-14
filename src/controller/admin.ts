@@ -1,6 +1,9 @@
 import { NextFunction, Request, Response } from "express";
 import { validate as uuidValidate } from "uuid";
-import { usersQuerySchema } from "../validator/admin.js";
+import {
+    tournamentReadinessSchema,
+    usersQuerySchema,
+} from "../validator/admin.js";
 import { users } from "../schema/users.js";
 import { and, eq, ilike, sql } from "drizzle-orm";
 import { getPagination, paginatedResponse } from "../utils/paginate.js";
@@ -260,6 +263,66 @@ export const updateTournament = async (
         if (!updatedTournament) {
             res.status(404).json({ message: "Tournament not found" });
         }
+
+        res.json(updatedTournament);
+    } catch (err) {
+        next(err);
+    }
+};
+
+export const updateTournamentStatus = async (
+    req: Request,
+    res: Response,
+    next: NextFunction,
+) => {
+    try {
+        const ALLOWED_TRANSITIONS: Record<string, string[]> = {
+            draft: ["upcoming"],
+            upcoming: ["registration_open", "cancelled"],
+            registration_open: ["registration_closed", "cancelled"],
+            registration_closed: ["ongoing", "cancelled"],
+            ongoing: ["completed", "cancelled"],
+        };
+        const tournamentId = req.params.tournamentId as string;
+        if (!uuidValidate(tournamentId)) {
+            return res.status(400).json({ message: "Invalid uuid" });
+        }
+
+        const status = req.body.status;
+
+        const [tournament] = await db
+            .select()
+            .from(tournaments)
+            .where(eq(tournaments.id, tournamentId));
+
+        if (!tournament) {
+            return res.status(404).json({ message: "Tournament not found" });
+        }
+
+        if (status === "upcoming") {
+            const validation = tournamentReadinessSchema.safeParse(tournament);
+            if (!validation.success) {
+                const missing = validation.error.issues.map((issue) => ({
+                    field: issue.path.join("."),
+                    message: issue.message,
+                }));
+                return res.status(400).json({
+                    message: "Tournament is missing required field",
+                    fields: missing,
+                });
+            }
+        }
+        const allowed = ALLOWED_TRANSITIONS[tournament.status] ?? [];
+        if (!allowed.includes(status)) {
+            return res.status(403).json({
+                message: `Cannot transition from '${tournament.status}' to '${status}'`,
+            });
+        }
+        const [updatedTournament] = await db
+            .update(tournaments)
+            .set({ status: status })
+            .where(eq(tournaments.id, tournamentId))
+            .returning();
 
         res.json(updatedTournament);
     } catch (err) {
