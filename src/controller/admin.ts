@@ -265,7 +265,14 @@ export const updateTournament = async (
         }
 
         res.json(updatedTournament);
-    } catch (err) {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    } catch (err: any) {
+        if (err?.cause?.code === "23514") {
+            return res.status(400).json({
+                message: "Failed validation constaint",
+                constraint: err.cause.constraint,
+            });
+        }
         next(err);
     }
 };
