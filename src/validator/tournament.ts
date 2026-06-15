@@ -32,4 +32,25 @@ const tournamentRacesQuerySchema = z.object({
     limit: z.coerce.number().int().min(1).max(100).default(10).optional(),
 });
 
-export { tournamentsQuerySchema, tournamentRacesQuerySchema };
+const registerForTournamentSchema = z.object({
+    horseId: z.string().uuid("horseId must be a valid UUID"),
+});
+
+const myRegistrationsQuerySchema = z.object({
+    status: z.enum(["pending", "approved", "rejected"]).optional(),
+    page: z.coerce.number().int().min(1).default(1).optional(),
+    limit: z.coerce.number().int().min(1).max(100).default(10).optional(),
+});
+
+const inviteJockeySchema = z.object({
+    jockeyId: z.string().uuid("jockeyId must be a valid UUID"),
+    horseId: z.string().uuid("horseId must be a valid UUID"),
+});
+
+export {
+    tournamentsQuerySchema,
+    tournamentRacesQuerySchema,
+    registerForTournamentSchema,
+    myRegistrationsQuerySchema,
+    inviteJockeySchema,
+};
