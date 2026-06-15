@@ -13,6 +13,7 @@ servers:
 
 tags:
   - name: Auth
+  - name: Admin
   - name: Me
   - name: Profiles
   - name: Schedules
@@ -46,6 +47,13 @@ components:
         default: 10
     UserIdParam:
       name: id
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+    AdminUserIdParam:
+      name: userId
       in: path
       required: true
       schema:
@@ -346,6 +354,78 @@ components:
             - "null"
           format: date-time
 
+    AdminUserListItem:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        fullName:
+          type: string
+        email:
+          type: string
+          format: email
+        role:
+          $ref: "#/components/schemas/Role"
+        status:
+          $ref: "#/components/schemas/UserStatus"
+        createdAt:
+          type:
+            - string
+            - "null"
+          format: date-time
+        avatarUrl:
+          type:
+            - string
+            - "null"
+
+    AdminUserDetail:
+      allOf:
+        - $ref: "#/components/schemas/AdminUserListItem"
+        - type: object
+          properties:
+            phone:
+              type:
+                - string
+                - "null"
+            address:
+              type:
+                - string
+                - "null"
+            updatedAt:
+              type:
+                - string
+                - "null"
+              format: date-time
+
+    UpdateUserRoleRequest:
+      type: object
+      required:
+        - role
+      properties:
+        role:
+          $ref: "#/components/schemas/Role"
+
+    UpdateUserStatusRequest:
+      type: object
+      required:
+        - status
+      properties:
+        status:
+          type: string
+          enum:
+            - active
+            - locked
+
+    UserMutationResponse:
+      type: object
+      properties:
+        message:
+          type: string
+        userId:
+          type: string
+          format: uuid
+
     UpdateProfileRequest:
       type: object
       properties:
@@ -630,6 +710,18 @@ components:
             - string
             - "null"
           format: date-time
+        maximumParticipants:
+          type:
+            - integer
+            - "null"
+        minimumParticipants:
+          type:
+            - integer
+            - "null"
+        prizePool:
+          type:
+            - number
+            - "null"
         status:
           $ref: "#/components/schemas/TournamentStatus"
         createdBy:
@@ -678,6 +770,48 @@ components:
           format: date-time
         status:
           $ref: "#/components/schemas/TournamentStatus"
+
+    CreateTournamentRequest:
+      type: object
+      required:
+        - name
+        - startDate
+        - endDate
+      properties:
+        name:
+          type: string
+          minLength: 3
+          maxLength: 100
+        startDate:
+          type: string
+          format: date-time
+          description: Parsed by the API as a date.
+        endDate:
+          type: string
+          format: date-time
+          description: Parsed by the API as a date.
+        description:
+          type: string
+        rules:
+          type: string
+        location:
+          type: string
+          maxLength: 200
+        registrationOpenDate:
+          type: string
+          format: date-time
+        registrationCloseDate:
+          type: string
+          format: date-time
+        maximumParticipants:
+          type: integer
+          minimum: 1
+        minimumParticipants:
+          type: integer
+          minimum: 1
+        prizePool:
+          type: number
+          minimum: 0
 
     TournamentRace:
       type: object
@@ -757,6 +891,16 @@ components:
           type: array
           items:
             $ref: "#/components/schemas/Horse"
+        pagination:
+          $ref: "#/components/schemas/Pagination"
+
+    PaginatedUsers:
+      type: object
+      properties:
+        data:
+          type: array
+          items:
+            $ref: "#/components/schemas/AdminUserListItem"
         pagination:
           $ref: "#/components/schemas/Pagination"
 
@@ -918,6 +1062,172 @@ paths:
                 $ref: "#/components/schemas/MessageResponse"
         "401":
           $ref: "#/components/responses/Unauthorized"
+        "500":
+          $ref: "#/components/responses/ServerError"
+
+  /admin/users:
+    get:
+      tags:
+        - Admin
+      summary: List users
+      description: Requires admin role.
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: search
+          in: query
+          schema:
+            type: string
+        - name: status
+          in: query
+          schema:
+            $ref: "#/components/schemas/UserStatus"
+        - name: role
+          in: query
+          schema:
+            $ref: "#/components/schemas/Role"
+        - $ref: "#/components/parameters/PageParam"
+        - $ref: "#/components/parameters/LimitParam"
+      responses:
+        "200":
+          description: Paginated user list.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PaginatedUsers"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "500":
+          $ref: "#/components/responses/ServerError"
+
+  /admin/users/{userId}:
+    get:
+      tags:
+        - Admin
+      summary: Get a user by ID
+      description: Requires admin role.
+      security:
+        - BearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/AdminUserIdParam"
+      responses:
+        "200":
+          description: User detail.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AdminUserDetail"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "500":
+          $ref: "#/components/responses/ServerError"
+
+  /admin/users/{userId}/role:
+    patch:
+      tags:
+        - Admin
+      summary: Update a user's role
+      description: Requires admin role. Admin users cannot change their own role.
+      security:
+        - BearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/AdminUserIdParam"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateUserRoleRequest"
+      responses:
+        "200":
+          description: Role updated.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UserMutationResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "500":
+          $ref: "#/components/responses/ServerError"
+
+  /admin/users/{userId}/status:
+    patch:
+      tags:
+        - Admin
+      summary: Update a user's status
+      description: Requires admin role. Status can be changed to active or locked when the current state allows that transition.
+      security:
+        - BearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/AdminUserIdParam"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateUserStatusRequest"
+      responses:
+        "200":
+          description: Status updated.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UserMutationResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "500":
+          $ref: "#/components/responses/ServerError"
+
+  /admin/tournaments:
+    post:
+      tags:
+        - Admin
+      summary: Create a tournament
+      description: Requires admin role. The route validates this request body; the current controller does not yet persist or return a tournament.
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateTournamentRequest"
+      responses:
+        "200":
+          description: Request accepted by the current route implementation.
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: true
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
         "500":
           $ref: "#/components/responses/ServerError"
 

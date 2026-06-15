@@ -6,3 +6,5 @@ export * from "./races.js";
 export * from "./refereeAssignments.js";
 export * from "./tournament.js";
 export * from "./raceEntries.js";
+export * from "./tournamentRegistrations.js";
+export * from "./jockeyInvitations.js";
