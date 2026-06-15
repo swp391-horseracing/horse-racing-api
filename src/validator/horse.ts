@@ -34,6 +34,8 @@ const updateHorseSchema = z.object({
 const horsesQuerySchema = z.object({
     search: z.string().optional(),
     breed: z.string().optional(),
+    birthFrom: z.iso.date().optional(),
+    birthTo: z.iso.date().optional(),
     isRetired: z
         .enum(["true", "false"])
         .transform((v) => v === "true")
