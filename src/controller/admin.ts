@@ -328,8 +328,19 @@ export const updateTournamentStatus = async (
         const [updatedTournament] = await db
             .update(tournaments)
             .set({ status: status })
-            .where(eq(tournaments.id, tournamentId))
+            .where(
+                and(
+                    eq(tournaments.id, tournamentId),
+                    eq(tournaments.status, tournament.status),
+                ),
+            )
             .returning();
+        if (!updatedTournament) {
+            return res.json(409).json({
+                message:
+                    "Tournament status changed concurrently. Please retry.",
+            });
+        }
 
         res.json(updatedTournament);
     } catch (err) {
