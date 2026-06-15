@@ -1,7 +1,7 @@
 import { NextFunction, Request, Response } from "express";
 import { jockeyQuerySchema } from "../validator/jockey.js";
 import { getPagination, paginatedResponse } from "../utils/paginate.js";
-import { and, eq, ilike, ne, sql } from "drizzle-orm";
+import { and, ilike, ne, sql } from "drizzle-orm";
 import { users } from "../schema/users.js";
 import db from "../config/db.js";
 
