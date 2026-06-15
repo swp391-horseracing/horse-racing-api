@@ -64,7 +64,7 @@ jobs:
           password: ${{ secrets.GITHUB_TOKEN }}
       # - name: Clean containers, image
       #   run: docker compose -f .docker/compose.yml -p horse-racing-api down --rmi all -v
-      - name: Remove old iamge
+      - name: Remove old image
         run: docker image prune -a -f
       - name: Deploy Api
         run: docker compose -f .docker/compose.yaml -p horse-racing-api up -d
