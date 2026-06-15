@@ -80,8 +80,29 @@ components:
       schema:
         type: string
         format: uuid
+    AdminTournamentIdParam:
+      name: tournamentId
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+    TournamentRegistrationIdParam:
+      name: regId
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
     RaceIdParam:
       name: raceId
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+    InvitationIdParam:
+      name: id
       in: path
       required: true
       schema:
@@ -168,6 +189,21 @@ components:
         - did_not_finish
         - disqualified
 
+    RegistrationStatus:
+      type: string
+      enum:
+        - pending
+        - approved
+        - rejected
+
+    InvitationStatus:
+      type: string
+      enum:
+        - pending
+        - accepted
+        - declined
+        - cancelled
+
     TrackCondition:
       type: string
       enum:
@@ -223,6 +259,10 @@ components:
               message:
                 type: string
                 example: Invalid email address
+
+    GenericObject:
+      type: object
+      additionalProperties: true
 
     RegisterRequest:
       type: object
@@ -796,7 +836,7 @@ components:
           type: string
         location:
           type: string
-          maxLength: 200
+          maxLength: 100
         registrationOpenDate:
           type: string
           format: date-time
@@ -811,7 +851,156 @@ components:
           minimum: 1
         prizePool:
           type: number
-          minimum: 0
+          exclusiveMinimum: 0
+
+    UpdateTournamentRequest:
+      type: object
+      minProperties: 1
+      properties:
+        name:
+          type: string
+          minLength: 3
+          maxLength: 100
+        startDate:
+          type: string
+          format: date-time
+          description: Parsed by the API as a date.
+        endDate:
+          type: string
+          format: date-time
+          description: Parsed by the API as a date.
+        description:
+          type: string
+        rules:
+          type: string
+        location:
+          type: string
+          maxLength: 100
+        registrationOpenDate:
+          type: string
+          format: date-time
+        registrationCloseDate:
+          type: string
+          format: date-time
+        maximumParticipants:
+          type: integer
+          minimum: 1
+        minimumParticipants:
+          type: integer
+          minimum: 1
+        prizePool:
+          type: number
+          exclusiveMinimum: 0
+
+    UpdateTournamentStatusRequest:
+      type: object
+      required:
+        - status
+      properties:
+        status:
+          type: string
+          enum:
+            - upcoming
+            - registration_open
+            - registration_closed
+            - ongoing
+            - completed
+            - cancelled
+
+    RegisterForTournamentRequest:
+      type: object
+      required:
+        - horseId
+      properties:
+        horseId:
+          type: string
+          format: uuid
+
+    TournamentRegistration:
+      type: object
+      additionalProperties: true
+      properties:
+        id:
+          type: string
+          format: uuid
+        tournamentId:
+          type: string
+          format: uuid
+        horseId:
+          type: string
+          format: uuid
+        ownerId:
+          type: string
+          format: uuid
+        status:
+          $ref: "#/components/schemas/RegistrationStatus"
+        submittedAt:
+          type:
+            - string
+            - "null"
+          format: date-time
+        reviewedBy:
+          type:
+            - string
+            - "null"
+          format: uuid
+        reviewedAt:
+          type:
+            - string
+            - "null"
+          format: date-time
+        rejectReason:
+          type:
+            - string
+            - "null"
+
+    InviteJockeyRequest:
+      type: object
+      required:
+        - jockeyId
+        - horseId
+      properties:
+        jockeyId:
+          type: string
+          format: uuid
+        horseId:
+          type: string
+          format: uuid
+
+    JockeyInvitation:
+      type: object
+      additionalProperties: true
+      properties:
+        id:
+          type: string
+          format: uuid
+        invitationId:
+          type: string
+          format: uuid
+        raceId:
+          type: string
+          format: uuid
+        horseId:
+          type: string
+          format: uuid
+        ownerId:
+          type: string
+          format: uuid
+        jockeyId:
+          type: string
+          format: uuid
+        status:
+          $ref: "#/components/schemas/InvitationStatus"
+        invitedAt:
+          type:
+            - string
+            - "null"
+          format: date-time
+        respondedAt:
+          type:
+            - string
+            - "null"
+          format: date-time
 
     TournamentRace:
       type: object
@@ -931,6 +1120,28 @@ components:
           type: array
           items:
             $ref: "#/components/schemas/MeRaceListItem"
+        pagination:
+          $ref: "#/components/schemas/Pagination"
+
+    PaginatedRegistrations:
+      type: object
+      properties:
+        data:
+          type: array
+          items:
+            type: object
+            additionalProperties: true
+        pagination:
+          $ref: "#/components/schemas/Pagination"
+
+    PaginatedInvitations:
+      type: object
+      properties:
+        data:
+          type: array
+          items:
+            type: object
+            additionalProperties: true
         pagination:
           $ref: "#/components/schemas/Pagination"
 
@@ -1205,7 +1416,7 @@ paths:
       tags:
         - Admin
       summary: Create a tournament
-      description: Requires admin role. The route validates this request body; the current controller does not yet persist or return a tournament.
+      description: Requires admin role.
       security:
         - BearerAuth: []
       requestBody:
@@ -1216,18 +1427,87 @@ paths:
               $ref: "#/components/schemas/CreateTournamentRequest"
       responses:
         "200":
-          description: Request accepted by the current route implementation.
+          description: Tournament created.
           content:
             application/json:
               schema:
-                type: object
-                additionalProperties: true
+                $ref: "#/components/schemas/Tournament"
         "400":
           $ref: "#/components/responses/BadRequest"
         "401":
           $ref: "#/components/responses/Unauthorized"
         "403":
           $ref: "#/components/responses/Forbidden"
+        "500":
+          $ref: "#/components/responses/ServerError"
+
+  /admin/tournaments/{tournamentId}:
+    patch:
+      tags:
+        - Admin
+      summary: Update a tournament
+      description: Requires admin role. At least one request field is required.
+      security:
+        - BearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/AdminTournamentIdParam"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateTournamentRequest"
+      responses:
+        "200":
+          description: Tournament updated.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Tournament"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "500":
+          $ref: "#/components/responses/ServerError"
+
+  /admin/tournaments/{tournamentId}/status:
+    patch:
+      tags:
+        - Admin
+      summary: Update a tournament status
+      description: Requires admin role. Status transitions are validated by the current tournament state.
+      security:
+        - BearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/AdminTournamentIdParam"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateTournamentStatusRequest"
+      responses:
+        "200":
+          description: Tournament status updated.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Tournament"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
         "500":
           $ref: "#/components/responses/ServerError"
 
@@ -1258,6 +1538,11 @@ paths:
       security:
         - BearerAuth: []
       parameters:
+        - name: status
+          in: query
+          description: Accepted by validation; current controller does not apply this filter.
+          schema:
+            $ref: "#/components/schemas/PublicRaceStatus"
         - $ref: "#/components/parameters/PageParam"
         - $ref: "#/components/parameters/LimitParam"
       responses:
@@ -1273,6 +1558,206 @@ paths:
           $ref: "#/components/responses/Unauthorized"
         "403":
           $ref: "#/components/responses/Forbidden"
+        "500":
+          $ref: "#/components/responses/ServerError"
+
+  /me/registrations:
+    get:
+      tags:
+        - Me
+      summary: List the current horse owner's tournament registrations
+      description: Requires horse_owner role.
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: status
+          in: query
+          schema:
+            $ref: "#/components/schemas/RegistrationStatus"
+        - $ref: "#/components/parameters/PageParam"
+        - $ref: "#/components/parameters/LimitParam"
+      responses:
+        "200":
+          description: Paginated registration list.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PaginatedRegistrations"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "500":
+          $ref: "#/components/responses/ServerError"
+
+  /me/races/{raceId}/invitations:
+    get:
+      tags:
+        - Me
+      summary: List jockey invitations for a race
+      description: Requires horse_owner or jockey role. Owners see invitations they sent; jockeys see invitations sent to them.
+      security:
+        - BearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/RaceIdParam"
+        - name: status
+          in: query
+          schema:
+            $ref: "#/components/schemas/InvitationStatus"
+        - $ref: "#/components/parameters/PageParam"
+        - $ref: "#/components/parameters/LimitParam"
+      responses:
+        "200":
+          description: Paginated invitation list.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PaginatedInvitations"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "500":
+          $ref: "#/components/responses/ServerError"
+
+    post:
+      tags:
+        - Me
+      summary: Invite a jockey for a horse in a race
+      description: Requires horse_owner role.
+      security:
+        - BearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/RaceIdParam"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/InviteJockeyRequest"
+      responses:
+        "201":
+          description: Invitation created.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  invitation:
+                    $ref: "#/components/schemas/JockeyInvitation"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+        "500":
+          $ref: "#/components/responses/ServerError"
+
+  /me/races/{raceId}/invitations/{id}:
+    delete:
+      tags:
+        - Me
+      summary: Cancel a jockey invitation
+      description: Requires horse_owner role. Only pending invitations can be cancelled.
+      security:
+        - BearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/RaceIdParam"
+        - $ref: "#/components/parameters/InvitationIdParam"
+      responses:
+        "200":
+          description: Invitation cancelled.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  invitation:
+                    $ref: "#/components/schemas/JockeyInvitation"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+        "500":
+          $ref: "#/components/responses/ServerError"
+
+  /me/invitations/{id}/accept:
+    patch:
+      tags:
+        - Me
+      summary: Accept a jockey invitation
+      description: Requires jockey role. Only pending invitations can be accepted.
+      security:
+        - BearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/InvitationIdParam"
+      responses:
+        "200":
+          description: Invitation accepted.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  invitation:
+                    $ref: "#/components/schemas/JockeyInvitation"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+        "500":
+          $ref: "#/components/responses/ServerError"
+
+  /me/races/{raceId}/invitations/{id}/confirm:
+    patch:
+      tags:
+        - Me
+      summary: Confirm an accepted jockey invitation for a race entry
+      description: Requires horse_owner role. The invitation must already be accepted.
+      security:
+        - BearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/RaceIdParam"
+        - $ref: "#/components/parameters/InvitationIdParam"
+      responses:
+        "200":
+          description: Jockey confirmed for the race entry.
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: true
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
         "500":
           $ref: "#/components/responses/ServerError"
 
@@ -1721,5 +2206,70 @@ paths:
                 $ref: "#/components/schemas/PaginatedTournamentRaces"
         "400":
           $ref: "#/components/responses/BadRequest"
+        "500":
+          $ref: "#/components/responses/ServerError"
+
+  /tournaments/{id}/registrations:
+    post:
+      tags:
+        - Tournaments
+      summary: Register a horse for a tournament
+      description: Requires horse_owner role. The tournament must be open for registration, and the authenticated owner must own the horse.
+      security:
+        - BearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/TournamentIdParam"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RegisterForTournamentRequest"
+      responses:
+        "201":
+          description: Horse registered for the tournament.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  registration:
+                    $ref: "#/components/schemas/TournamentRegistration"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+        "500":
+          $ref: "#/components/responses/ServerError"
+
+  /tournaments/{id}/registrations/{regId}:
+    get:
+      tags:
+        - Tournaments
+      summary: Get a tournament registration
+      security: []
+      parameters:
+        - $ref: "#/components/parameters/TournamentIdParam"
+        - $ref: "#/components/parameters/TournamentRegistrationIdParam"
+      responses:
+        "200":
+          description: Tournament registration detail.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  registration:
+                    $ref: "#/components/schemas/TournamentRegistration"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "404":
+          $ref: "#/components/responses/NotFound"
         "500":
           $ref: "#/components/responses/ServerError"
