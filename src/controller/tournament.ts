@@ -87,7 +87,6 @@ export const getTournament = async (
         }
 
         const conditions = [eq(tournamentsTable.id, tournamendId)];
-        console.log(userRole);
         if (userRole !== "admin") {
             conditions.push(ne(tournamentsTable.status, "draft"));
         }

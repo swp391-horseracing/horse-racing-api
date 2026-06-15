@@ -261,7 +261,7 @@ export const updateTournament = async (
             .returning();
 
         if (!updatedTournament) {
-            res.status(404).json({ message: "Tournament not found" });
+            return res.status(404).json({ message: "Tournament not found" });
         }
 
         res.json(updatedTournament);
