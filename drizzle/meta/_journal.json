@@ -15,6 +15,20 @@
       "when": 1780493723382,
       "tag": "0001_tranquil_phil_sheldon",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1781497147388,
+      "tag": "0002_curious_mockingbird",
+      "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1781497147394,
+      "tag": "0003_magical_amphibian",
+      "breakpoints": true
     }
   ]
 }
