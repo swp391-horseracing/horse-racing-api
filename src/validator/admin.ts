@@ -24,7 +24,7 @@ const tournamentSchema = z.object({
     endDate: z.iso.datetime().transform((v) => new Date(v)),
     description: z.string().optional(),
     rules: z.string().optional(),
-    location: z.string().max(200).optional(),
+    location: z.string().max(100).optional(),
     registrationOpenDate: z.iso
         .datetime()
         .transform((v) => new Date(v))
