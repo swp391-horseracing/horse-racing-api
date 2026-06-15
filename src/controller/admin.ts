@@ -336,7 +336,7 @@ export const updateTournamentStatus = async (
             )
             .returning();
         if (!updatedTournament) {
-            return res.json(409).json({
+            return res.status(409).json({
                 message:
                     "Tournament status changed concurrently. Please retry.",
             });
