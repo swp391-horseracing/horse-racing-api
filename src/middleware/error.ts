@@ -9,7 +9,7 @@ export const errorMiddleware = (
 ) => {
     console.error(err);
 
-    if (err.cause.code === "ENOTFOUND") {
+    if (err.cause?.code === "ENOTFOUND") {
         return res.status(503).json({
             error: {
                 code: "SERVICE_UNAVAILABLE",

@@ -6,14 +6,15 @@ import {
     registerForTournament,
     getTournamentRegistration,
 } from "../controller/tournament.js";
+import { optionalAuthMiddleware } from "../middleware/optionalAuth.js";
 import { authMiddleware } from "../middleware/auth.js";
 import { authorize } from "../middleware/authorize.js";
 import { Role } from "../types/roles.js";
 
 const router = Router();
 
-router.get("/", getTournaments);
-router.get("/:id", getTournament);
+router.get("/", optionalAuthMiddleware, getTournaments);
+router.get("/:id", optionalAuthMiddleware, getTournament);
 router.get("/:id/races", getTournamentRaces);
 router.post(
     "/:id/registrations",

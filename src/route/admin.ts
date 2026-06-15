@@ -2,14 +2,23 @@ import { Router } from "express";
 import { Role } from "../types/roles.js";
 import { authMiddleware } from "../middleware/auth.js";
 import {
+    createTournament,
     getUser,
     getUsers,
+    updateTournament,
+    updateTournamentStatus,
     updateUserRole,
     updateUserStatus,
 } from "../controller/admin.js";
 import { authorize } from "../middleware/authorize.js";
 import { validate } from "../middleware/validate.js";
-import { updateRoleSchema, updateStatusSchema } from "../validator/admin.js";
+import {
+    createTournamentSchema,
+    updateRoleSchema,
+    updateStatusSchema,
+    updateTournamentSchema,
+    updateTournamentStatusSchema,
+} from "../validator/admin.js";
 
 const router = Router();
 
@@ -28,5 +37,26 @@ router.patch(
     authorize(Role.ADMIN),
     validate(updateStatusSchema),
     updateUserStatus,
+);
+router.post(
+    "/tournaments",
+    authMiddleware,
+    authorize(Role.ADMIN),
+    validate(createTournamentSchema),
+    createTournament,
+);
+router.patch(
+    "/tournaments/:tournamentId",
+    authMiddleware,
+    authorize(Role.ADMIN),
+    validate(updateTournamentSchema),
+    updateTournament,
+);
+router.patch(
+    "/tournaments/:tournamentId/status",
+    authMiddleware,
+    authorize(Role.ADMIN),
+    validate(updateTournamentStatusSchema),
+    updateTournamentStatus,
 );
 export default router;

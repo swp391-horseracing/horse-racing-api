@@ -10,8 +10,6 @@ COPY . .
 
 RUN npm run build
 
-RUN npm run db:generate
-
 RUN npm prune --production
 
 FROM node:26-alpine3.22

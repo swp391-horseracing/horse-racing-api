@@ -1,10 +1,14 @@
 import { NextFunction, Request, Response } from "express";
 import { validate as uuidValidate } from "uuid";
-import { usersQuerySchema } from "../validator/admin.js";
+import {
+    tournamentReadinessSchema,
+    usersQuerySchema,
+} from "../validator/admin.js";
 import { users } from "../schema/users.js";
 import { and, eq, ilike, sql } from "drizzle-orm";
 import { getPagination, paginatedResponse } from "../utils/paginate.js";
 import db from "../config/db.js";
+import { tournaments } from "../schema/tournament.js";
 
 export const getUsers = async (
     req: Request,
@@ -185,6 +189,160 @@ export const updateUserStatus = async (
             .returning();
 
         res.json({ message: "Updated user status", userId: updatedUser?.id });
+    } catch (err) {
+        next(err);
+    }
+};
+
+export const createTournament = async (
+    req: Request,
+    res: Response,
+    next: NextFunction,
+) => {
+    try {
+        const admin = req.user!;
+        const {
+            name,
+            startDate,
+            endDate,
+            description,
+            rules,
+            location,
+            registrationOpenDate,
+            registrationCloseDate,
+            maximumParticipants,
+            minimumParticipants,
+            prizePool,
+        } = req.body;
+
+        const [newTournament] = await db
+            .insert(tournaments)
+            .values({
+                name,
+                startDate: new Date(startDate),
+                endDate: new Date(endDate),
+                createdBy: admin?.id,
+                description: description ?? null,
+                rules: rules ?? null,
+                location: location ?? null,
+                registrationOpenDate: registrationOpenDate ?? null,
+                registrationCloseDate: registrationCloseDate ?? null,
+                maximumParticipants: maximumParticipants ?? null,
+                minimumParticipants: minimumParticipants ?? null,
+                prizePool: prizePool ?? null,
+            })
+            .returning();
+
+        res.json(newTournament);
+    } catch (err) {
+        next(err);
+    }
+};
+
+export const updateTournament = async (
+    req: Request,
+    res: Response,
+    next: NextFunction,
+) => {
+    try {
+        const tournamentId = req.params.tournamentId as string;
+        if (!uuidValidate(tournamentId)) {
+            return res.status(400).json({ message: "Invalid uuid" });
+        }
+
+        const body = req.body;
+        const [updatedTournament] = await db
+            .update(tournaments)
+            .set({
+                ...body,
+                updatedAt: new Date(),
+            })
+            .where(eq(tournaments.id, tournamentId))
+            .returning();
+
+        if (!updatedTournament) {
+            return res.status(404).json({ message: "Tournament not found" });
+        }
+
+        res.json(updatedTournament);
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    } catch (err: any) {
+        if (err?.cause?.code === "23514") {
+            return res.status(400).json({
+                message: "Failed validation constaint",
+                constraint: err.cause.constraint,
+            });
+        }
+        next(err);
+    }
+};
+
+export const updateTournamentStatus = async (
+    req: Request,
+    res: Response,
+    next: NextFunction,
+) => {
+    try {
+        const ALLOWED_TRANSITIONS: Record<string, string[]> = {
+            draft: ["upcoming"],
+            upcoming: ["registration_open", "cancelled"],
+            registration_open: ["registration_closed", "cancelled"],
+            registration_closed: ["ongoing", "cancelled"],
+            ongoing: ["completed", "cancelled"],
+        };
+        const tournamentId = req.params.tournamentId as string;
+        if (!uuidValidate(tournamentId)) {
+            return res.status(400).json({ message: "Invalid uuid" });
+        }
+
+        const status = req.body.status;
+
+        const [tournament] = await db
+            .select()
+            .from(tournaments)
+            .where(eq(tournaments.id, tournamentId));
+
+        if (!tournament) {
+            return res.status(404).json({ message: "Tournament not found" });
+        }
+
+        if (status === "upcoming") {
+            const validation = tournamentReadinessSchema.safeParse(tournament);
+            if (!validation.success) {
+                const missing = validation.error.issues.map((issue) => ({
+                    field: issue.path.join("."),
+                    message: issue.message,
+                }));
+                return res.status(400).json({
+                    message: "Tournament is missing required field",
+                    fields: missing,
+                });
+            }
+        }
+        const allowed = ALLOWED_TRANSITIONS[tournament.status] ?? [];
+        if (!allowed.includes(status)) {
+            return res.status(403).json({
+                message: `Cannot transition from '${tournament.status}' to '${status}'`,
+            });
+        }
+        const [updatedTournament] = await db
+            .update(tournaments)
+            .set({ status: status })
+            .where(
+                and(
+                    eq(tournaments.id, tournamentId),
+                    eq(tournaments.status, tournament.status),
+                ),
+            )
+            .returning();
+        if (!updatedTournament) {
+            return res.json(409).json({
+                message:
+                    "Tournament status changed concurrently. Please retry.",
+            });
+        }
+
+        res.json(updatedTournament);
     } catch (err) {
         next(err);
     }

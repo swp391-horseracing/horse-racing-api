@@ -15,6 +15,22 @@ const tournamentsQuerySchema = z.object({
     limit: z.coerce.number().int().min(1).max(100).default(10).optional(),
 });
 
+const adminTournamentsQuerySchema = z.object({
+    status: z
+        .enum([
+            "draft",
+            "upcoming",
+            "registration_open",
+            "registration_closed",
+            "ongoing",
+            "completed",
+            "cancelled",
+        ])
+        .optional(),
+    page: z.coerce.number().int().min(1).default(1).optional(),
+    limit: z.coerce.number().int().min(1).max(100).default(10).optional(),
+});
+
 const tournamentRacesQuerySchema = z.object({
     status: z
         .enum([
