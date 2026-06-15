@@ -48,7 +48,7 @@ export const getUsers = async (
                 })
                 .from(users)
                 .where(conditions)
-                .orderBy(desc(users.createdAt))
+                .orderBy(desc(users.createdAt), desc(users.id))
                 .limit(l)
                 .offset(offset),
             db

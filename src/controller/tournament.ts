@@ -60,7 +60,10 @@ export const getTournaments = async (
                 })
                 .from(tournamentsTable)
                 .where(and(...listTournamentsCondition))
-                .orderBy(desc(tournamentsTable.createdAt))
+                .orderBy(
+                    desc(tournamentsTable.createdAt),
+                    desc(tournamentsTable.id),
+                )
                 .limit(l)
                 .offset(offset),
             db
