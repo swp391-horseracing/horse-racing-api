@@ -7,7 +7,7 @@ import {
     pgEnum,
     check,
     integer,
-    real,
+    numeric,
 } from "drizzle-orm/pg-core";
 import { users } from "./users.js";
 import { sql } from "drizzle-orm";
@@ -36,7 +36,7 @@ export const tournaments = pgTable(
         registrationCloseDate: timestamp("registration_close_date"),
         maximumParticipants: integer("maximum_participants"),
         minimumParticipants: integer("minimum_participants"),
-        prizePool: real("prize_pool"),
+        prizePool: numeric("prize_pool", { precision: 12, scale: 2 }),
         status: tournamentStatusEnums().default("draft").notNull(),
         createdBy: uuid("created_by")
             .references(() => users.id)
@@ -54,6 +54,10 @@ export const tournaments = pgTable(
         check(
             "start_end_date_check",
             sql`${table.startDate} < ${table.endDate}`,
+        ),
+        check(
+            "max_min_part_check",
+            sql`${table.maximumParticipants} >= ${table.minimumParticipants}`,
         ),
     ],
 );
