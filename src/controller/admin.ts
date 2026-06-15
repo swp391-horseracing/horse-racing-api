@@ -5,7 +5,7 @@ import {
     usersQuerySchema,
 } from "../validator/admin.js";
 import { users } from "../schema/users.js";
-import { and, eq, ilike, sql } from "drizzle-orm";
+import { and, desc, eq, ilike, sql } from "drizzle-orm";
 import { getPagination, paginatedResponse } from "../utils/paginate.js";
 import db from "../config/db.js";
 import { tournaments } from "../schema/tournament.js";
@@ -48,6 +48,7 @@ export const getUsers = async (
                 })
                 .from(users)
                 .where(conditions)
+                .orderBy(desc(users.createdAt))
                 .limit(l)
                 .offset(offset),
             db
