@@ -90,6 +90,8 @@ export const getMeProfile = async (
     }
 };
 
+
+// ME RACES
 const getJockeyRaces = async (
     userId: string,
     limit: number,
@@ -340,6 +342,7 @@ export const getMeRaceDetail = async (
     }
 };
 
+// OWNER REGISTRATIONS
 export const getMyRegistrations = async (
     req: Request,
     res: Response,
@@ -418,6 +421,7 @@ export const getMyRegistrations = async (
     }
 };
 
+// OWNER INVITATIONS
 export const getRaceInvitations = async (
     req: Request,
     res: Response,
@@ -443,14 +447,9 @@ export const getRaceInvitations = async (
         const { status, page, limit } = parsed.data;
         const { page: p, limit: l, offset } = getPagination({ page, limit });
 
-        const byRole =
-            user.role === "jockey"
-                ? eq(jockeyInvitations.jockeyId, user.id)
-                : eq(jockeyInvitations.ownerId, user.id);
-
         const condition = and(
             eq(jockeyInvitations.raceId, raceId),
-            byRole,
+            eq(jockeyInvitations.ownerId, user.id),
             status ? eq(jockeyInvitations.status, status) : undefined,
         );
 
@@ -652,56 +651,6 @@ export const cancelInvitation = async (
     }
 };
 
-export const acceptInvitation = async (
-    req: Request,
-    res: Response,
-    next: NextFunction,
-) => {
-    try {
-        const user = req.user!;
-        const { id } = req.params as { id: string };
-        if (!uuidValidate(id)) {
-            return res.status(400).json({ message: "Invalid uuid" });
-        }
-
-        const [invitation] = await db
-            .select({
-                jockeyId: jockeyInvitations.jockeyId,
-            })
-            .from(jockeyInvitations)
-            .where(eq(jockeyInvitations.invitationId, id));
-
-        if (!invitation) {
-            return res.status(404).json({ message: "Invitation not found" });
-        }
-        if (invitation.jockeyId !== user.id) {
-            return res.status(403).json({ message: "Forbidden" });
-        }
-
-        const [updated] = await db
-            .update(jockeyInvitations)
-            .set({ status: "accepted", respondedAt: new Date() })
-            .where(
-                and(
-                    eq(jockeyInvitations.invitationId, id),
-                    eq(jockeyInvitations.jockeyId, user.id),
-                    eq(jockeyInvitations.status, "pending"),
-                ),
-            )
-            .returning();
-
-        if (!updated) {
-            return res
-                .status(409)
-                .json({ message: "Only pending invitations can be accepted" });
-        }
-
-        return res.json({ invitation: updated });
-    } catch (err) {
-        next(err);
-    }
-};
-
 export const confirmJockey = async (
     req: Request,
     res: Response,
@@ -831,6 +780,200 @@ export const confirmJockey = async (
                     "This jockey is already assigned to another horse in this race",
             });
         }
+        next(err);
+    }
+};
+
+// JOCKEY INVITATIONS
+const getJockeyInvitations = async (
+    userId: string,
+    status: "pending" | "accepted" | "cancelled" | "declined" | undefined,
+    limit: number,
+    offset: number,
+) => {
+    const condition = and(
+        eq(jockeyInvitations.jockeyId, userId),
+        status ? eq(jockeyInvitations.status, status) : undefined,
+    );
+    const [data, count] = await Promise.all([
+        db
+            .select({
+                id: jockeyInvitations.invitationId,
+                status: jockeyInvitations.status,
+                invitedAt: jockeyInvitations.invitedAt,
+                respondedAt: jockeyInvitations.respondedAt,
+                race: {
+                    id: races.id,
+                    name: races.name,
+                    roundName: races.roundName,
+                    scheduledAt: races.scheduleAt,
+                    venue: races.venue,
+                    status: races.status,
+                },
+                horse: {
+                    id: horses.id,
+                    name: horses.name,
+                    breed: horses.breed,
+                },
+            })
+            .from(jockeyInvitations)
+            .innerJoin(races, eq(jockeyInvitations.raceId, races.id))
+            .innerJoin(horses, eq(jockeyInvitations.horseId, horses.id))
+            .where(condition)
+            .limit(limit)
+            .offset(offset)
+            .orderBy(jockeyInvitations.invitedAt),
+        db
+            .select({ count: sql<number>`count(*)` })
+            .from(jockeyInvitations)
+            .where(condition),
+    ]);
+    return { data, count };
+};
+
+export const getMyInvitations = async (
+    req: Request,
+    res: Response,
+    next: NextFunction,
+) => {
+    try {
+        const user = req.user!;
+
+        const parsed = invitationsQuerySchema.safeParse(req.query);
+        if (!parsed.success) {
+            return res.status(400).json({
+                message: "Validation Errors",
+                errors: parsed.error.issues.map((i) => ({
+                    field: i.path.join("."),
+                    message: i.message,
+                })),
+            });
+        }
+        const { status, page, limit } = parsed.data;
+        const { page: p, limit: l, offset } = getPagination({ page, limit });
+
+        const result = await getJockeyInvitations(user.id, status, l, offset);
+
+        return res.json(
+            paginatedResponse(
+                result.data,
+                Number(result.count[0]?.count ?? 0),
+                p,
+                l,
+            ),
+        );
+    } catch (err) {
+        next(err);
+    }
+};
+
+export const getInvitationDetail = async (
+    req: Request,
+    res: Response,
+    next: NextFunction,
+) => {
+    try {
+        const user = req.user!;
+        const { id } = req.params as { id: string };
+        if (!uuidValidate(id)) {
+            return res.status(400).json({ message: "Invalid uuid" });
+        }
+
+        const [invitation] = await db
+            .select({
+                id: jockeyInvitations.invitationId,
+                status: jockeyInvitations.status,
+                invitedAt: jockeyInvitations.invitedAt,
+                respondedAt: jockeyInvitations.respondedAt,
+                race: {
+                    id: races.id,
+                    name: races.name,
+                    roundName: races.roundName,
+                    distanceMeters: races.distanceMeters,
+                    trackCondition: races.trackCondition,
+                    scheduledAt: races.scheduleAt,
+                    venue: races.venue,
+                    laneCount: races.laneCount,
+                    status: races.status,
+                },
+                horse: {
+                    id: horses.id,
+                    name: horses.name,
+                    breed: horses.breed,
+                    weightKg: horses.weightKg,
+                },
+                jockey: {
+                    id: users.id,
+                    fullName: users.fullName,
+                },
+            })
+            .from(jockeyInvitations)
+            .innerJoin(races, eq(jockeyInvitations.raceId, races.id))
+            .innerJoin(horses, eq(jockeyInvitations.horseId, horses.id))
+            .innerJoin(users, eq(jockeyInvitations.jockeyId, users.id))
+            .where(
+                and(
+                    eq(jockeyInvitations.invitationId, id),
+                    eq(jockeyInvitations.jockeyId, user.id),
+                ),
+            );
+
+        if (!invitation) {
+            return res.status(404).json({ message: "Invitation not found" });
+        }
+
+        return res.json(invitation);
+    } catch (err) {
+        next(err);
+    }
+};
+
+export const acceptInvitation = async (
+    req: Request,
+    res: Response,
+    next: NextFunction,
+) => {
+    try {
+        const user = req.user!;
+        const { id } = req.params as { id: string };
+        if (!uuidValidate(id)) {
+            return res.status(400).json({ message: "Invalid uuid" });
+        }
+
+        const [invitation] = await db
+            .select({
+                jockeyId: jockeyInvitations.jockeyId,
+            })
+            .from(jockeyInvitations)
+            .where(eq(jockeyInvitations.invitationId, id));
+
+        if (!invitation) {
+            return res.status(404).json({ message: "Invitation not found" });
+        }
+        if (invitation.jockeyId !== user.id) {
+            return res.status(403).json({ message: "Forbidden" });
+        }
+
+        const [updated] = await db
+            .update(jockeyInvitations)
+            .set({ status: "accepted", respondedAt: new Date() })
+            .where(
+                and(
+                    eq(jockeyInvitations.invitationId, id),
+                    eq(jockeyInvitations.jockeyId, user.id),
+                    eq(jockeyInvitations.status, "pending"),
+                ),
+            )
+            .returning();
+
+        if (!updated) {
+            return res
+                .status(409)
+                .json({ message: "Only pending invitations can be accepted" });
+        }
+
+        return res.json({ invitation: updated });
+    } catch (err) {
         next(err);
     }
 };
