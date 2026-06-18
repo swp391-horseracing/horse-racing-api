@@ -19,9 +19,6 @@ export const violationSeverityEnum = pgEnum("violation_severity", [
 
 export const violations = pgTable("violations", {
     id: uuid("id").defaultRandom().primaryKey(),
-    raceId: uuid("race_id")
-        .references(() => races.id)
-        .notNull(),
     entryId: uuid("entry_id")
         .references(() => raceEntries.id)
         .notNull(),
