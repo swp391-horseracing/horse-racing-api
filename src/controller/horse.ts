@@ -33,8 +33,16 @@ export const getHorses = async (
             });
         }
 
-        const { birthFrom, birthTo, search, breed, isRetired, isRacing, page, limit } =
-            parsed.data;
+        const {
+            birthFrom,
+            birthTo,
+            search,
+            breed,
+            isRetired,
+            isRacing,
+            page,
+            limit,
+        } = parsed.data;
         const { page: p, limit: l, offset } = getPagination({ page, limit });
 
         const conditions = and(
