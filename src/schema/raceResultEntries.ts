@@ -30,7 +30,9 @@ export const raceResultEntries = pgTable(
             .notNull(),
         finishedPosition: integer("finished_position"),
         finishTime: decimal("finish_time", { precision: 8, scale: 3 }),
-        finishStatus: finishStatusEnum("finish_status").default("finished"),
+        finishStatus: finishStatusEnum("finish_status")
+            .default("finished")
+            .notNull(),
         points: integer().notNull().default(0),
         violationId: uuid("violation_id").references(() => violations.id),
         createdAt: timestamp("created_at").defaultNow().notNull(),
