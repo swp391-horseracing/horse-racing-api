@@ -90,7 +90,6 @@ export const getMeProfile = async (
     }
 };
 
-
 // ME RACES
 const getJockeyRaces = async (
     userId: string,
@@ -815,10 +814,15 @@ const getJockeyInvitations = async (
                     name: horses.name,
                     breed: horses.breed,
                 },
+                owner: {
+                    id: users.id,
+                    fullName: users.fullName,
+                },
             })
             .from(jockeyInvitations)
             .innerJoin(races, eq(jockeyInvitations.raceId, races.id))
             .innerJoin(horses, eq(jockeyInvitations.horseId, horses.id))
+            .innerJoin(users, eq(jockeyInvitations.ownerId, users.id))
             .where(condition)
             .limit(limit)
             .offset(offset)
@@ -902,7 +906,7 @@ export const getInvitationDetail = async (
                     breed: horses.breed,
                     weightKg: horses.weightKg,
                 },
-                jockey: {
+                owner: {
                     id: users.id,
                     fullName: users.fullName,
                 },
@@ -910,7 +914,7 @@ export const getInvitationDetail = async (
             .from(jockeyInvitations)
             .innerJoin(races, eq(jockeyInvitations.raceId, races.id))
             .innerJoin(horses, eq(jockeyInvitations.horseId, horses.id))
-            .innerJoin(users, eq(jockeyInvitations.jockeyId, users.id))
+            .innerJoin(users, eq(jockeyInvitations.ownerId, users.id))
             .where(
                 and(
                     eq(jockeyInvitations.invitationId, id),

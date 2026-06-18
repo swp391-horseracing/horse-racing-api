@@ -79,5 +79,4 @@ router.patch(
     acceptInvitation,
 );
 
-
 export default router;
