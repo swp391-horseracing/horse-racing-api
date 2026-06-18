@@ -6,7 +6,6 @@ import {
     uuid,
     pgEnum,
 } from "drizzle-orm/pg-core";
-import { races } from "./races.js";
 import { raceEntries } from "./raceEntries.js";
 import { users } from "./users.js";
 
