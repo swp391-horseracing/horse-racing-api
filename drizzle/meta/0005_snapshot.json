@@ -1,5 +1,5 @@
 {
-  "id": "aa574b55-960c-471e-ad36-7f153ce97ebc",
+  "id": "2b38a408-730d-444e-b18f-ca0b92092e93",
   "prevId": "a93bafc9-99c0-4193-978b-24d730211b4b",
   "version": "7",
   "dialect": "postgresql",
@@ -826,6 +826,14 @@
             "race_id",
             "lane_number"
           ]
+        },
+        "race_entries_id_race_id_unique": {
+          "name": "race_entries_id_race_id_unique",
+          "nullsNotDistinct": false,
+          "columns": [
+            "id",
+            "race_id"
+          ]
         }
       },
       "policies": {},
@@ -1110,6 +1118,12 @@
           "notNull": true,
           "default": "gen_random_uuid()"
         },
+        "race_id": {
+          "name": "race_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
         "result_id": {
           "name": "result_id",
           "type": "uuid",
@@ -1139,7 +1153,7 @@
           "type": "finish_status",
           "typeSchema": "public",
           "primaryKey": false,
-          "notNull": false,
+          "notNull": true,
           "default": "'finished'"
         },
         "points": {
@@ -1172,32 +1186,6 @@
       },
       "indexes": {},
       "foreignKeys": {
-        "race_result_entries_result_id_race_results_id_fk": {
-          "name": "race_result_entries_result_id_race_results_id_fk",
-          "tableFrom": "race_result_entries",
-          "tableTo": "race_results",
-          "columnsFrom": [
-            "result_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "no action",
-          "onUpdate": "no action"
-        },
-        "race_result_entries_entry_id_race_entries_id_fk": {
-          "name": "race_result_entries_entry_id_race_entries_id_fk",
-          "tableFrom": "race_result_entries",
-          "tableTo": "race_entries",
-          "columnsFrom": [
-            "entry_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "no action",
-          "onUpdate": "no action"
-        },
         "race_result_entries_violation_id_violations_id_fk": {
           "name": "race_result_entries_violation_id_violations_id_fk",
           "tableFrom": "race_result_entries",
@@ -1207,6 +1195,36 @@
           ],
           "columnsTo": [
             "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "race_result_entries_entry_race_fk": {
+          "name": "race_result_entries_entry_race_fk",
+          "tableFrom": "race_result_entries",
+          "tableTo": "race_entries",
+          "columnsFrom": [
+            "entry_id",
+            "race_id"
+          ],
+          "columnsTo": [
+            "id",
+            "race_id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "race_result_entries_result_race_fk": {
+          "name": "race_result_entries_result_race_fk",
+          "tableFrom": "race_result_entries",
+          "tableTo": "race_results",
+          "columnsFrom": [
+            "result_id",
+            "race_id"
+          ],
+          "columnsTo": [
+            "id",
+            "race_id"
           ],
           "onDelete": "no action",
           "onUpdate": "no action"
@@ -1342,7 +1360,23 @@
         }
       },
       "compositePrimaryKeys": {},
-      "uniqueConstraints": {},
+      "uniqueConstraints": {
+        "race_results_race_id_unique": {
+          "name": "race_results_race_id_unique",
+          "nullsNotDistinct": false,
+          "columns": [
+            "race_id"
+          ]
+        },
+        "race_results_id_race_id_unique": {
+          "name": "race_results_id_race_id_unique",
+          "nullsNotDistinct": false,
+          "columns": [
+            "id",
+            "race_id"
+          ]
+        }
+      },
       "policies": {},
       "checkConstraints": {},
       "isRLSEnabled": false
