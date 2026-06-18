@@ -15,7 +15,7 @@ const router = Router();
 
 router.get("/", optionalAuthMiddleware, getTournaments);
 router.get("/:id", optionalAuthMiddleware, getTournament);
-router.get("/:id/races", getTournamentRaces);
+router.get("/:id/races", optionalAuthMiddleware, getTournamentRaces);
 router.post(
     "/:id/registrations",
     authMiddleware,
