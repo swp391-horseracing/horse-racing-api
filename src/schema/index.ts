@@ -8,3 +8,6 @@ export * from "./tournament.js";
 export * from "./raceEntries.js";
 export * from "./tournamentRegistrations.js";
 export * from "./jockeyInvitations.js";
+export * from "./raceResults.js";
+export * from "./raceResultEntries.js";
+export * from "./violations.js";
