@@ -151,7 +151,6 @@ export const getTournamentRaces = async (
                     id: races.id,
                     tournamentId: races.tournamentId,
                     name: races.name,
-                    roundName: races.roundName,
                     distanceMeters: races.distanceMeters,
                     trackCondition: races.trackCondition,
                     scheduledAt: races.scheduleAt,
