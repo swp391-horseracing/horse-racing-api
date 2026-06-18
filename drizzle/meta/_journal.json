@@ -36,6 +36,13 @@
       "when": 1781755793962,
       "tag": "0004_chief_nitro",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1781783818530,
+      "tag": "0005_chilly_moon_knight",
+      "breakpoints": true
     }
   ]
 }
