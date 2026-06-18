@@ -32,8 +32,6 @@ export const races = pgTable("races", {
         .notNull(),
     name: varchar("name", { length: 255 }).notNull(),
     raceNumber: integer("race_number"),
-    roundNumber: integer("round_number"),
-    roundName: varchar("round", { length: 100 }),
     distanceMeters: integer("distance_meters"),
     trackCondition: trackConditionsEnums("track_condition"),
     scheduleAt: timestamp("schedule_at"),
