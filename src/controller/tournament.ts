@@ -1,7 +1,7 @@
 import { NextFunction, Request, Response } from "express";
 import db from "../config/db.js";
 import { tournaments as tournamentsTable } from "../schema/tournament.js";
-import { and, asc, desc, eq, ne, sql } from "drizzle-orm";
+import { and, asc, desc, eq, gte, ilike, lte, ne, sql } from "drizzle-orm";
 import { getPagination, paginatedResponse } from "../utils/paginate.js";
 import { validate as uuidValidate } from "uuid";
 import {
@@ -35,14 +35,26 @@ export const getTournaments = async (
                 })),
             });
         }
-        const { status, page, limit } = parsed.data;
+        const { startDateFrom, startDateTo, search, status, page, limit } =
+            parsed.data;
         const { page: p, limit: l, offset } = getPagination({ page, limit });
 
         const listTournamentsCondition = [
             status ? eq(tournamentsTable.status, status) : undefined,
+            search ? ilike(tournamentsTable.name, `%${search}%`) : undefined,
         ];
         if (userRole !== "admin") {
             listTournamentsCondition.push(ne(tournamentsTable.status, "draft"));
+        }
+        if (startDateFrom) {
+            listTournamentsCondition.push(
+                gte(tournamentsTable.startDate, new Date(startDateFrom)),
+            );
+        }
+        if (startDateTo) {
+            listTournamentsCondition.push(
+                lte(tournamentsTable.startDate, new Date(startDateTo)),
+            );
         }
 
         const [tournaments, count] = await Promise.all([

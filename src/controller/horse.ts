@@ -1,5 +1,5 @@
 import { NextFunction, Request, Response } from "express";
-import { eq, and, or, ilike, sql } from "drizzle-orm";
+import { eq, and, or, ilike, sql, gte, lte } from "drizzle-orm";
 import { validate as uuidValidate } from "uuid";
 import db from "../config/db.js";
 import { horses } from "../schema/horses.js";
@@ -24,13 +24,16 @@ export const getHorses = async (
             });
         }
 
-        const { search, breed, isRetired, page, limit } = parsed.data;
+        const { birthFrom, birthTo, search, breed, isRetired, page, limit } =
+            parsed.data;
         const { page: p, limit: l, offset } = getPagination({ page, limit });
 
         const conditions = and(
             search ? ilike(horses.name, `%${search}%`) : undefined,
             breed ? eq(horses.breed, breed) : undefined,
             isRetired ? eq(horses.isRetired, isRetired) : undefined,
+            birthFrom ? gte(horses.birthDate, birthFrom) : undefined,
+            birthTo ? lte(horses.birthDate, birthTo) : undefined,
         );
 
         const [data, count] = await Promise.all([
