@@ -375,9 +375,13 @@ export const createTournamentRace = async (
         }
 
         if (req.body.scheduleAt) {
-            if (req.body.scheduleAt < tournament.startDate || req.body.scheduleAt > tournament.endDate) {
+            if (
+                req.body.scheduleAt < tournament.startDate ||
+                req.body.scheduleAt > tournament.endDate
+            ) {
                 return res.status(400).json({
-                    message: "scheduleAt must be between tournament start and end dates",
+                    message:
+                        "scheduleAt must be between tournament start and end dates",
                 });
             }
         }
@@ -428,7 +432,8 @@ export const updateRace = async (
                     req.body.scheduleAt > tournament.endDate)
             ) {
                 return res.status(400).json({
-                    message: "scheduleAt must be between tournament start and end dates",
+                    message:
+                        "scheduleAt must be between tournament start and end dates",
                 });
             }
         }
@@ -481,7 +486,8 @@ export const updateRaceStatus = async (
         if (race.status === "draft" && status === "scheduled") {
             if (!race.scheduleAt) {
                 return res.status(400).json({
-                    message: "scheduleAt is required to move from draft to scheduled",
+                    message:
+                        "scheduleAt is required to move from draft to scheduled",
                 });
             }
 
@@ -499,7 +505,8 @@ export const updateRaceStatus = async (
                     race.scheduleAt > tournament.endDate)
             ) {
                 return res.status(400).json({
-                    message: "scheduleAt must be between tournament start and end dates",
+                    message:
+                        "scheduleAt must be between tournament start and end dates",
                 });
             }
         }
@@ -514,18 +521,12 @@ export const updateRaceStatus = async (
         const [updatedRace] = await db
             .update(races)
             .set({ status })
-            .where(
-                and(
-                    eq(races.id, raceId),
-                    eq(races.status, race.status),
-                ),
-            )
+            .where(and(eq(races.id, raceId), eq(races.status, race.status)))
             .returning();
 
         if (!updatedRace) {
             return res.status(409).json({
-                message:
-                    "Race status changed concurrently. Please retry.",
+                message: "Race status changed concurrently. Please retry.",
             });
         }
 
