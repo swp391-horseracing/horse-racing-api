@@ -458,10 +458,15 @@ export const updateRaceStatus = async (
     try {
         const ALLOWED_TRANSITIONS: Record<string, string[]> = {
             draft: ["scheduled"],
-            scheduled: ["pre_race", "cancelled"],
-            pre_race: ["ongoing", "cancelled"],
-            ongoing: ["under_review", "cancelled"],
-            under_review: ["result_confirmed", "ongoing", "cancelled"],
+            scheduled: ["pre_race", "postponed", "cancelled"],
+            pre_race: ["ongoing", "postponed", "cancelled"],
+            ongoing: ["under_review", "postponed", "cancelled"],
+            under_review: [
+                "result_confirmed",
+                "ongoing",
+                "postponed",
+                "cancelled",
+            ],
             result_confirmed: ["completed", "cancelled"],
             completed: [],
             postponed: ["scheduled", "ongoing", "under_review", "cancelled"],
