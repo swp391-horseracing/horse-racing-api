@@ -6,6 +6,7 @@ import {
     decimal,
     unique,
     timestamp,
+    foreignKey,
 } from "drizzle-orm/pg-core";
 import { raceResults } from "./raceResults.js";
 import { raceEntries } from "./raceEntries.js";
@@ -22,12 +23,9 @@ export const raceResultEntries = pgTable(
     "race_result_entries",
     {
         id: uuid("id").defaultRandom().primaryKey(),
-        resultId: uuid("result_id")
-            .references(() => raceResults.id)
-            .notNull(),
-        entryId: uuid("entry_id")
-            .references(() => raceEntries.id)
-            .notNull(),
+        raceId: uuid("race_id").notNull(),
+        resultId: uuid("result_id").notNull(),
+        entryId: uuid("entry_id").notNull(),
         finishedPosition: integer("finished_position"),
         finishTime: decimal("finish_time", { precision: 8, scale: 3 }),
         finishStatus: finishStatusEnum("finish_status")
@@ -44,5 +42,15 @@ export const raceResultEntries = pgTable(
     (table) => [
         unique().on(table.resultId, table.entryId),
         unique().on(table.resultId, table.finishedPosition),
+        foreignKey({
+            columns: [table.entryId, table.raceId],
+            foreignColumns: [raceEntries.id, raceEntries.raceId],
+            name: "race_result_entries_entry_race_fk",
+        }),
+        foreignKey({
+            columns: [table.resultId, table.raceId],
+            foreignColumns: [raceResults.id, raceResults.raceId],
+            name: "race_result_entries_result_race_fk",
+        }),
     ],
 );

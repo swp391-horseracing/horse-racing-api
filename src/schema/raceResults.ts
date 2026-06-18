@@ -30,5 +30,8 @@ export const raceResults = pgTable(
             .$onUpdate(() => new Date())
             .notNull(),
     },
-    (table) => [unique().on(table.raceId)],
+    (table) => [
+        unique().on(table.raceId),
+        unique("race_results_id_race_id_unique").on(table.id, table.raceId),
+    ],
 );

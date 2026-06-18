@@ -43,5 +43,6 @@ export const raceEntries = pgTable(
         unique().on(table.raceId, table.horseId),
         unique().on(table.raceId, table.jockeyId),
         unique().on(table.raceId, table.laneNumber),
+        unique("race_entries_id_race_id_unique").on(table.id, table.raceId),
     ],
 );
