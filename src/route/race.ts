@@ -5,6 +5,6 @@ import { optionalAuthMiddleware } from "../middleware/optionalAuth.js";
 const router = Router();
 
 router.get("/:raceId", optionalAuthMiddleware, getRace);
-router.get("/:raceId/horses", getHorseEntries);
+router.get("/:raceId/horses", optionalAuthMiddleware, getHorseEntries);
 
 export default router;

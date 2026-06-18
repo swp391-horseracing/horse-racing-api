@@ -49,10 +49,15 @@ export const getHorseEntries = async (
             return res.status(400).json({ message: "Invalid uuid" });
         }
 
+        const userRole = req.user?.role;
         const [race] = await db
             .select()
             .from(races)
-            .where(eq(races.id, raceId));
+            .where(
+                userRole === "admin"
+                    ? eq(races.id, raceId)
+                    : and(eq(races.id, raceId), ne(races.status, "draft")),
+            );
 
         if (!race) {
             return res.status(404).json({ message: "Race not exist" });
