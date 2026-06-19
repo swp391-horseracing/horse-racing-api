@@ -320,7 +320,10 @@ export const retireHorse = async (
 
         const result = await db.transaction(async (tx) => {
             const [lockedHorse] = await tx
-                .select()
+                .select({
+                    isRetired: horses.isRetired,
+                    isRacing: isRacingSubquery,
+                })
                 .from(horses)
                 .where(eq(horses.id, id))
                 .for("update");
@@ -341,12 +344,7 @@ export const retireHorse = async (
                 };
             }
 
-            const [racingCheck] = await tx
-                .select({ isRacing: isRacingSubquery })
-                .from(horses)
-                .where(eq(horses.id, id));
-
-            if (racingCheck?.isRacing) {
+            if (lockedHorse.isRacing) {
                 return {
                     ok: false as const,
                     status: 409,
