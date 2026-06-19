@@ -1,5 +1,5 @@
 import { NextFunction, Request, Response } from "express";
-import { eq, and, or, ilike, sql, gte, lte } from "drizzle-orm";
+import { eq, and, ilike, sql, gte, lte } from "drizzle-orm";
 import { validate as uuidValidate } from "uuid";
 import db from "../config/db.js";
 import { horses } from "../schema/horses.js";
@@ -320,7 +320,10 @@ export const retireHorse = async (
 
         const result = await db.transaction(async (tx) => {
             const [lockedHorse] = await tx
-                .select()
+                .select({
+                    isRetired: horses.isRetired,
+                    isRacing: isRacingSubquery,
+                })
                 .from(horses)
                 .where(eq(horses.id, id))
                 .for("update");
@@ -341,20 +344,7 @@ export const retireHorse = async (
                 };
             }
 
-            const activeEntries = await tx
-                .select({ id: raceEntries.id })
-                .from(raceEntries)
-                .where(
-                    and(
-                        eq(raceEntries.horseId, id),
-                        or(
-                            eq(raceEntries.entryStatus, "pending"),
-                            eq(raceEntries.entryStatus, "confirmed"),
-                        ),
-                    ),
-                );
-
-            if (activeEntries.length > 0) {
+            if (lockedHorse.isRacing) {
                 return {
                     ok: false as const,
                     status: 409,
