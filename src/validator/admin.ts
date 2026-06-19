@@ -181,6 +181,43 @@ const updateRaceStatusSchema = z.object({
     ]),
 });
 
+const registrationsQuerySchema = z.object({
+    status: z.enum(["pending", "approved", "rejected"]).optional(),
+    tournamentId: z
+        .string()
+        .uuid("tournamentId must be a valid UUID")
+        .optional(),
+    page: z.coerce.number().int().min(1).default(1).optional(),
+    limit: z.coerce.number().int().min(1).max(100).default(10).optional(),
+});
+
+const updateRegistrationStatusSchema = z
+    .object({
+        status: z.enum(["approved", "rejected"]),
+        rejectReason: z.string().min(1).max(500).optional(),
+    })
+    .superRefine((data, ctx) => {
+        if (data.status === "rejected" && !data.rejectReason) {
+            ctx.addIssue({
+                code: "custom",
+                path: ["rejectReason"],
+                message:
+                    "rejectReason is required when rejecting a registration",
+            });
+        }
+        if (data.status === "approved" && data.rejectReason) {
+            ctx.addIssue({
+                code: "custom",
+                path: ["rejectReason"],
+                message: "rejectReason must not be provided when approving",
+            });
+        }
+    });
+
+const assignRefereeSchema = z.object({
+    refereeId: z.string().uuid("refereeId must be a valid UUID"),
+});
+
 export {
     usersQuerySchema,
     updateRoleSchema,
@@ -192,4 +229,7 @@ export {
     createRaceSchema,
     updateRaceSchema,
     updateRaceStatusSchema,
+    registrationsQuerySchema,
+    updateRegistrationStatusSchema,
+    assignRefereeSchema,
 };
