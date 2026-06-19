@@ -341,20 +341,12 @@ export const retireHorse = async (
                 };
             }
 
-            const activeEntries = await tx
-                .select({ id: raceEntries.id })
-                .from(raceEntries)
-                .where(
-                    and(
-                        eq(raceEntries.horseId, id),
-                        or(
-                            eq(raceEntries.entryStatus, "pending"),
-                            eq(raceEntries.entryStatus, "confirmed"),
-                        ),
-                    ),
-                );
+            const [racingCheck] = await tx
+                .select({ isRacing: isRacingSubquery })
+                .from(horses)
+                .where(eq(horses.id, id));
 
-            if (activeEntries.length > 0) {
+            if (racingCheck?.isRacing) {
                 return {
                     ok: false as const,
                     status: 409,
