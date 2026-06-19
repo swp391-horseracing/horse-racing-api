@@ -9,6 +9,7 @@ import { and, desc, eq, ilike, sql } from "drizzle-orm";
 import { getPagination, paginatedResponse } from "../utils/paginate.js";
 import db from "../config/db.js";
 import { tournaments } from "../schema/tournament.js";
+import { races } from "../schema/races.js";
 
 export const getUsers = async (
     req: Request,
@@ -344,6 +345,197 @@ export const updateTournamentStatus = async (
         }
 
         res.json(updatedTournament);
+    } catch (err) {
+        next(err);
+    }
+};
+
+export const createTournamentRace = async (
+    req: Request,
+    res: Response,
+    next: NextFunction,
+) => {
+    try {
+        const tournamentId = req.params.tournamentId as string;
+        if (!uuidValidate(tournamentId)) {
+            return res.status(400).json({ message: "Invalid uuid" });
+        }
+
+        const [tournament] = await db
+            .select({
+                id: tournaments.id,
+                startDate: tournaments.startDate,
+                endDate: tournaments.endDate,
+            })
+            .from(tournaments)
+            .where(eq(tournaments.id, tournamentId));
+
+        if (!tournament) {
+            return res.status(404).json({ message: "Tournament not found" });
+        }
+
+        if (req.body.scheduleAt) {
+            if (
+                req.body.scheduleAt < tournament.startDate ||
+                req.body.scheduleAt > tournament.endDate
+            ) {
+                return res.status(400).json({
+                    message:
+                        "scheduleAt must be between tournament start and end dates",
+                });
+            }
+        }
+
+        const [newRace] = await db
+            .insert(races)
+            .values({ ...req.body, tournamentId })
+            .returning();
+
+        res.status(201).json(newRace);
+    } catch (err) {
+        next(err);
+    }
+};
+
+export const updateRace = async (
+    req: Request,
+    res: Response,
+    next: NextFunction,
+) => {
+    try {
+        const raceId = req.params.raceId as string;
+        if (!uuidValidate(raceId)) {
+            return res.status(400).json({ message: "Invalid uuid" });
+        }
+
+        const [race] = await db
+            .select({ id: races.id, tournamentId: races.tournamentId })
+            .from(races)
+            .where(eq(races.id, raceId));
+
+        if (!race) {
+            return res.status(404).json({ message: "Race not found" });
+        }
+
+        if (req.body.scheduleAt) {
+            const [tournament] = await db
+                .select({
+                    startDate: tournaments.startDate,
+                    endDate: tournaments.endDate,
+                })
+                .from(tournaments)
+                .where(eq(tournaments.id, race.tournamentId));
+
+            if (
+                tournament &&
+                (req.body.scheduleAt < tournament.startDate ||
+                    req.body.scheduleAt > tournament.endDate)
+            ) {
+                return res.status(400).json({
+                    message:
+                        "scheduleAt must be between tournament start and end dates",
+                });
+            }
+        }
+
+        const [updatedRace] = await db
+            .update(races)
+            .set({ ...req.body, updatedAt: new Date() })
+            .where(eq(races.id, raceId))
+            .returning();
+
+        res.json(updatedRace);
+    } catch (err) {
+        next(err);
+    }
+};
+
+export const updateRaceStatus = async (
+    req: Request,
+    res: Response,
+    next: NextFunction,
+) => {
+    try {
+        const ALLOWED_TRANSITIONS: Record<string, string[]> = {
+            draft: ["scheduled"],
+            scheduled: ["pre_race", "postponed", "cancelled"],
+            pre_race: ["ongoing", "postponed", "cancelled"],
+            ongoing: ["under_review", "postponed", "cancelled"],
+            under_review: [
+                "result_confirmed",
+                "ongoing",
+                "postponed",
+                "cancelled",
+            ],
+            result_confirmed: ["completed", "cancelled"],
+            completed: [],
+            postponed: ["scheduled", "ongoing", "under_review", "cancelled"],
+        };
+
+        const raceId = req.params.raceId as string;
+        if (!uuidValidate(raceId)) {
+            return res.status(400).json({ message: "Invalid uuid" });
+        }
+
+        const status = req.body.status;
+
+        const [race] = await db
+            .select()
+            .from(races)
+            .where(eq(races.id, raceId));
+
+        if (!race) {
+            return res.status(404).json({ message: "Race not found" });
+        }
+
+        if (race.status === "draft" && status === "scheduled") {
+            if (!race.scheduleAt) {
+                return res.status(400).json({
+                    message:
+                        "scheduleAt is required to move from draft to scheduled",
+                });
+            }
+
+            const [tournament] = await db
+                .select({
+                    startDate: tournaments.startDate,
+                    endDate: tournaments.endDate,
+                })
+                .from(tournaments)
+                .where(eq(tournaments.id, race.tournamentId));
+
+            if (
+                tournament &&
+                (race.scheduleAt < tournament.startDate ||
+                    race.scheduleAt > tournament.endDate)
+            ) {
+                return res.status(400).json({
+                    message:
+                        "scheduleAt must be between tournament start and end dates",
+                });
+            }
+        }
+
+        const allowed = ALLOWED_TRANSITIONS[race.status] ?? [];
+        if (!allowed.includes(status)) {
+            return res.status(403).json({
+                message: `Cannot transition from '${race.status}' to '${status}'`,
+            });
+        }
+
+        const [updatedRace] = await db
+            .update(races)
+            .set({ status })
+            .where(and(eq(races.id, raceId), eq(races.status, race.status)))
+            .returning();
+
+        if (!updatedRace) {
+            return res.status(409).json({
+                message: "Race status changed concurrently. Please retry.",
+            });
+        }
+
+        res.json(updatedRace);
     } catch (err) {
         next(err);
     }

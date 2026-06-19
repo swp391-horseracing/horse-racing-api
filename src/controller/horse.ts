@@ -3,9 +3,18 @@ import { eq, and, or, ilike, sql, gte, lte } from "drizzle-orm";
 import { validate as uuidValidate } from "uuid";
 import db from "../config/db.js";
 import { horses } from "../schema/horses.js";
+import { races } from "../schema/races.js";
 import { raceEntries } from "../schema/raceEntries.js";
 import { horsesQuerySchema } from "../validator/horse.js";
 import { getPagination, paginatedResponse } from "../utils/paginate.js";
+
+const isRacingSubquery = sql<boolean>`EXISTS(
+  SELECT 1 FROM ${raceEntries} re
+  INNER JOIN ${races} r ON r.id = re.race_id
+  WHERE re.horse_id = "horses"."id"
+  AND re.entry_status = 'confirmed'
+  AND r.status IN ('scheduled', 'pre_race', 'ongoing', 'under_review')
+)`;
 
 export const getHorses = async (
     req: Request,
@@ -24,20 +33,47 @@ export const getHorses = async (
             });
         }
 
-        const { birthFrom, birthTo, search, breed, isRetired, page, limit } =
-            parsed.data;
+        const {
+            birthFrom,
+            birthTo,
+            search,
+            breed,
+            isRetired,
+            isRacing,
+            page,
+            limit,
+        } = parsed.data;
         const { page: p, limit: l, offset } = getPagination({ page, limit });
 
         const conditions = and(
             search ? ilike(horses.name, `%${search}%`) : undefined,
             breed ? eq(horses.breed, breed) : undefined,
             isRetired ? eq(horses.isRetired, isRetired) : undefined,
+            isRacing !== undefined ? eq(isRacingSubquery, isRacing) : undefined,
             birthFrom ? gte(horses.birthDate, birthFrom) : undefined,
             birthTo ? lte(horses.birthDate, birthTo) : undefined,
         );
 
         const [data, count] = await Promise.all([
-            db.select().from(horses).where(conditions).limit(l).offset(offset),
+            db
+                .select({
+                    id: horses.id,
+                    ownerId: horses.ownerId,
+                    name: horses.name,
+                    breed: horses.breed,
+                    birthDate: horses.birthDate,
+                    weightKg: horses.weightKg,
+                    imageUrl: horses.imageUrl,
+                    healthStatus: horses.healthStatus,
+                    isRetired: horses.isRetired,
+                    createdAt: horses.createdAt,
+                    updatedAt: horses.updatedAt,
+                    isRacing: isRacingSubquery,
+                })
+                .from(horses)
+                .where(conditions)
+                .limit(l)
+                .offset(offset),
             db
                 .select({ count: sql<number>`count(*)` })
                 .from(horses)
@@ -74,18 +110,37 @@ export const getOwnerHorses = async (
             });
         }
 
-        const { search, breed, isRetired, page, limit } = parsed.data;
+        const { search, breed, isRetired, isRacing, page, limit } = parsed.data;
         const { page: p, limit: l, offset } = getPagination({ page, limit });
 
         const conditions = and(
             search ? ilike(horses.name, `%${search}%`) : undefined,
             breed ? eq(horses.breed, breed) : undefined,
             isRetired ? eq(horses.isRetired, isRetired) : undefined,
+            isRacing !== undefined ? eq(isRacingSubquery, isRacing) : undefined,
             eq(horses.ownerId, ownerId),
         );
 
         const [data, count] = await Promise.all([
-            db.select().from(horses).where(conditions).limit(l).offset(offset),
+            db
+                .select({
+                    id: horses.id,
+                    ownerId: horses.ownerId,
+                    name: horses.name,
+                    breed: horses.breed,
+                    birthDate: horses.birthDate,
+                    weightKg: horses.weightKg,
+                    imageUrl: horses.imageUrl,
+                    healthStatus: horses.healthStatus,
+                    isRetired: horses.isRetired,
+                    createdAt: horses.createdAt,
+                    updatedAt: horses.updatedAt,
+                    isRacing: isRacingSubquery,
+                })
+                .from(horses)
+                .where(conditions)
+                .limit(l)
+                .offset(offset),
             db
                 .select({ count: sql<number>`count(*)` })
                 .from(horses)
@@ -111,7 +166,23 @@ export const getHorse = async (
             return res.status(400).json({ message: "Invalid uuid" });
         }
 
-        const [horse] = await db.select().from(horses).where(eq(horses.id, id));
+        const [horse] = await db
+            .select({
+                id: horses.id,
+                ownerId: horses.ownerId,
+                name: horses.name,
+                breed: horses.breed,
+                birthDate: horses.birthDate,
+                weightKg: horses.weightKg,
+                imageUrl: horses.imageUrl,
+                healthStatus: horses.healthStatus,
+                isRetired: horses.isRetired,
+                createdAt: horses.createdAt,
+                updatedAt: horses.updatedAt,
+                isRacing: isRacingSubquery,
+            })
+            .from(horses)
+            .where(eq(horses.id, id));
 
         if (!horse) {
             return res.status(404).json({ message: "Horse not found" });

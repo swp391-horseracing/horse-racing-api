@@ -132,6 +132,55 @@ const tournamentReadinessSchema = z.object({
     maximumParticipants: z.number().int().positive(),
 });
 
+const createRaceSchema = z.object({
+    name: z.string().min(3).max(255),
+    raceNumber: z.coerce.number().int().positive().optional(),
+    distanceMeters: z.coerce.number().int().positive().optional(),
+    trackCondition: z.enum(["dry", "wet", "muddy"]).optional(),
+    scheduleAt: z.iso
+        .datetime()
+        .transform((v) => new Date(v))
+        .optional(),
+    venue: z.string().max(255).optional(),
+    laneCount: z.coerce.number().int().positive().optional(),
+});
+
+const updateRaceSchema = z
+    .object({
+        name: z.string().min(3).max(255).optional(),
+        raceNumber: z.coerce.number().int().positive().optional(),
+        distanceMeters: z.coerce.number().int().positive().optional(),
+        trackCondition: z.enum(["dry", "wet", "muddy"]).optional(),
+        scheduleAt: z.iso
+            .datetime()
+            .transform((v) => new Date(v))
+            .optional(),
+        venue: z.string().max(255).optional(),
+        laneCount: z.coerce.number().int().positive().optional(),
+    })
+    .superRefine((data, ctx) => {
+        if (Object.keys(data).length === 0) {
+            ctx.addIssue({
+                code: "custom",
+                message: "At least one field must be provided",
+            });
+        }
+    });
+
+const updateRaceStatusSchema = z.object({
+    status: z.enum([
+        "draft",
+        "scheduled",
+        "pre_race",
+        "ongoing",
+        "under_review",
+        "result_confirmed",
+        "completed",
+        "postponed",
+        "cancelled",
+    ]),
+});
+
 export {
     usersQuerySchema,
     updateRoleSchema,
@@ -140,4 +189,7 @@ export {
     updateTournamentSchema,
     updateTournamentStatusSchema,
     tournamentReadinessSchema,
+    createRaceSchema,
+    updateRaceSchema,
+    updateRaceStatusSchema,
 };

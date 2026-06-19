@@ -3,8 +3,11 @@ import { Role } from "../types/roles.js";
 import { authMiddleware } from "../middleware/auth.js";
 import {
     createTournament,
+    createTournamentRace,
     getUser,
     getUsers,
+    updateRace,
+    updateRaceStatus,
     updateTournament,
     updateTournamentStatus,
     updateUserRole,
@@ -13,7 +16,10 @@ import {
 import { authorize } from "../middleware/authorize.js";
 import { validate } from "../middleware/validate.js";
 import {
+    createRaceSchema,
     createTournamentSchema,
+    updateRaceSchema,
+    updateRaceStatusSchema,
     updateRoleSchema,
     updateStatusSchema,
     updateTournamentSchema,
@@ -58,5 +64,26 @@ router.patch(
     authorize(Role.ADMIN),
     validate(updateTournamentStatusSchema),
     updateTournamentStatus,
+);
+router.post(
+    "/tournaments/:tournamentId/races",
+    authMiddleware,
+    authorize(Role.ADMIN),
+    validate(createRaceSchema),
+    createTournamentRace,
+);
+router.patch(
+    "/races/:raceId",
+    authMiddleware,
+    authorize(Role.ADMIN),
+    validate(updateRaceSchema),
+    updateRace,
+);
+router.patch(
+    "/races/:raceId/status",
+    authMiddleware,
+    authorize(Role.ADMIN),
+    validate(updateRaceStatusSchema),
+    updateRaceStatus,
 );
 export default router;

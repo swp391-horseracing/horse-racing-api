@@ -11,8 +11,8 @@ const tournamentsQuerySchema = z.object({
             "cancelled",
         ])
         .optional(),
-    startDateFrom: z.iso.datetime().optional(),
-    startDateTo: z.iso.datetime().optional(),
+    startDateFrom: z.iso.date().optional(),
+    startDateTo: z.iso.date().optional(),
     search: z.string().optional(),
     page: z.coerce.number().int().min(1).default(1).optional(),
     limit: z.coerce.number().int().min(1).max(100).default(10).optional(),

@@ -151,8 +151,9 @@ export const getTournamentRaces = async (
             return res.status(400).json({ message: "Invalid uuid" });
         }
 
+        const userRole = req.user?.role;
         const listRacescondition = and(
-            ne(races.status, "draft"),
+            userRole !== "admin" ? ne(races.status, "draft") : undefined,
             status ? eq(races.status, status) : undefined,
             eq(races.tournamentId, tournamentId),
         );
@@ -163,7 +164,6 @@ export const getTournamentRaces = async (
                     id: races.id,
                     tournamentId: races.tournamentId,
                     name: races.name,
-                    roundName: races.roundName,
                     distanceMeters: races.distanceMeters,
                     trackCondition: races.trackCondition,
                     scheduledAt: races.scheduleAt,
