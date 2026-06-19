@@ -800,7 +800,6 @@ const getJockeyInvitations = async (
                 race: {
                     id: races.id,
                     name: races.name,
-                    roundName: races.roundName,
                     scheduledAt: races.scheduleAt,
                     venue: races.venue,
                     status: races.status,
@@ -888,7 +887,6 @@ export const getInvitationDetail = async (
                 race: {
                     id: races.id,
                     name: races.name,
-                    roundName: races.roundName,
                     distanceMeters: races.distanceMeters,
                     trackCondition: races.trackCondition,
                     scheduledAt: races.scheduleAt,
