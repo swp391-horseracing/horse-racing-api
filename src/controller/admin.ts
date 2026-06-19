@@ -252,6 +252,17 @@ export const updateTournament = async (
             return res.status(400).json({ message: "Invalid uuid" });
         }
 
+        const [tournamentStatus] = await db
+            .select({ status: tournaments.status })
+            .from(tournaments)
+            .where(eq(tournaments.id, tournamentId));
+
+        if (tournamentStatus?.status == "ongoing") {
+            return res
+                .status(403)
+                .json({ message: "Cannot update a ongoing tournament" });
+        }
+
         const body = req.body;
         const [updatedTournament] = await db
             .update(tournaments)
@@ -406,6 +417,17 @@ export const updateRace = async (
         const raceId = req.params.raceId as string;
         if (!uuidValidate(raceId)) {
             return res.status(400).json({ message: "Invalid uuid" });
+        }
+
+        const [raceStatus] = await db
+            .select({ status: races.status })
+            .from(races)
+            .where(eq(races.id, raceId));
+
+        if (raceStatus?.status == "ongoing") {
+            return res
+                .status(403)
+                .json({ message: "Cannot update a ongoing race" });
         }
 
         const [race] = await db
