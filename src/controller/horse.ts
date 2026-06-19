@@ -1,5 +1,5 @@
 import { NextFunction, Request, Response } from "express";
-import { eq, and, or, ilike, sql, gte, lte } from "drizzle-orm";
+import { eq, and, ilike, sql, gte, lte } from "drizzle-orm";
 import { validate as uuidValidate } from "uuid";
 import db from "../config/db.js";
 import { horses } from "../schema/horses.js";
