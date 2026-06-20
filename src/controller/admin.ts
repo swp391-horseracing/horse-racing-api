@@ -252,32 +252,45 @@ export const updateTournament = async (
             return res.status(400).json({ message: "Invalid uuid" });
         }
 
-        const [tournamentStatus] = await db
-            .select({ status: tournaments.status })
-            .from(tournaments)
-            .where(eq(tournaments.id, tournamentId));
-
-        if (tournamentStatus?.status == "ongoing") {
-            return res
-                .status(403)
-                .json({ message: "Cannot update a ongoing tournament" });
-        }
-
         const body = req.body;
-        const [updatedTournament] = await db
-            .update(tournaments)
-            .set({
-                ...body,
-                updatedAt: new Date(),
-            })
-            .where(eq(tournaments.id, tournamentId))
-            .returning();
 
-        if (!updatedTournament) {
-            return res.status(404).json({ message: "Tournament not found" });
+        const result = await db.transaction(async (tx) => {
+            const [tournamentStatus] = await tx
+                .select({ status: tournaments.status })
+                .from(tournaments)
+                .where(eq(tournaments.id, tournamentId))
+                .for("update");
+
+            if (!tournamentStatus) {
+                return {
+                    ok: false as const,
+                    status: 404,
+                    message: "Tournament not found",
+                };
+            }
+
+            if (tournamentStatus.status === "ongoing") {
+                return {
+                    ok: false as const,
+                    status: 403,
+                    message: "Cannot update a ongoing tournament",
+                };
+            }
+
+            const [updatedTournament] = await tx
+                .update(tournaments)
+                .set({ ...body, updatedAt: new Date() })
+                .where(eq(tournaments.id, tournamentId))
+                .returning();
+
+            return { ok: true as const, tournament: updatedTournament };
+        });
+
+        if (!result.ok) {
+            return res.status(result.status).json({ message: result.message });
         }
 
-        res.json(updatedTournament);
+        res.json(result.tournament);
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
     } catch (err: any) {
         if (err?.cause?.code === "23514") {
@@ -419,54 +432,69 @@ export const updateRace = async (
             return res.status(400).json({ message: "Invalid uuid" });
         }
 
-        const [raceStatus] = await db
-            .select({ status: races.status })
-            .from(races)
-            .where(eq(races.id, raceId));
-
-        if (raceStatus?.status == "ongoing") {
-            return res
-                .status(403)
-                .json({ message: "Cannot update a ongoing race" });
-        }
-
-        const [race] = await db
-            .select({ id: races.id, tournamentId: races.tournamentId })
-            .from(races)
-            .where(eq(races.id, raceId));
-
-        if (!race) {
-            return res.status(404).json({ message: "Race not found" });
-        }
-
-        if (req.body.scheduleAt) {
-            const [tournament] = await db
+        const result = await db.transaction(async (tx) => {
+            const [race] = await tx
                 .select({
-                    startDate: tournaments.startDate,
-                    endDate: tournaments.endDate,
+                    status: races.status,
+                    tournamentId: races.tournamentId,
                 })
-                .from(tournaments)
-                .where(eq(tournaments.id, race.tournamentId));
+                .from(races)
+                .where(eq(races.id, raceId))
+                .for("update");
 
-            if (
-                tournament &&
-                (req.body.scheduleAt < tournament.startDate ||
-                    req.body.scheduleAt > tournament.endDate)
-            ) {
-                return res.status(400).json({
-                    message:
-                        "scheduleAt must be between tournament start and end dates",
-                });
+            if (!race) {
+                return {
+                    ok: false as const,
+                    status: 404,
+                    message: "Race not found",
+                };
             }
+
+            if (race.status === "ongoing") {
+                return {
+                    ok: false as const,
+                    status: 403,
+                    message: "Cannot update a ongoing race",
+                };
+            }
+
+            if (req.body.scheduleAt) {
+                const [tournament] = await tx
+                    .select({
+                        startDate: tournaments.startDate,
+                        endDate: tournaments.endDate,
+                    })
+                    .from(tournaments)
+                    .where(eq(tournaments.id, race.tournamentId));
+
+                if (
+                    tournament &&
+                    (req.body.scheduleAt < tournament.startDate ||
+                        req.body.scheduleAt > tournament.endDate)
+                ) {
+                    return {
+                        ok: false as const,
+                        status: 400,
+                        message:
+                            "scheduleAt must be between tournament start and end dates",
+                    };
+                }
+            }
+
+            const [updatedRace] = await tx
+                .update(races)
+                .set({ ...req.body, updatedAt: new Date() })
+                .where(eq(races.id, raceId))
+                .returning();
+
+            return { ok: true as const, race: updatedRace };
+        });
+
+        if (!result.ok) {
+            return res.status(result.status).json({ message: result.message });
         }
 
-        const [updatedRace] = await db
-            .update(races)
-            .set({ ...req.body, updatedAt: new Date() })
-            .where(eq(races.id, raceId))
-            .returning();
-
-        res.json(updatedRace);
+        res.json(result.race);
     } catch (err) {
         next(err);
     }
