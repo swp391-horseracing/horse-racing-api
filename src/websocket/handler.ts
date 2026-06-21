@@ -4,7 +4,14 @@ import { URL } from "url";
 import jwt from "jsonwebtoken";
 import config from "../config/config.js";
 import { eventBus } from "./eventBus.js";
-import { addClient, removeClient, broadcast } from "./broadcast.js";
+import {
+    addClient,
+    removeClient,
+    subscribeClient,
+    unsubscribeClient,
+    broadcastToTopic,
+} from "./broadcast.js";
+import { Role } from "../types/roles.js";
 
 const HEARTBEAT_INTERVAL = 15_000;
 
@@ -27,11 +34,15 @@ function authenticateToken(token: string): Express.User | null {
 
 export function setupWebSocket(wss: WebSocketServer): void {
     eventBus.on("race:status_changed", (event) => {
-        broadcast(event);
+        broadcastToTopic(event, `race:${event.data.raceId}`);
+    });
+
+    eventBus.on("race:result_updated", (event) => {
+        broadcastToTopic(event, `race:${event.data.raceId}`, Role.ADMIN);
     });
 
     eventBus.on("race:result_published", (event) => {
-        broadcast(event);
+        broadcastToTopic(event, `race:${event.data.raceId}`);
     });
 
     wss.on("connection", (ws: WebSocket, req: IncomingMessage) => {
@@ -46,17 +57,25 @@ export function setupWebSocket(wss: WebSocketServer): void {
         ws.send(
             JSON.stringify({
                 type: "connection:ack",
-                data: { userId: user?.id ?? null },
+                data: { userId: user?.id ?? null, role: user?.role ?? null },
             }),
         );
 
-        addClient(ws);
+        addClient(ws, user);
 
         ws.on("message", (data) => {
             try {
                 const msg = JSON.parse(data.toString());
-                if (msg.type === "ping") {
-                    ws.send(JSON.stringify({ type: "pong" }));
+                switch (msg.type) {
+                    case "ping":
+                        ws.send(JSON.stringify({ type: "pong" }));
+                        break;
+                    case "subscribe":
+                        subscribeClient(ws, msg.topics);
+                        break;
+                    case "unsubscribe":
+                        unsubscribeClient(ws, msg.topics);
+                        break;
                 }
             } catch {
                 // ignore malformed messages
