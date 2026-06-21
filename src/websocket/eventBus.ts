@@ -15,6 +15,15 @@ export type RaceStatusChangedEvent = BaseEvent<
     }
 >;
 
+export type RaceResultUpdatedEvent = BaseEvent<
+    "race:result_updated",
+    {
+        raceId: string;
+        resultId: string;
+        timestamp: string;
+    }
+>;
+
 export type RaceResultPublishedEvent = BaseEvent<
     "race:result_published",
     {
@@ -24,10 +33,14 @@ export type RaceResultPublishedEvent = BaseEvent<
     }
 >;
 
-export type AppEvent = RaceStatusChangedEvent | RaceResultPublishedEvent;
+export type AppEvent =
+    | RaceStatusChangedEvent
+    | RaceResultUpdatedEvent
+    | RaceResultPublishedEvent;
 
 type EventMap = {
     "race:status_changed": RaceStatusChangedEvent;
+    "race:result_updated": RaceResultUpdatedEvent;
     "race:result_published": RaceResultPublishedEvent;
 };
 
