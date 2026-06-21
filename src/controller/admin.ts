@@ -10,6 +10,7 @@ import { getPagination, paginatedResponse } from "../utils/paginate.js";
 import db from "../config/db.js";
 import { tournaments } from "../schema/tournament.js";
 import { races } from "../schema/races.js";
+import { eventBus } from "../websocket/eventBus.js";
 
 export const getUsers = async (
     req: Request,
@@ -583,6 +584,19 @@ export const updateRaceStatus = async (
             return res.status(409).json({
                 message: "Race status changed concurrently. Please retry.",
             });
+        }
+        try {
+            eventBus.emit({
+                type: "race:status_changed",
+                data: {
+                    raceId,
+                    status: updatedRace.status,
+                    previousStatus: race.status,
+                    timestamp: new Date().toISOString(),
+                },
+            });
+        } catch (emitErr) {
+            console.error(`Failed to emit race:status_changed ${emitErr}`);
         }
 
         res.json(updatedRace);
