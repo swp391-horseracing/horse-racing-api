@@ -10,6 +10,7 @@ import { getPagination, paginatedResponse } from "../utils/paginate.js";
 import db from "../config/db.js";
 import { tournaments } from "../schema/tournament.js";
 import { races } from "../schema/races.js";
+import { eventBus } from "../websocket/eventBus.js";
 
 export const getUsers = async (
     req: Request,
@@ -584,6 +585,16 @@ export const updateRaceStatus = async (
                 message: "Race status changed concurrently. Please retry.",
             });
         }
+
+        eventBus.emit({
+            type: "race:status_changed",
+            data: {
+                raceId,
+                status: updatedRace.status,
+                previousStatus: race.status,
+                timestamp: new Date().toISOString(),
+            },
+        });
 
         res.json(updatedRace);
     } catch (err) {
