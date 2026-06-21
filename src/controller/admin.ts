@@ -585,16 +585,19 @@ export const updateRaceStatus = async (
                 message: "Race status changed concurrently. Please retry.",
             });
         }
-
-        eventBus.emit({
-            type: "race:status_changed",
-            data: {
-                raceId,
-                status: updatedRace.status,
-                previousStatus: race.status,
-                timestamp: new Date().toISOString(),
-            },
-        });
+        try {
+            eventBus.emit({
+                type: "race:status_changed",
+                data: {
+                    raceId,
+                    status: updatedRace.status,
+                    previousStatus: race.status,
+                    timestamp: new Date().toISOString(),
+                },
+            });
+        } catch (emitErr) {
+            console.error(`Failed to emit race:status_changed ${emitErr}`);
+        }
 
         res.json(updatedRace);
     } catch (err) {
