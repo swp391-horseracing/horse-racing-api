@@ -88,6 +88,58 @@ export const getHorseEntries = async (
     }
 };
 
+export const getRaceEntries = async (
+    req: Request,
+    res: Response,
+    next: NextFunction,
+) => {
+    try {
+        const raceId = req.params.raceId as string;
+        if (!uuidValidate(raceId)) {
+            return res.status(400).json({ message: "Invalid uuid" });
+        }
+
+        const userRole = req.user?.role;
+        const [race] = await db
+            .select()
+            .from(races)
+            .where(
+                userRole === "admin"
+                    ? eq(races.id, raceId)
+                    : and(eq(races.id, raceId), ne(races.status, "draft")),
+            );
+
+        if (!race) {
+            return res.status(404).json({ message: "Race not found" });
+        }
+
+        const entries = await db
+            .select({
+                entryId: raceEntries.id,
+                laneNumber: raceEntries.laneNumber,
+                entryStatus: raceEntries.entryStatus,
+                horse: {
+                    id: horses.id,
+                    name: horses.name,
+                    breed: horses.breed,
+                },
+                jockey: {
+                    id: users.id,
+                    name: users.fullName,
+                },
+            })
+            .from(raceEntries)
+            .innerJoin(horses, eq(raceEntries.horseId, horses.id))
+            .leftJoin(users, eq(raceEntries.jockeyId, users.id))
+            .where(eq(raceEntries.raceId, raceId))
+            .orderBy(raceEntries.laneNumber);
+
+        res.json(entries);
+    } catch (err) {
+        next(err);
+    }
+};
+
 export const createPrediction = async (
     req: Request,
     res: Response,

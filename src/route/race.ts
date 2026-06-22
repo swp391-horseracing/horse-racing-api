@@ -1,6 +1,7 @@
 import { Router } from "express";
 import {
     createPrediction,
+    getRaceEntries,
     getHorseEntries,
     getRace,
 } from "../controller/race.js";
@@ -13,6 +14,7 @@ const router = Router();
 
 router.get("/:raceId", optionalAuthMiddleware, getRace);
 router.get("/:raceId/horses", optionalAuthMiddleware, getHorseEntries);
+router.get("/:raceId/entries", optionalAuthMiddleware, getRaceEntries);
 router.post(
     "/:raceId/predictions",
     authMiddleware,
