@@ -363,10 +363,23 @@ export const createViolation = async (
             }
 
             if (severity === "disqualification") {
+                const [current] = await tx
+                    .select({ finishStatus: raceResultEntries.finishStatus })
+                    .from(raceResultEntries)
+                    .where(
+                        and(
+                            eq(raceResultEntries.raceId, raceId),
+                            eq(raceResultEntries.entryId, entryId),
+                        ),
+                    )
+                    .for("update");
+
                 await tx
                     .update(raceResultEntries)
                     .set({
                         finishStatus: "dsq",
+                        previousFinishStatus:
+                            current?.finishStatus ?? "finished",
                         violationId: v.id,
                     })
                     .where(
@@ -439,7 +452,11 @@ export const deleteViolation = async (
         }
 
         const [violation] = await db
-            .select({ id: violations.id })
+            .select({
+                id: violations.id,
+                severity: violations.severity,
+                previousFinishStatus: raceResultEntries.previousFinishStatus,
+            })
             .from(violations)
             .innerJoin(
                 raceResultEntries,
@@ -459,7 +476,17 @@ export const deleteViolation = async (
         await db.transaction(async (tx) => {
             await tx
                 .update(raceResultEntries)
-                .set({ violationId: null, finishStatus: "finished" })
+                .set(
+                    violation.severity === "disqualification"
+                        ? {
+                              violationId: null,
+                              finishStatus:
+                                  violation.previousFinishStatus ??
+                                  "finished",
+                              previousFinishStatus: null,
+                          }
+                        : { violationId: null },
+                )
                 .where(
                     and(
                         eq(raceResultEntries.raceId, raceId),
