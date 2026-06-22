@@ -1,7 +1,7 @@
 import { NextFunction, Request, Response } from "express";
 import { jockeyQuerySchema } from "../validator/jockey.js";
 import { getPagination, paginatedResponse } from "../utils/paginate.js";
-import { and, ilike, ne, sql } from "drizzle-orm";
+import { and, eq, ilike, ne, sql } from "drizzle-orm";
 import { users } from "../schema/users.js";
 import db from "../config/db.js";
 
@@ -27,6 +27,7 @@ export const getJockeys = async (
         const conditions = and(
             search ? ilike(users.fullName, `%${search}%`) : undefined,
             ne(users.status, "locked"),
+            eq(users.role, "jockey"),
         );
 
         const [data, count] = await Promise.all([
