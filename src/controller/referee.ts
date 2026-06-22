@@ -12,43 +12,49 @@ import { horses } from "../schema/horses.js";
 import { users } from "../schema/users.js";
 
 async function ensureReportInitialized(raceId: string) {
-    const [existing] = await db
-        .select({ id: raceResults.id })
-        .from(raceResults)
-        .where(eq(raceResults.raceId, raceId));
+    await db.transaction(async (tx) => {
+        const [race] = await tx
+            .select({ id: races.id })
+            .from(races)
+            .where(eq(races.id, raceId))
+            .for("update");
 
-    if (existing) return existing;
+        if (!race) throw new Error("Race not found");
 
-    const [result] = await db
-        .insert(raceResults)
-        .values({ raceId })
-        .returning();
+        const [existing] = await tx
+            .select({ id: raceResults.id })
+            .from(raceResults)
+            .where(eq(raceResults.raceId, raceId));
 
-    if (!result) {
-        throw new Error("Failed to initialize report");
-    }
+        if (existing) return;
 
-    const entries = await db
-        .select({ id: raceEntries.id })
-        .from(raceEntries)
-        .where(
-            and(
-                eq(raceEntries.raceId, raceId),
-                eq(raceEntries.entryStatus, "confirmed"),
-            ),
-        );
+        const [result] = await tx
+            .insert(raceResults)
+            .values({ raceId })
+            .returning();
 
-    if (entries.length > 0) {
-        await db.insert(raceResultEntries).values(
-            entries.map((e) => ({
-                raceId,
-                resultId: result.id,
-                entryId: e.id,
-            })),
-        );
-    }
+        if (!result) throw new Error("Failed to initialize report");
 
-    return result;
+        const entries = await tx
+            .select({ id: raceEntries.id })
+            .from(raceEntries)
+            .where(
+                and(
+                    eq(raceEntries.raceId, raceId),
+                    eq(raceEntries.entryStatus, "confirmed"),
+                ),
+            );
+
+        if (entries.length > 0) {
+            await tx.insert(raceResultEntries).values(
+                entries.map((e) => ({
+                    raceId,
+                    resultId: result.id,
+                    entryId: e.id,
+                })),
+            );
+        }
+    });
 }
 
 export const getRefereeRaceReport = async (
@@ -423,7 +429,10 @@ export const deleteViolation = async (
             .from(raceResults)
             .where(eq(raceResults.raceId, raceId));
 
-        if (!report || report.status !== "draft") {
+        if (!report) {
+            return res.status(404).json({ message: "Report not found" });
+        }
+        if (report.status !== "draft") {
             return res.status(409).json({
                 message: "Report is not in draft status",
             });
