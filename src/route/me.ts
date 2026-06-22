@@ -11,6 +11,7 @@ import {
     confirmJockey,
     getMyInvitations,
     getInvitationDetail,
+    getMyPredictions,
 } from "../controller/me.js";
 import { authMiddleware } from "../middleware/auth.js";
 import { authorize } from "../middleware/authorize.js";
@@ -77,6 +78,14 @@ router.patch(
     authMiddleware,
     authorize(Role.JOCKEY),
     acceptInvitation,
+);
+
+// spectator predictions
+router.get(
+    "/predictions",
+    authMiddleware,
+    authorize(Role.SPECTATOR),
+    getMyPredictions,
 );
 
 export default router;
