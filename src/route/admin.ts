@@ -90,12 +90,7 @@ router.patch(
     updateRaceStatus,
 );
 
-router.get(
-    "/reports",
-    authMiddleware,
-    authorize(Role.ADMIN),
-    getReports,
-);
+router.get("/reports", authMiddleware, authorize(Role.ADMIN), getReports);
 
 router.get(
     "/races/:raceId/report",

@@ -749,9 +749,7 @@ export const getReports = async (
                 .where(conditions),
         ]);
 
-        res.json(
-            paginatedResponse(data, Number(count[0]?.count ?? 0), p, l),
-        );
+        res.json(paginatedResponse(data, Number(count[0]?.count ?? 0), p, l));
     } catch (err) {
         next(err);
     }
@@ -850,10 +848,16 @@ export const getRaceReport = async (
                 },
             })
             .from(raceResultEntries)
-            .innerJoin(raceEntries, eq(raceResultEntries.entryId, raceEntries.id))
+            .innerJoin(
+                raceEntries,
+                eq(raceResultEntries.entryId, raceEntries.id),
+            )
             .innerJoin(horses, eq(raceEntries.horseId, horses.id))
             .leftJoin(users, eq(raceEntries.jockeyId, users.id))
-            .leftJoin(violations, eq(raceResultEntries.violationId, violations.id))
+            .leftJoin(
+                violations,
+                eq(raceResultEntries.violationId, violations.id),
+            )
             .where(eq(raceResultEntries.raceId, raceId))
             .orderBy(raceResultEntries.finishedPosition);
 
