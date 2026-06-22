@@ -1,4 +1,4 @@
-import { pgTable, timestamp, uuid, pgEnum, unique } from "drizzle-orm/pg-core";
+import { pgTable, timestamp, uuid, pgEnum, unique, text } from "drizzle-orm/pg-core";
 import { races } from "./races.js";
 import { users } from "./users.js";
 
@@ -22,6 +22,7 @@ export const raceResults = pgTable(
             () => users.id,
         ),
         refereeConfirmedAt: timestamp("referee_confirmed_at"),
+        notes: text("notes"),
         publishedBy: uuid("published_by").references(() => users.id),
         publishedAt: timestamp("published_at"),
         createdAt: timestamp("created_at").defaultNow().notNull(),
