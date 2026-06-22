@@ -1,5 +1,5 @@
 import { NextFunction, Request, Response } from "express";
-import { eq, and, ilike, sql, gte, lte } from "drizzle-orm";
+import { eq, and, ilike, sql, gte, lte, desc } from "drizzle-orm";
 import { validate as uuidValidate } from "uuid";
 import db from "../config/db.js";
 import { horses } from "../schema/horses.js";
@@ -72,6 +72,7 @@ export const getHorses = async (
                 })
                 .from(horses)
                 .where(conditions)
+                .orderBy(desc(horses.createdAt), desc(horses.id))
                 .limit(l)
                 .offset(offset),
             db
@@ -139,6 +140,7 @@ export const getOwnerHorses = async (
                 })
                 .from(horses)
                 .where(conditions)
+                .orderBy(desc(horses.createdAt), desc(horses.id))
                 .limit(l)
                 .offset(offset),
             db
