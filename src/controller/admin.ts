@@ -9,12 +9,15 @@ import {
     and,
     desc,
     eq,
+    ExtractTablesWithRelations,
     ilike,
     inArray,
     isNotNull,
     isNull,
     sql,
 } from "drizzle-orm";
+import type { PgTransaction } from "drizzle-orm/pg-core";
+import type { NodePgQueryResultHKT } from "drizzle-orm/node-postgres";
 import { getPagination, paginatedResponse } from "../utils/paginate.js";
 import db from "../config/db.js";
 import { tournaments } from "../schema/tournament.js";
@@ -518,8 +521,15 @@ export const updateRace = async (
     }
 };
 
-async function resolvePredictions(raceId: string) {
-    const results = await db
+async function resolvePredictions(
+    raceId: string,
+    tx: PgTransaction<
+        NodePgQueryResultHKT,
+        Record<string, never>,
+        ExtractTablesWithRelations<Record<string, never>>
+    >,
+) {
+    const results = await tx
         .select({
             entryId: raceResultEntries.entryId,
             position: raceResultEntries.finishedPosition,
@@ -534,7 +544,7 @@ async function resolvePredictions(raceId: string) {
 
     const resultMap = new Map(results.map((r) => [r.entryId, r.position]));
 
-    const pendingPredictions = await db
+    const pendingPredictions = await tx
         .select({
             id: predictions.id,
             predictedEntryId: predictions.predictedEntryId,
@@ -559,13 +569,13 @@ async function resolvePredictions(raceId: string) {
 
     await Promise.all([
         correctIds.length > 0
-            ? db
+            ? tx
                   .update(predictions)
                   .set({ isCorrect: true, rewardAmount: "100.00" })
                   .where(inArray(predictions.id, correctIds))
             : Promise.resolve(),
         incorrectIds.length > 0
-            ? db
+            ? tx
                   .update(predictions)
                   .set({ isCorrect: false })
                   .where(inArray(predictions.id, incorrectIds))
@@ -930,7 +940,7 @@ export const publishRaceResult = async (
                 throw new Error("Failed to complete race");
             }
 
-            await resolvePredictions(raceId);
+            await resolvePredictions(raceId, tx);
         });
 
         try {
