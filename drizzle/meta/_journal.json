@@ -64,6 +64,13 @@
       "when": 1782105251241,
       "tag": "0008_curly_ares",
       "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1782145645517,
+      "tag": "0009_fuzzy_squadron_sinister",
+      "breakpoints": true
     }
   ]
 }
