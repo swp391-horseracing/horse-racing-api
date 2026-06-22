@@ -3,7 +3,10 @@ import { z } from "zod/v4";
 const placementItemSchema = z.object({
     entryId: z.uuid(),
     finishedPosition: z.number().int().positive(),
-    finishTime: z.string().regex(/^\d+(\.\d{1,3})?$/),
+    finishTime: z
+        .string()
+        .regex(/^\d+(\.\d{1,3})?$/)
+        .optional(),
     finishStatus: z.enum(["finished", "dnf", "dsq", "dns"]).default("finished"),
     points: z.number().int().min(0).default(0),
 });
