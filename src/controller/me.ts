@@ -6,6 +6,7 @@ import { and, eq, ilike, inArray, isNull, ne, sql, desc } from "drizzle-orm";
 import { jockeyProfile } from "../schema/jockeyProfile.js";
 import { raceEntries } from "../schema/raceEntries.js";
 import { races } from "../schema/races.js";
+import { raceResults } from "../schema/raceResults.js";
 import {
     tournamentRacesQuerySchema,
     myRegistrationsQuerySchema,
@@ -16,6 +17,7 @@ import { predictions } from "../schema/predictions.js";
 import { alias } from "drizzle-orm/pg-core";
 import { tournamentRegistrations } from "../schema/tournamentRegistrations.js";
 import { tournaments } from "../schema/tournament.js";
+import { refereeAssignments } from "../schema/refereeAssignments.js";
 import { jockeyInvitations } from "../schema/jockeyInvitations.js";
 import {
     inviteJockeySchema,
@@ -172,6 +174,46 @@ const getOwnerRaces = async (userId: string, limit: number, offset: number) => {
     return { data, count };
 };
 
+const getRefereeRaces = async (
+    userId: string,
+    limit: number,
+    offset: number,
+) => {
+    const whereCondition = eq(refereeAssignments.refereeId, userId);
+    const [data, count] = await Promise.all([
+        db
+            .select({
+                id: races.id,
+                tournamentId: races.tournamentId,
+                name: races.name,
+                raceNumber: races.raceNumber,
+                distanceMeters: races.distanceMeters,
+                trackCondition: races.trackCondition,
+                scheduledAt: races.scheduleAt,
+                venue: races.venue,
+                laneCount: races.laneCount,
+                status: races.status,
+                tournamentName: tournaments.name,
+                resultStatus: raceResults.resultStatus,
+            })
+            .from(refereeAssignments)
+            .innerJoin(races, eq(refereeAssignments.raceId, races.id))
+            .leftJoin(tournaments, eq(races.tournamentId, tournaments.id))
+            .leftJoin(raceResults, eq(raceResults.raceId, races.id))
+            .where(whereCondition)
+            .limit(limit)
+            .offset(offset)
+            .orderBy(races.scheduleAt),
+        db
+            .select({ count: sql<number>`count(*)` })
+            .from(refereeAssignments)
+            .innerJoin(races, eq(refereeAssignments.raceId, races.id))
+            .where(whereCondition),
+    ]);
+
+    return { data, count };
+};
+
 export const getMeRaces = async (
     req: Request,
     res: Response,
@@ -207,6 +249,9 @@ export const getMeRaces = async (
                 break;
             case "horse_owner":
                 result = await getOwnerRaces(user.id, l, offset);
+                break;
+            case "referee":
+                result = await getRefereeRaces(user.id, l, offset);
                 break;
             default:
                 return res
