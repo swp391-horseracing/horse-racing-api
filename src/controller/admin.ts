@@ -652,10 +652,6 @@ export const updateRaceStatus = async (
             });
         }
 
-        if (status === "completed") {
-            await resolvePredictions(raceId);
-        }
-
         try {
             eventBus.emit({
                 type: "race:status_changed",
