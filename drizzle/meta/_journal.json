@@ -43,6 +43,20 @@
       "when": 1781783818530,
       "tag": "0005_chilly_moon_knight",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1782036114562,
+      "tag": "0006_massive_barracuda",
+      "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1782097665584,
+      "tag": "0007_sudden_namor",
+      "breakpoints": true
     }
   ]
 }
