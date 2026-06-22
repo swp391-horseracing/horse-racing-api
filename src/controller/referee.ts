@@ -481,8 +481,7 @@ export const deleteViolation = async (
                         ? {
                               violationId: null,
                               finishStatus:
-                                  violation.previousFinishStatus ??
-                                  "finished",
+                                  violation.previousFinishStatus ?? "finished",
                               previousFinishStatus: null,
                           }
                         : { violationId: null },
