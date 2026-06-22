@@ -5,11 +5,22 @@ import {
     usersQuerySchema,
 } from "../validator/admin.js";
 import { users } from "../schema/users.js";
-import { and, desc, eq, ilike, sql } from "drizzle-orm";
+import {
+    and,
+    desc,
+    eq,
+    ilike,
+    inArray,
+    isNotNull,
+    isNull,
+    sql,
+} from "drizzle-orm";
 import { getPagination, paginatedResponse } from "../utils/paginate.js";
 import db from "../config/db.js";
 import { tournaments } from "../schema/tournament.js";
 import { races } from "../schema/races.js";
+import { predictions } from "../schema/predictions.js";
+import { raceResultEntries } from "../schema/raceResultEntries.js";
 import { eventBus } from "../websocket/eventBus.js";
 
 export const getUsers = async (
@@ -501,6 +512,61 @@ export const updateRace = async (
     }
 };
 
+async function resolvePredictions(raceId: string) {
+    const results = await db
+        .select({
+            entryId: raceResultEntries.entryId,
+            position: raceResultEntries.finishedPosition,
+        })
+        .from(raceResultEntries)
+        .where(
+            and(
+                eq(raceResultEntries.raceId, raceId),
+                isNotNull(raceResultEntries.finishedPosition),
+            ),
+        );
+
+    const resultMap = new Map(results.map((r) => [r.entryId, r.position]));
+
+    const pendingPredictions = await db
+        .select({
+            id: predictions.id,
+            predictedEntryId: predictions.predictedEntryId,
+            predictedPosition: predictions.predictedPosition,
+        })
+        .from(predictions)
+        .where(
+            and(eq(predictions.raceId, raceId), isNull(predictions.isCorrect)),
+        );
+
+    const correctIds: string[] = [];
+    const incorrectIds: string[] = [];
+
+    for (const p of pendingPredictions) {
+        const actualPosition = resultMap.get(p.predictedEntryId);
+        if (actualPosition === p.predictedPosition) {
+            correctIds.push(p.id);
+        } else {
+            incorrectIds.push(p.id);
+        }
+    }
+
+    await Promise.all([
+        correctIds.length > 0
+            ? db
+                  .update(predictions)
+                  .set({ isCorrect: true, rewardAmount: "100.00" })
+                  .where(inArray(predictions.id, correctIds))
+            : Promise.resolve(),
+        incorrectIds.length > 0
+            ? db
+                  .update(predictions)
+                  .set({ isCorrect: false })
+                  .where(inArray(predictions.id, incorrectIds))
+            : Promise.resolve(),
+    ]);
+}
+
 export const updateRaceStatus = async (
     req: Request,
     res: Response,
@@ -585,6 +651,11 @@ export const updateRaceStatus = async (
                 message: "Race status changed concurrently. Please retry.",
             });
         }
+
+        if (status === "completed") {
+            await resolvePredictions(raceId);
+        }
+
         try {
             eventBus.emit({
                 type: "race:status_changed",
