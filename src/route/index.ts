@@ -8,6 +8,7 @@ import tournamentRoutes from "./tournament.js";
 import meRoutes from "./me.js";
 import adminRoutes from "./admin.js";
 import jockeyRoutes from "./jockey.js";
+import refereeRoutes from "./referee.js";
 
 const router = Router();
 
@@ -16,6 +17,7 @@ router.use("/admin", adminRoutes);
 router.use("/me", meRoutes);
 router.use("/profiles", profileRoutes);
 router.use("/jockeys", jockeyRoutes);
+router.use("/referee", refereeRoutes);
 router.use("/schedules", scheduleRoutes);
 router.use("/races", raceRoutes);
 router.use("/horses", horseRoutes);

@@ -1,0 +1,1 @@
+ALTER TABLE "race_result_entries" ADD COLUMN "previous_finish_status" "finish_status";
