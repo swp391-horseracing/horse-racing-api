@@ -4,8 +4,11 @@ import { authMiddleware } from "../middleware/auth.js";
 import {
     createTournament,
     createTournamentRace,
+    getRaceReport,
+    getReports,
     getUser,
     getUsers,
+    publishRaceResult,
     updateRace,
     updateRaceStatus,
     updateTournament,
@@ -86,4 +89,26 @@ router.patch(
     validate(updateRaceStatusSchema),
     updateRaceStatus,
 );
+
+router.get(
+    "/reports",
+    authMiddleware,
+    authorize(Role.ADMIN),
+    getReports,
+);
+
+router.get(
+    "/races/:raceId/report",
+    authMiddleware,
+    authorize(Role.ADMIN),
+    getRaceReport,
+);
+
+router.patch(
+    "/races/:raceId/publish",
+    authMiddleware,
+    authorize(Role.ADMIN),
+    publishRaceResult,
+);
+
 export default router;
