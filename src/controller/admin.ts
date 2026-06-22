@@ -5,7 +5,16 @@ import {
     usersQuerySchema,
 } from "../validator/admin.js";
 import { users } from "../schema/users.js";
-import { and, desc, eq, ilike, inArray, isNotNull, isNull, sql } from "drizzle-orm";
+import {
+    and,
+    desc,
+    eq,
+    ilike,
+    inArray,
+    isNotNull,
+    isNull,
+    sql,
+} from "drizzle-orm";
 import { getPagination, paginatedResponse } from "../utils/paginate.js";
 import db from "../config/db.js";
 import { tournaments } from "../schema/tournament.js";
@@ -527,10 +536,7 @@ async function resolvePredictions(raceId: string) {
         })
         .from(predictions)
         .where(
-            and(
-                eq(predictions.raceId, raceId),
-                isNull(predictions.isCorrect),
-            ),
+            and(eq(predictions.raceId, raceId), isNull(predictions.isCorrect)),
         );
 
     const correctIds: string[] = [];

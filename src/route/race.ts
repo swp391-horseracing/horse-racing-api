@@ -1,5 +1,9 @@
 import { Router } from "express";
-import { createPrediction, getHorseEntries, getRace } from "../controller/race.js";
+import {
+    createPrediction,
+    getHorseEntries,
+    getRace,
+} from "../controller/race.js";
 import { optionalAuthMiddleware } from "../middleware/optionalAuth.js";
 import { authMiddleware } from "../middleware/auth.js";
 import { authorize } from "../middleware/authorize.js";

@@ -128,7 +128,8 @@ export const createPrediction = async (
 
         if (!["scheduled", "pre_race"].includes(race.status)) {
             return res.status(400).json({
-                message: "Predictions can only be placed on scheduled or pre-race races",
+                message:
+                    "Predictions can only be placed on scheduled or pre-race races",
             });
         }
 
