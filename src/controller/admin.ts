@@ -860,25 +860,18 @@ export const assignRaceReferee = async (
                 };
             }
 
-            const [existing] = await tx
-                .select({ id: refereeAssignments.id })
-                .from(refereeAssignments)
-                .where(eq(refereeAssignments.raceId, raceId));
-
-            const [assignment] = existing
-                ? await tx
-                      .update(refereeAssignments)
-                      .set({
-                          refereeId,
-                          assignedBy: admin.id,
-                          assignedAt: new Date(),
-                      })
-                      .where(eq(refereeAssignments.id, existing.id))
-                      .returning()
-                : await tx
-                      .insert(refereeAssignments)
-                      .values({ raceId, refereeId, assignedBy: admin.id })
-                      .returning();
+            const [assignment] = await tx
+                .insert(refereeAssignments)
+                .values({ raceId, refereeId, assignedBy: admin.id })
+                .onConflictDoUpdate({
+                    target: refereeAssignments.raceId,
+                    set: {
+                        refereeId,
+                        assignedBy: admin.id,
+                        assignedAt: new Date(),
+                    },
+                })
+                .returning();
 
             return { ok: true as const, assignment };
         });
