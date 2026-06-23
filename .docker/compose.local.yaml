@@ -24,10 +24,10 @@ services:
       PGADMIN_DEFAULT_PASSWORD: test123
 
       # Don't require the user to login
-      PGADMIN_CONFIG_SERVER_MODE: 'False'
+      PGADMIN_CONFIG_SERVER_MODE: "False"
 
       # Don't require a "master" password after logging in
-      PGADMIN_CONFIG_MASTER_PASSWORD_REQUIRED: 'False'
+      PGADMIN_CONFIG_MASTER_PASSWORD_REQUIRED: "False"
     networks:
       - api
   cloudbeaver:

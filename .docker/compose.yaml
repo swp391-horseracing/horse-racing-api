@@ -19,10 +19,10 @@ services:
     environment:
       # Required by pgAdmin
       PGADMIN_DEFAULT_EMAIL: ${PGADMIN_EMAIL}
-      PGADMIN_DEFAULT_PASSWORD: $[PGADMIN_PASSWORD]
+      PGADMIN_DEFAULT_PASSWORD: ${PGADMIN_PASSWORD}
 
       # Don't require a "master" password after logging in
-      PGADMIN_CONFIG_MASTER_PASSWORD_REQUIRED: 'False'
+      PGADMIN_CONFIG_MASTER_PASSWORD_REQUIRED: "False"
     networks:
       - api
   api:
