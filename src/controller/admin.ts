@@ -6,15 +6,33 @@ import {
     usersQuerySchema,
 } from "../validator/admin.js";
 import { users } from "../schema/users.js";
-import { and, desc, eq, ilike, sql } from "drizzle-orm";
+import {
+    and,
+    desc,
+    eq,
+    ExtractTablesWithRelations,
+    ilike,
+    inArray,
+    isNotNull,
+    isNull,
+    sql,
+} from "drizzle-orm";
+import type { PgTransaction } from "drizzle-orm/pg-core";
+import type { NodePgQueryResultHKT } from "drizzle-orm/node-postgres";
 import { getPagination, paginatedResponse } from "../utils/paginate.js";
 import db from "../config/db.js";
 import { tournaments } from "../schema/tournament.js";
 import { races } from "../schema/races.js";
-import { eventBus } from "../websocket/eventBus.js";
-import { horses } from "../schema/horses.js";
-import { tournamentRegistrations } from "../schema/tournamentRegistrations.js";
+import { predictions } from "../schema/predictions.js";
+import { raceResultEntries } from "../schema/raceResultEntries.js";
+import { raceEntries } from "../schema/raceEntries.js";
+import { raceResults } from "../schema/raceResults.js";
 import { refereeAssignments } from "../schema/refereeAssignments.js";
+import { violations } from "../schema/violations.js";
+import { horses } from "../schema/horses.js";
+import { reportsQuerySchema } from "../validator/report.js";
+import { eventBus } from "../websocket/eventBus.js";
+import { tournamentRegistrations } from "../schema/tournamentRegistrations.js";
 
 export const getUsers = async (
     req: Request,
@@ -505,6 +523,68 @@ export const updateRace = async (
     }
 };
 
+async function resolvePredictions(
+    raceId: string,
+    tx: PgTransaction<
+        NodePgQueryResultHKT,
+        Record<string, never>,
+        ExtractTablesWithRelations<Record<string, never>>
+    >,
+) {
+    const results = await tx
+        .select({
+            entryId: raceResultEntries.entryId,
+            position: raceResultEntries.finishedPosition,
+        })
+        .from(raceResultEntries)
+        .where(
+            and(
+                eq(raceResultEntries.raceId, raceId),
+                isNotNull(raceResultEntries.finishedPosition),
+            ),
+        );
+
+    const resultMap = new Map(results.map((r) => [r.entryId, r.position]));
+
+    const pendingPredictions = await tx
+        .select({
+            id: predictions.id,
+            predictedEntryId: predictions.predictedEntryId,
+            predictedPosition: predictions.predictedPosition,
+        })
+        .from(predictions)
+        .where(
+            and(eq(predictions.raceId, raceId), isNull(predictions.isCorrect)),
+        );
+
+    const correctIds: string[] = [];
+    const incorrectIds: string[] = [];
+
+    for (const p of pendingPredictions) {
+        const actualPosition = resultMap.get(p.predictedEntryId);
+        if (actualPosition === p.predictedPosition) {
+            correctIds.push(p.id);
+        } else {
+            incorrectIds.push(p.id);
+        }
+    }
+
+    await Promise.all([
+        correctIds.length > 0
+            ? tx
+                  .update(predictions)
+                  .set({ isCorrect: true, rewardAmount: "100.00" })
+                  .where(inArray(predictions.id, correctIds))
+            : Promise.resolve(),
+        incorrectIds.length > 0
+            ? tx
+                  .update(predictions)
+                  .set({ isCorrect: false })
+                  .where(inArray(predictions.id, incorrectIds))
+            : Promise.resolve(),
+    ]);
+}
+
 export const updateRaceStatus = async (
     req: Request,
     res: Response,
@@ -589,6 +669,7 @@ export const updateRaceStatus = async (
                 message: "Race status changed concurrently. Please retry.",
             });
         }
+
         try {
             eventBus.emit({
                 type: "race:status_changed",
@@ -690,6 +771,83 @@ export const getRegistrations = async (
                 l,
             ),
         );
+    } catch (err) {
+        next(err);
+    }
+};
+
+export const getReports = async (
+    req: Request,
+    res: Response,
+    next: NextFunction,
+) => {
+    try {
+        const parsed = reportsQuerySchema.safeParse(req.query);
+        if (!parsed.success) {
+            return res.status(400).json({
+                message: "Validation Errors",
+                errors: parsed.error.issues.map((issue) => ({
+                    field: issue.path.join("."),
+                    message: issue.message,
+                })),
+            });
+        }
+
+        const { resultStatus, search, dateFrom, dateTo, page, limit } =
+            parsed.data;
+        const { page: p, limit: l, offset } = getPagination({ page, limit });
+
+        const conditions = and(
+            resultStatus
+                ? eq(raceResults.resultStatus, resultStatus)
+                : inArray(raceResults.resultStatus, [
+                      "referee_confirmed",
+                      "published",
+                  ]),
+            search
+                ? sql`(${races.name} ILIKE ${`%${search}%`} OR ${tournaments.name} ILIKE ${`%${search}%`} OR ${users.fullName} ILIKE ${`%${search}%`})`
+                : undefined,
+            dateFrom
+                ? sql`${raceResults.refereeConfirmedAt} >= ${new Date(dateFrom)}`
+                : undefined,
+            dateTo
+                ? sql`${raceResults.refereeConfirmedAt} <= ${new Date(dateTo)}`
+                : undefined,
+        );
+
+        const [data, count] = await Promise.all([
+            db
+                .select({
+                    raceId: races.id,
+                    raceName: races.name,
+                    raceStatus: races.status,
+                    tournamentId: races.tournamentId,
+                    tournamentName: tournaments.name,
+                    reportId: raceResults.id,
+                    reportStatus: raceResults.resultStatus,
+                    refereeConfirmedBy: raceResults.refereeConfirmedBy,
+                    refereeName: users.fullName,
+                    refereeConfirmedAt: raceResults.refereeConfirmedAt,
+                    publishedAt: raceResults.publishedAt,
+                })
+                .from(raceResults)
+                .innerJoin(races, eq(raceResults.raceId, races.id))
+                .leftJoin(tournaments, eq(races.tournamentId, tournaments.id))
+                .leftJoin(users, eq(raceResults.refereeConfirmedBy, users.id))
+                .where(conditions)
+                .orderBy(desc(raceResults.updatedAt))
+                .limit(l)
+                .offset(offset),
+            db
+                .select({ count: sql<number>`count(*)` })
+                .from(raceResults)
+                .innerJoin(races, eq(raceResults.raceId, races.id))
+                .leftJoin(tournaments, eq(races.tournamentId, tournaments.id))
+                .leftJoin(users, eq(raceResults.refereeConfirmedBy, users.id))
+                .where(conditions),
+        ]);
+
+        res.json(paginatedResponse(data, Number(count[0]?.count ?? 0), p, l));
     } catch (err) {
         next(err);
     }
@@ -812,6 +970,123 @@ export const getRaceReferee = async (
     }
 };
 
+export const getRaceReport = async (
+    req: Request,
+    res: Response,
+    next: NextFunction,
+) => {
+    try {
+        const raceId = req.params.raceId as string;
+        if (!uuidValidate(raceId)) {
+            return res.status(400).json({ message: "Invalid uuid" });
+        }
+
+        const [race] = await db
+            .select({
+                id: races.id,
+                name: races.name,
+                raceNumber: races.raceNumber,
+                distanceMeters: races.distanceMeters,
+                trackCondition: races.trackCondition,
+                scheduledAt: races.scheduleAt,
+                venue: races.venue,
+                laneCount: races.laneCount,
+                status: races.status,
+                tournament: {
+                    id: tournaments.id,
+                    name: tournaments.name,
+                },
+            })
+            .from(races)
+            .leftJoin(tournaments, eq(races.tournamentId, tournaments.id))
+            .where(eq(races.id, raceId));
+
+        if (!race) {
+            return res.status(404).json({ message: "Race not found" });
+        }
+
+        const [report] = await db
+            .select({
+                id: raceResults.id,
+                status: raceResults.resultStatus,
+                notes: raceResults.notes,
+                refereeConfirmedBy: raceResults.refereeConfirmedBy,
+                refereeConfirmedAt: raceResults.refereeConfirmedAt,
+                publishedBy: raceResults.publishedBy,
+                publishedAt: raceResults.publishedAt,
+                createdAt: raceResults.createdAt,
+                updatedAt: raceResults.updatedAt,
+                referee: {
+                    id: users.id,
+                    fullName: users.fullName,
+                },
+            })
+            .from(raceResults)
+            .leftJoin(users, eq(raceResults.refereeConfirmedBy, users.id))
+            .where(eq(raceResults.raceId, raceId));
+
+        const referees = await db
+            .select({
+                id: users.id,
+                fullName: users.fullName,
+                assignedAt: refereeAssignments.assignedAt,
+            })
+            .from(refereeAssignments)
+            .innerJoin(users, eq(refereeAssignments.refereeId, users.id))
+            .where(eq(refereeAssignments.raceId, raceId));
+
+        const placements = await db
+            .select({
+                entryId: raceResultEntries.entryId,
+                laneNumber: raceEntries.laneNumber,
+                horse: {
+                    id: horses.id,
+                    name: horses.name,
+                    breed: horses.breed,
+                },
+                jockey: {
+                    id: users.id,
+                    fullName: users.fullName,
+                },
+                finishedPosition: raceResultEntries.finishedPosition,
+                finishTime: raceResultEntries.finishTime,
+                finishStatus: raceResultEntries.finishStatus,
+                points: raceResultEntries.points,
+                violation: {
+                    id: violations.id,
+                    violationType: violations.violationType,
+                    description: violations.description,
+                    severity: violations.severity,
+                    note: violations.note,
+                    occurredAt: violations.occurredAt,
+                    refereeId: violations.refereeId,
+                },
+            })
+            .from(raceResultEntries)
+            .innerJoin(
+                raceEntries,
+                eq(raceResultEntries.entryId, raceEntries.id),
+            )
+            .innerJoin(horses, eq(raceEntries.horseId, horses.id))
+            .leftJoin(users, eq(raceEntries.jockeyId, users.id))
+            .leftJoin(
+                violations,
+                eq(raceResultEntries.violationId, violations.id),
+            )
+            .where(eq(raceResultEntries.raceId, raceId))
+            .orderBy(raceResultEntries.finishedPosition);
+
+        res.json({
+            race,
+            referees,
+            report,
+            placements,
+        });
+    } catch (err) {
+        next(err);
+    }
+};
+
 export const assignRaceReferee = async (
     req: Request,
     res: Response,
@@ -881,6 +1156,87 @@ export const assignRaceReferee = async (
         }
 
         res.json({ assignment: result.assignment });
+    } catch (err) {
+        next(err);
+    }
+};
+
+export const publishRaceResult = async (
+    req: Request,
+    res: Response,
+    next: NextFunction,
+) => {
+    try {
+        const raceId = req.params.raceId as string;
+        if (!uuidValidate(raceId)) {
+            return res.status(400).json({ message: "Invalid uuid" });
+        }
+
+        const [report] = await db
+            .select({ id: raceResults.id, status: raceResults.resultStatus })
+            .from(raceResults)
+            .where(eq(raceResults.raceId, raceId));
+
+        if (!report) {
+            return res.status(404).json({
+                message: "No report found. Referee must submit first.",
+            });
+        }
+
+        if (report.status !== "referee_confirmed") {
+            return res.status(409).json({
+                message: "Report must be referee_confirmed before publishing",
+            });
+        }
+
+        const [race] = await db
+            .select({ status: races.status })
+            .from(races)
+            .where(eq(races.id, raceId));
+
+        await db.transaction(async (tx) => {
+            const [updated] = await tx
+                .update(raceResults)
+                .set({
+                    resultStatus: "published",
+                    publishedBy: req.user!.id,
+                    publishedAt: new Date(),
+                })
+                .where(eq(raceResults.id, report.id))
+                .returning();
+
+            if (!updated) {
+                throw new Error("Failed to publish report");
+            }
+
+            const [updatedRace] = await tx
+                .update(races)
+                .set({ status: "completed" })
+                .where(eq(races.id, raceId))
+                .returning();
+
+            if (!updatedRace) {
+                throw new Error("Failed to complete race");
+            }
+
+            await resolvePredictions(raceId, tx);
+        });
+
+        try {
+            eventBus.emit({
+                type: "race:status_changed",
+                data: {
+                    raceId,
+                    status: "completed",
+                    previousStatus: race?.status ?? "",
+                    timestamp: new Date().toISOString(),
+                },
+            });
+        } catch (emitErr) {
+            console.error(`Failed to emit race:status_changed ${emitErr}`);
+        }
+
+        res.json({ message: "Race result published and race completed" });
     } catch (err) {
         next(err);
     }

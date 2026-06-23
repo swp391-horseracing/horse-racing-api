@@ -2,23 +2,28 @@ import { NextFunction, Request, Response } from "express";
 import { validate as uuidValidate } from "uuid";
 import db from "../config/db.js";
 import { users } from "../schema/users.js";
-import { and, eq, inArray, isNull, ne, sql } from "drizzle-orm";
+import { and, eq, ilike, inArray, isNull, ne, sql, desc } from "drizzle-orm";
 import { jockeyProfile } from "../schema/jockeyProfile.js";
 import { raceEntries } from "../schema/raceEntries.js";
 import { races } from "../schema/races.js";
+import { raceResults } from "../schema/raceResults.js";
 import {
     tournamentRacesQuerySchema,
     myRegistrationsQuerySchema,
 } from "../validator/tournament.js";
 import { getPagination, paginatedResponse } from "../utils/paginate.js";
 import { horses } from "../schema/horses.js";
+import { predictions } from "../schema/predictions.js";
+import { alias } from "drizzle-orm/pg-core";
 import { tournamentRegistrations } from "../schema/tournamentRegistrations.js";
 import { tournaments } from "../schema/tournament.js";
+import { refereeAssignments } from "../schema/refereeAssignments.js";
 import { jockeyInvitations } from "../schema/jockeyInvitations.js";
 import {
     inviteJockeySchema,
     invitationsQuerySchema,
 } from "../validator/jockeyInvitation.js";
+import { predictionsQuerySchema } from "../validator/prediction.js";
 
 const getJockeyUser = async (userId: string) => {
     const [result] = await db
@@ -169,6 +174,46 @@ const getOwnerRaces = async (userId: string, limit: number, offset: number) => {
     return { data, count };
 };
 
+const getRefereeRaces = async (
+    userId: string,
+    limit: number,
+    offset: number,
+) => {
+    const whereCondition = eq(refereeAssignments.refereeId, userId);
+    const [data, count] = await Promise.all([
+        db
+            .select({
+                id: races.id,
+                tournamentId: races.tournamentId,
+                name: races.name,
+                raceNumber: races.raceNumber,
+                distanceMeters: races.distanceMeters,
+                trackCondition: races.trackCondition,
+                scheduledAt: races.scheduleAt,
+                venue: races.venue,
+                laneCount: races.laneCount,
+                status: races.status,
+                tournamentName: tournaments.name,
+                resultStatus: raceResults.resultStatus,
+            })
+            .from(refereeAssignments)
+            .innerJoin(races, eq(refereeAssignments.raceId, races.id))
+            .leftJoin(tournaments, eq(races.tournamentId, tournaments.id))
+            .leftJoin(raceResults, eq(raceResults.raceId, races.id))
+            .where(whereCondition)
+            .limit(limit)
+            .offset(offset)
+            .orderBy(races.scheduleAt),
+        db
+            .select({ count: sql<number>`count(*)` })
+            .from(refereeAssignments)
+            .innerJoin(races, eq(refereeAssignments.raceId, races.id))
+            .where(whereCondition),
+    ]);
+
+    return { data, count };
+};
+
 export const getMeRaces = async (
     req: Request,
     res: Response,
@@ -204,6 +249,9 @@ export const getMeRaces = async (
                 break;
             case "horse_owner":
                 result = await getOwnerRaces(user.id, l, offset);
+                break;
+            case "referee":
+                result = await getRefereeRaces(user.id, l, offset);
                 break;
             default:
                 return res
@@ -971,6 +1019,88 @@ export const acceptInvitation = async (
         }
 
         return res.json({ invitation: updated });
+    } catch (err) {
+        next(err);
+    }
+};
+
+// spectator predictions
+export const getMyPredictions = async (
+    req: Request,
+    res: Response,
+    next: NextFunction,
+) => {
+    try {
+        const user = req.user!;
+
+        const parsed = predictionsQuerySchema.safeParse(req.query);
+        if (!parsed.success) {
+            return res.status(400).json({
+                message: "Validation Errors",
+                errors: parsed.error.issues.map((issue) => ({
+                    field: issue.path.join("."),
+                    message: issue.message,
+                })),
+            });
+        }
+
+        const { search, status, page, limit } = parsed.data;
+        const { page: p, limit: l, offset } = getPagination({ page, limit });
+
+        const re = alias(raceEntries, "re");
+        const h = alias(horses, "h");
+
+        const conditions = and(
+            eq(predictions.spectatorId, user.id),
+            search ? ilike(races.name, `%${search}%`) : undefined,
+            status === "pending"
+                ? isNull(predictions.isCorrect)
+                : status === "correct"
+                  ? eq(predictions.isCorrect, true)
+                  : status === "incorrect"
+                    ? eq(predictions.isCorrect, false)
+                    : undefined,
+        );
+
+        const [data, count] = await Promise.all([
+            db
+                .select({
+                    id: predictions.id,
+                    race: {
+                        id: races.id,
+                        name: races.name,
+                        distanceMeters: races.distanceMeters,
+                        scheduledAt: races.scheduleAt,
+                        venue: races.venue,
+                        status: races.status,
+                    },
+                    predictedEntry: {
+                        entryId: predictions.predictedEntryId,
+                        horseName: h.name,
+                    },
+                    predictedPosition: predictions.predictedPosition,
+                    placedAt: predictions.placedAt,
+                    isCorrect: predictions.isCorrect,
+                    rewardAmount: predictions.rewardAmount,
+                })
+                .from(predictions)
+                .innerJoin(races, eq(predictions.raceId, races.id))
+                .innerJoin(re, eq(predictions.predictedEntryId, re.id))
+                .innerJoin(h, eq(re.horseId, h.id))
+                .where(conditions)
+                .limit(l)
+                .offset(offset)
+                .orderBy(desc(predictions.placedAt)),
+            db
+                .select({ count: sql<number>`count(*)` })
+                .from(predictions)
+                .innerJoin(races, eq(predictions.raceId, races.id))
+                .where(conditions),
+        ]);
+
+        return res.json(
+            paginatedResponse(data, Number(count[0]?.count ?? 0), p, l),
+        );
     } catch (err) {
         next(err);
     }

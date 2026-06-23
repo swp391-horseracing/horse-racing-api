@@ -19,6 +19,7 @@ tags:
   - name: Schedules
   - name: Races
   - name: Horses
+  - name: Jockeys
   - name: Tournaments
   - name: Health
 
@@ -1145,6 +1146,209 @@ components:
         pagination:
           $ref: "#/components/schemas/Pagination"
 
+    PredictionStatus:
+      type: string
+      enum:
+        - pending
+        - correct
+        - incorrect
+
+    CreatePredictionRequest:
+      type: object
+      required:
+        - predictedEntryId
+        - predictedPosition
+      properties:
+        predictedEntryId:
+          type: string
+          format: uuid
+          description: The race entry ID being bet on.
+        predictedPosition:
+          type: integer
+          minimum: 1
+          maximum: 3
+          description: Predicted finishing position (1st, 2nd, or 3rd).
+
+    Prediction:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        race:
+          type: object
+          properties:
+            id:
+              type: string
+              format: uuid
+            name:
+              type: string
+            distanceMeters:
+              type:
+                - integer
+                - "null"
+            scheduledAt:
+              type:
+                - string
+                - "null"
+              format: date-time
+            venue:
+              type:
+                - string
+                - "null"
+            status:
+              $ref: "#/components/schemas/RaceStatus"
+        predictedEntry:
+          type: object
+          properties:
+            entryId:
+              type: string
+              format: uuid
+            horseName:
+              type: string
+        predictedPosition:
+          type: integer
+        placedAt:
+          type: string
+          format: date-time
+        isCorrect:
+          type:
+            - boolean
+            - "null"
+        rewardAmount:
+          type:
+            - string
+            - "null"
+
+    PaginatedPredictions:
+      type: object
+      properties:
+        data:
+          type: array
+          items:
+            $ref: "#/components/schemas/Prediction"
+        pagination:
+          $ref: "#/components/schemas/Pagination"
+
+    RaceEntry:
+      type: object
+      properties:
+        entryId:
+          type: string
+          format: uuid
+        laneNumber:
+          type:
+            - integer
+            - "null"
+        entryStatus:
+          $ref: "#/components/schemas/EntryStatus"
+        horse:
+          type: object
+          properties:
+            id:
+              type: string
+              format: uuid
+            name:
+              type: string
+            breed:
+              type: string
+        jockey:
+          type: object
+          properties:
+            id:
+              type:
+                - string
+                - "null"
+              format: uuid
+            name:
+              type:
+                - string
+                - "null"
+
+    Jockey:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        fullName:
+          type: string
+        avatarUrl:
+          type:
+            - string
+            - "null"
+
+    PaginatedJockeys:
+      type: object
+      properties:
+        data:
+          type: array
+          items:
+            $ref: "#/components/schemas/Jockey"
+        pagination:
+          $ref: "#/components/schemas/Pagination"
+
+    CreateRaceRequest:
+      type: object
+      required:
+        - name
+      properties:
+        name:
+          type: string
+          minLength: 3
+          maxLength: 255
+        raceNumber:
+          type: integer
+          minimum: 1
+        distanceMeters:
+          type: integer
+          minimum: 1
+        trackCondition:
+          $ref: "#/components/schemas/TrackCondition"
+        scheduleAt:
+          type: string
+          format: date-time
+        venue:
+          type: string
+          maxLength: 255
+        laneCount:
+          type: integer
+          minimum: 1
+
+    UpdateRaceRequest:
+      type: object
+      minProperties: 1
+      properties:
+        name:
+          type: string
+          minLength: 3
+          maxLength: 255
+        raceNumber:
+          type: integer
+          minimum: 1
+        distanceMeters:
+          type: integer
+          minimum: 1
+        trackCondition:
+          $ref: "#/components/schemas/TrackCondition"
+        scheduleAt:
+          type: string
+          format: date-time
+        venue:
+          type: string
+          maxLength: 255
+        laneCount:
+          type: integer
+          minimum: 1
+
+    UpdateRaceStatusRequest:
+      type: object
+      required:
+        - status
+      properties:
+        status:
+          $ref: "#/components/schemas/RaceStatus"
+
   responses:
     BadRequest:
       description: Invalid request or validation error.
@@ -1511,6 +1715,108 @@ paths:
         "500":
           $ref: "#/components/responses/ServerError"
 
+  /admin/tournaments/{tournamentId}/races:
+    post:
+      tags:
+        - Admin
+      summary: Create a race in a tournament
+      description: Requires admin role. The schedule date must be within the tournament date range.
+      security:
+        - BearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/AdminTournamentIdParam"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateRaceRequest"
+      responses:
+        "201":
+          description: Race created.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Race"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "500":
+          $ref: "#/components/responses/ServerError"
+
+  /admin/races/{raceId}:
+    patch:
+      tags:
+        - Admin
+      summary: Update a race
+      description: Requires admin role. Cannot update an ongoing race. At least one field is required.
+      security:
+        - BearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/RaceIdParam"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateRaceRequest"
+      responses:
+        "200":
+          description: Race updated.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Race"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "500":
+          $ref: "#/components/responses/ServerError"
+
+  /admin/races/{raceId}/status:
+    patch:
+      tags:
+        - Admin
+      summary: Update a race status
+      description: Requires admin role. Status transitions follow a state machine. Resolves predictions when transitioning to completed.
+      security:
+        - BearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/RaceIdParam"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateRaceStatusRequest"
+      responses:
+        "200":
+          description: Race status updated.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Race"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+        "500":
+          $ref: "#/components/responses/ServerError"
+
   /me/profile:
     get:
       tags:
@@ -1558,6 +1864,34 @@ paths:
           $ref: "#/components/responses/Unauthorized"
         "403":
           $ref: "#/components/responses/Forbidden"
+        "500":
+          $ref: "#/components/responses/ServerError"
+
+  /me/races/{raceId}:
+    get:
+      tags:
+        - Me
+      summary: Get a current user's race detail
+      security:
+        - BearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/RaceIdParam"
+      responses:
+        "200":
+          description: Race detail scoped to the authenticated jockey or horse owner.
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: true
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
         "500":
           $ref: "#/components/responses/ServerError"
 
@@ -1696,6 +2030,98 @@ paths:
         "500":
           $ref: "#/components/responses/ServerError"
 
+  /me/races/{raceId}/invitations/{id}/confirm:
+    patch:
+      tags:
+        - Me
+      summary: Confirm an accepted jockey invitation for a race entry
+      description: Requires horse_owner role. The invitation must already be accepted.
+      security:
+        - BearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/RaceIdParam"
+        - $ref: "#/components/parameters/InvitationIdParam"
+      responses:
+        "200":
+          description: Jockey confirmed for the race entry.
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: true
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+        "500":
+          $ref: "#/components/responses/ServerError"
+
+  /me/invitations:
+    get:
+      tags:
+        - Me
+      summary: List my received invitations
+      description: Requires jockey role. Returns all invitations sent to the authenticated jockey.
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: status
+          in: query
+          schema:
+            $ref: "#/components/schemas/InvitationStatus"
+        - $ref: "#/components/parameters/PageParam"
+        - $ref: "#/components/parameters/LimitParam"
+      responses:
+        "200":
+          description: Paginated invitation list.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PaginatedInvitations"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "500":
+          $ref: "#/components/responses/ServerError"
+
+  /me/invitations/{id}:
+    get:
+      tags:
+        - Me
+      summary: Get an invitation detail
+      description: Requires jockey role. Returns full detail of a single invitation.
+      security:
+        - BearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/InvitationIdParam"
+      responses:
+        "200":
+          description: Invitation detail.
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: true
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "500":
+          $ref: "#/components/responses/ServerError"
+
   /me/invitations/{id}/accept:
     patch:
       tags:
@@ -1729,63 +2155,39 @@ paths:
         "500":
           $ref: "#/components/responses/ServerError"
 
-  /me/races/{raceId}/invitations/{id}/confirm:
-    patch:
-      tags:
-        - Me
-      summary: Confirm an accepted jockey invitation for a race entry
-      description: Requires horse_owner role. The invitation must already be accepted.
-      security:
-        - BearerAuth: []
-      parameters:
-        - $ref: "#/components/parameters/RaceIdParam"
-        - $ref: "#/components/parameters/InvitationIdParam"
-      responses:
-        "200":
-          description: Jockey confirmed for the race entry.
-          content:
-            application/json:
-              schema:
-                type: object
-                additionalProperties: true
-        "400":
-          $ref: "#/components/responses/BadRequest"
-        "401":
-          $ref: "#/components/responses/Unauthorized"
-        "403":
-          $ref: "#/components/responses/Forbidden"
-        "404":
-          $ref: "#/components/responses/NotFound"
-        "409":
-          $ref: "#/components/responses/Conflict"
-        "500":
-          $ref: "#/components/responses/ServerError"
-
-  /me/races/{raceId}:
+  /me/predictions:
     get:
       tags:
         - Me
-      summary: Get a current user's race detail
+      summary: Get my predictions
+      description: Requires spectator role. Returns the authenticated spectator's predictions with race and horse details.
       security:
         - BearerAuth: []
       parameters:
-        - $ref: "#/components/parameters/RaceIdParam"
+        - name: search
+          in: query
+          description: Search by race name.
+          schema:
+            type: string
+        - name: status
+          in: query
+          schema:
+            $ref: "#/components/schemas/PredictionStatus"
+        - $ref: "#/components/parameters/PageParam"
+        - $ref: "#/components/parameters/LimitParam"
       responses:
         "200":
-          description: Race detail scoped to the authenticated jockey or horse owner.
+          description: Paginated predictions.
           content:
             application/json:
               schema:
-                type: object
-                additionalProperties: true
+                $ref: "#/components/schemas/PaginatedPredictions"
         "400":
           $ref: "#/components/responses/BadRequest"
         "401":
           $ref: "#/components/responses/Unauthorized"
         "403":
           $ref: "#/components/responses/Forbidden"
-        "404":
-          $ref: "#/components/responses/NotFound"
         "500":
           $ref: "#/components/responses/ServerError"
 
@@ -1924,6 +2326,68 @@ paths:
           $ref: "#/components/responses/BadRequest"
         "404":
           $ref: "#/components/responses/NotFound"
+        "500":
+          $ref: "#/components/responses/ServerError"
+
+  /races/{raceId}/entries:
+    get:
+      tags:
+        - Races
+      summary: Get structured race entries
+      description: Returns entries with entryId, horse, and jockey. Draft races hidden from non-admin.
+      security: []
+      parameters:
+        - $ref: "#/components/parameters/RaceIdParam"
+      responses:
+        "200":
+          description: Race entries.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/RaceEntry"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "500":
+          $ref: "#/components/responses/ServerError"
+
+  /races/{raceId}/predictions:
+    post:
+      tags:
+        - Races
+      summary: Place a prediction
+      description: Requires spectator role. Race must be scheduled or pre_race. One prediction per spectator per race.
+      security:
+        - BearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/RaceIdParam"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreatePredictionRequest"
+      responses:
+        "201":
+          description: Prediction created.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  prediction:
+                    $ref: "#/components/schemas/Prediction"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "409":
+          $ref: "#/components/responses/Conflict"
         "500":
           $ref: "#/components/responses/ServerError"
 
@@ -2130,6 +2594,33 @@ paths:
           $ref: "#/components/responses/NotFound"
         "409":
           $ref: "#/components/responses/Conflict"
+        "500":
+          $ref: "#/components/responses/ServerError"
+
+  /jockeys:
+    get:
+      tags:
+        - Jockeys
+      summary: List jockeys
+      description: Returns a paginated list of users with the jockey role. Locked users are excluded.
+      security: []
+      parameters:
+        - name: search
+          in: query
+          description: Search jockeys by name.
+          schema:
+            type: string
+        - $ref: "#/components/parameters/PageParam"
+        - $ref: "#/components/parameters/LimitParam"
+      responses:
+        "200":
+          description: Paginated jockey list.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PaginatedJockeys"
+        "400":
+          $ref: "#/components/responses/BadRequest"
         "500":
           $ref: "#/components/responses/ServerError"
 

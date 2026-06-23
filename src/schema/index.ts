@@ -11,3 +11,4 @@ export * from "./jockeyInvitations.js";
 export * from "./raceResults.js";
 export * from "./raceResultEntries.js";
 export * from "./violations.js";
+export * from "./predictions.js";
