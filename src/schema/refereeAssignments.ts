@@ -17,7 +17,5 @@ export const refereeAssignments = pgTable(
             .notNull(),
         assignedAt: timestamp("assigned_at").defaultNow().notNull(),
     },
-    (table) => [
-        uniqueIndex("uq_referee_race_idx").on(table.raceId, table.refereeId),
-    ],
+    (table) => [uniqueIndex("uq_referee_race_idx").on(table.raceId)],
 );

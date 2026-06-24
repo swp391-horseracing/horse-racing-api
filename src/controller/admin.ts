@@ -1,6 +1,7 @@
 import { NextFunction, Request, Response } from "express";
 import { validate as uuidValidate } from "uuid";
 import {
+    registrationsQuerySchema,
     tournamentReadinessSchema,
     usersQuerySchema,
 } from "../validator/admin.js";
@@ -31,6 +32,7 @@ import { violations } from "../schema/violations.js";
 import { horses } from "../schema/horses.js";
 import { reportsQuerySchema } from "../validator/report.js";
 import { eventBus } from "../websocket/eventBus.js";
+import { tournamentRegistrations } from "../schema/tournamentRegistrations.js";
 
 export const getUsers = async (
     req: Request,
@@ -688,6 +690,92 @@ export const updateRaceStatus = async (
     }
 };
 
+export const getRegistrations = async (
+    req: Request,
+    res: Response,
+    next: NextFunction,
+) => {
+    try {
+        const parsed = registrationsQuerySchema.safeParse(req.query);
+        if (!parsed.success) {
+            return res.status(400).json({
+                message: "Validation Errors",
+                errors: parsed.error.issues.map((issue) => ({
+                    field: issue.path.join("."),
+                    message: issue.message,
+                })),
+            });
+        }
+        const { status, tournamentId, page, limit } = parsed.data;
+        const { page: p, limit: l, offset } = getPagination({ page, limit });
+
+        const conditions = and(
+            status ? eq(tournamentRegistrations.status, status) : undefined,
+            tournamentId
+                ? eq(tournamentRegistrations.tournamentId, tournamentId)
+                : undefined,
+        );
+
+        const [registrations, count] = await Promise.all([
+            db
+                .select({
+                    id: tournamentRegistrations.registrationId,
+                    status: tournamentRegistrations.status,
+                    submittedAt: tournamentRegistrations.submittedAt,
+                    reviewedAt: tournamentRegistrations.reviewedAt,
+                    rejectReason: tournamentRegistrations.rejectReason,
+                    tournament: {
+                        id: tournaments.id,
+                        name: tournaments.name,
+                        location: tournaments.location,
+                        startDate: tournaments.startDate,
+                        endDate: tournaments.endDate,
+                        status: tournaments.status,
+                    },
+                    horse: {
+                        id: horses.id,
+                        name: horses.name,
+                        breed: horses.breed,
+                    },
+                    owner: {
+                        id: users.id,
+                        fullName: users.fullName,
+                        email: users.email,
+                    },
+                })
+                .from(tournamentRegistrations)
+                .innerJoin(
+                    tournaments,
+                    eq(tournamentRegistrations.tournamentId, tournaments.id),
+                )
+                .innerJoin(
+                    horses,
+                    eq(tournamentRegistrations.horseId, horses.id),
+                )
+                .innerJoin(users, eq(tournamentRegistrations.ownerId, users.id))
+                .where(conditions)
+                .orderBy(desc(tournamentRegistrations.submittedAt))
+                .limit(l)
+                .offset(offset),
+            db
+                .select({ count: sql<number>`count(*)` })
+                .from(tournamentRegistrations)
+                .where(conditions),
+        ]);
+
+        return res.json(
+            paginatedResponse(
+                registrations,
+                Number(count[0]?.count ?? 0),
+                p,
+                l,
+            ),
+        );
+    } catch (err) {
+        next(err);
+    }
+};
+
 export const getReports = async (
     req: Request,
     res: Response,
@@ -760,6 +848,123 @@ export const getReports = async (
         ]);
 
         res.json(paginatedResponse(data, Number(count[0]?.count ?? 0), p, l));
+    } catch (err) {
+        next(err);
+    }
+};
+
+export const updateRegistrationStatus = async (
+    req: Request,
+    res: Response,
+    next: NextFunction,
+) => {
+    try {
+        const ALLOWED_TRANSITIONS: Record<string, string[]> = {
+            pending: ["approved", "rejected"],
+        };
+
+        const registrationId = req.params.id as string;
+        if (!uuidValidate(registrationId)) {
+            return res.status(400).json({ message: "Invalid uuid" });
+        }
+
+        const admin = req.user!;
+        const { status, rejectReason } = req.body;
+
+        const [registration] = await db
+            .select({ status: tournamentRegistrations.status })
+            .from(tournamentRegistrations)
+            .where(eq(tournamentRegistrations.registrationId, registrationId));
+
+        if (!registration) {
+            return res.status(404).json({ message: "Registration not found" });
+        }
+
+        const allowed = ALLOWED_TRANSITIONS[registration.status] ?? [];
+        if (!allowed.includes(status)) {
+            return res.status(403).json({
+                message: `Cannot transition from '${registration.status}' to '${status}'`,
+            });
+        }
+
+        const [updatedRegistration] = await db
+            .update(tournamentRegistrations)
+            .set({
+                status,
+                reviewedBy: admin.id,
+                reviewedAt: new Date(),
+                rejectReason: status === "rejected" ? rejectReason : null,
+            })
+            .where(
+                and(
+                    eq(tournamentRegistrations.registrationId, registrationId),
+                    eq(tournamentRegistrations.status, registration.status),
+                ),
+            )
+            .returning();
+
+        if (!updatedRegistration) {
+            return res.status(409).json({
+                message:
+                    "Registration status changed concurrently. Please retry.",
+            });
+        }
+
+        res.json(updatedRegistration);
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    } catch (err: any) {
+        if (err?.cause?.code === "23514") {
+            return res.status(400).json({
+                message: "Failed validation constraint",
+                constraint: err.cause.constraint,
+            });
+        }
+        next(err);
+    }
+};
+
+export const getRaceReferee = async (
+    req: Request,
+    res: Response,
+    next: NextFunction,
+) => {
+    try {
+        const raceId = req.params.raceId as string;
+        if (!uuidValidate(raceId)) {
+            return res.status(400).json({ message: "Invalid uuid" });
+        }
+
+        const [race] = await db
+            .select({ id: races.id })
+            .from(races)
+            .where(eq(races.id, raceId));
+
+        if (!race) {
+            return res.status(404).json({ message: "Race not found" });
+        }
+
+        const [assignment] = await db
+            .select({
+                id: refereeAssignments.id,
+                raceId: refereeAssignments.raceId,
+                assignedAt: refereeAssignments.assignedAt,
+                referee: {
+                    id: users.id,
+                    fullName: users.fullName,
+                    email: users.email,
+                },
+            })
+            .from(refereeAssignments)
+            .innerJoin(users, eq(refereeAssignments.refereeId, users.id))
+            .where(eq(refereeAssignments.raceId, raceId));
+
+        if (!assignment) {
+            return res
+                .status(404)
+                .json({ message: "No referee assigned to this race" });
+        }
+
+        res.json(assignment);
     } catch (err) {
         next(err);
     }
@@ -877,6 +1082,80 @@ export const getRaceReport = async (
             report,
             placements,
         });
+    } catch (err) {
+        next(err);
+    }
+};
+
+export const assignRaceReferee = async (
+    req: Request,
+    res: Response,
+    next: NextFunction,
+) => {
+    try {
+        const raceId = req.params.raceId as string;
+        if (!uuidValidate(raceId)) {
+            return res.status(400).json({ message: "Invalid uuid" });
+        }
+
+        const admin = req.user!;
+        const { refereeId } = req.body;
+
+        const result = await db.transaction(async (tx) => {
+            const [race] = await tx
+                .select({ id: races.id })
+                .from(races)
+                .where(eq(races.id, raceId));
+
+            if (!race) {
+                return {
+                    ok: false as const,
+                    status: 404,
+                    message: "Race not found",
+                };
+            }
+
+            const [referee] = await tx
+                .select({ id: users.id, role: users.role })
+                .from(users)
+                .where(eq(users.id, refereeId));
+
+            if (!referee) {
+                return {
+                    ok: false as const,
+                    status: 404,
+                    message: "Referee not found",
+                };
+            }
+            if (referee.role !== "referee") {
+                return {
+                    ok: false as const,
+                    status: 400,
+                    message: "User is not a referee",
+                };
+            }
+
+            const [assignment] = await tx
+                .insert(refereeAssignments)
+                .values({ raceId, refereeId, assignedBy: admin.id })
+                .onConflictDoUpdate({
+                    target: refereeAssignments.raceId,
+                    set: {
+                        refereeId,
+                        assignedBy: admin.id,
+                        assignedAt: new Date(),
+                    },
+                })
+                .returning();
+
+            return { ok: true as const, assignment };
+        });
+
+        if (!result.ok) {
+            return res.status(result.status).json({ message: result.message });
+        }
+
+        res.json({ assignment: result.assignment });
     } catch (err) {
         next(err);
     }
