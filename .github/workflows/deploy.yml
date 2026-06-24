@@ -45,6 +45,9 @@ jobs:
       DB_PORT: ${{ secrets.DB_PORT }}
       DB_HOST: ${{ secrets.DB_HOST }}
 
+      PGADMIN_DEFAULT_EMAIL: ${{ secrets.PGADMIN_EMAIL }}
+      PGADMIN_DEFAULT_PASSWORD: ${{ secrets.PGADMIN_PASSWORD }}
+
       JWT_SECRET: ${{ secrets.JWT_SECRET }}
       JWT_EXPIRES_IN: ${{ secrets.JWT_EXPIRES_IN }}
 
