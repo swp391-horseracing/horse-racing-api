@@ -30,6 +30,8 @@ import { raceResults } from "../schema/raceResults.js";
 import { refereeAssignments } from "../schema/refereeAssignments.js";
 import { violations } from "../schema/violations.js";
 import { horses } from "../schema/horses.js";
+import { courseDistances } from "../schema/courseDistances.js";
+import { raceCourses } from "../schema/raceCourses.js";
 import { reportsQuerySchema } from "../validator/report.js";
 import { eventBus } from "../websocket/eventBus.js";
 import { tournamentRegistrations } from "../schema/tournamentRegistrations.js";
