@@ -2,15 +2,19 @@ import { Router } from "express";
 import { Role } from "../types/roles.js";
 import { authMiddleware } from "../middleware/auth.js";
 import {
+    assignRaceReferee,
     createTournament,
     createTournamentRace,
+    getRaceReferee,
     getRaceReport,
+    getRegistrations,
     getReports,
     getUser,
     getUsers,
     publishRaceResult,
     updateRace,
     updateRaceStatus,
+    updateRegistrationStatus,
     updateTournament,
     updateTournamentStatus,
     updateUserRole,
@@ -19,10 +23,12 @@ import {
 import { authorize } from "../middleware/authorize.js";
 import { validate } from "../middleware/validate.js";
 import {
+    assignRefereeSchema,
     createRaceSchema,
     createTournamentSchema,
     updateRaceSchema,
     updateRaceStatusSchema,
+    updateRegistrationStatusSchema,
     updateRoleSchema,
     updateStatusSchema,
     updateTournamentSchema,
@@ -88,6 +94,32 @@ router.patch(
     authorize(Role.ADMIN),
     validate(updateRaceStatusSchema),
     updateRaceStatus,
+);
+router.get(
+    "/registrations",
+    authMiddleware,
+    authorize(Role.ADMIN),
+    getRegistrations,
+);
+router.patch(
+    "/registrations/:id",
+    authMiddleware,
+    authorize(Role.ADMIN),
+    validate(updateRegistrationStatusSchema),
+    updateRegistrationStatus,
+);
+router.get(
+    "/races/:raceId/referee",
+    authMiddleware,
+    authorize(Role.ADMIN),
+    getRaceReferee,
+);
+router.put(
+    "/races/:raceId/referee",
+    authMiddleware,
+    authorize(Role.ADMIN),
+    validate(assignRefereeSchema),
+    assignRaceReferee,
 );
 
 router.get("/reports", authMiddleware, authorize(Role.ADMIN), getReports);
