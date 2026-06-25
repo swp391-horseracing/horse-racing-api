@@ -5,10 +5,13 @@ import { authorize } from "../middleware/authorize.js";
 import { validate } from "../middleware/validate.js";
 import {
     updateCourseStatusSchema,
+    createCourseDistanceSchema,
 } from "../validator/course.js";
 import {
+    addCourseDistance,
     getRaceCourse,
     getRaceCourses,
+    removeCourseDistance,
     updateCourseStatus,
 } from "../controller/course.js";
 const router = Router();
@@ -22,6 +25,19 @@ router.patch(
     authorize(Role.ADMIN),
     validate(updateCourseStatusSchema),
     updateCourseStatus,
+);
+router.post(
+    "/:courseId/distances",
+    authMiddleware,
+    authorize(Role.ADMIN),
+    validate(createCourseDistanceSchema),
+    addCourseDistance,
+);
+router.delete(
+    "/:courseId/distances/:distanceId",
+    authMiddleware,
+    authorize(Role.ADMIN),
+    removeCourseDistance,
 );
 
 export default router;

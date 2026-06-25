@@ -188,3 +188,109 @@ export const updateCourseStatus = async (
         next(err);
     }
 };
+
+export const addCourseDistance = async (
+    req: Request,
+    res: Response,
+    next: NextFunction,
+) => {
+    try {
+        const courseId = req.params.courseId as string;
+        if (!uuidValidate(courseId)) {
+            return res.status(400).json({ message: "Invalid uuid" });
+        }
+
+        const [course] = await db
+            .select({ id: raceCourses.id })
+            .from(raceCourses)
+            .where(eq(raceCourses.id, courseId));
+
+        if (!course) {
+            return res.status(404).json({ message: "Race course not found" });
+        }
+
+        const { distanceMeters } = req.body;
+
+        const [existing] = await db
+            .select({ id: courseDistances.id })
+            .from(courseDistances)
+            .where(
+                and(
+                    eq(courseDistances.courseId, courseId),
+                    eq(courseDistances.distanceMeters, distanceMeters),
+                ),
+            );
+
+        if (existing) {
+            return res.status(409).json({
+                message: "Distance already exists for this course",
+            });
+        }
+
+        const [newDistance] = await db
+            .insert(courseDistances)
+            .values({ courseId, distanceMeters })
+            .returning();
+
+        res.status(201).json(newDistance);
+    } catch (err) {
+        next(err);
+    }
+};
+
+export const removeCourseDistance = async (
+    req: Request,
+    res: Response,
+    next: NextFunction,
+) => {
+    try {
+        const courseId = req.params.courseId as string;
+        const distanceId = req.params.distanceId as string;
+
+        if (!uuidValidate(courseId) || !uuidValidate(distanceId)) {
+            return res.status(400).json({ message: "Invalid uuid" });
+        }
+
+        const [distance] = await db
+            .select({ id: courseDistances.id })
+            .from(courseDistances)
+            .where(
+                and(
+                    eq(courseDistances.id, distanceId),
+                    eq(courseDistances.courseId, courseId),
+                ),
+            );
+
+        if (!distance) {
+            return res
+                .status(404)
+                .json({ message: "Course distance not found" });
+        }
+
+        const [activeRace] = await db
+            .select({ id: races.id })
+            .from(races)
+            .where(
+                and(
+                    eq(races.courseDistanceId, distanceId),
+                    sql`${races.status} NOT IN ('draft', 'completed', 'cancelled')`,
+                ),
+            )
+            .limit(1);
+
+        if (activeRace) {
+            return res.status(409).json({
+                message: "Cannot remove distance — active races reference it",
+            });
+        }
+
+        const [deleted] = await db
+            .delete(courseDistances)
+            .where(eq(courseDistances.id, distanceId))
+            .returning();
+
+        res.json({ message: "Distance removed", distance: deleted });
+    } catch (err) {
+        next(err);
+    }
+};
