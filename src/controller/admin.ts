@@ -508,6 +508,37 @@ export const updateRace = async (
                 };
             }
 
+            if (req.body.courseDistanceId) {
+                const [distance] = await tx
+                    .select({
+                        id: courseDistances.id,
+                        courseId: courseDistances.courseId,
+                    })
+                    .from(courseDistances)
+                    .where(eq(courseDistances.id, req.body.courseDistanceId));
+
+                if (!distance) {
+                    return {
+                        ok: false as const,
+                        status: 400,
+                        message: "Course distance not found",
+                    };
+                }
+
+                const [course] = await tx
+                    .select({ status: raceCourses.status })
+                    .from(raceCourses)
+                    .where(eq(raceCourses.id, distance.courseId));
+
+                if (!course || course.status !== "active") {
+                    return {
+                        ok: false as const,
+                        status: 400,
+                        message: "Cannot update race — course is not active",
+                    };
+                }
+            }
+
             if (req.body.scheduleAt) {
                 const [tournament] = await tx
                     .select({

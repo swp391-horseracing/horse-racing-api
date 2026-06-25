@@ -147,8 +147,10 @@ const updateRaceSchema = z
     .object({
         name: z.string().min(3).max(255).optional(),
         raceNumber: z.coerce.number().int().positive().optional(),
-        distanceMeters: z.coerce.number().int().positive().optional(),
-        trackCondition: z.enum(["dry", "wet", "muddy"]).optional(),
+        courseDistanceId: z
+            .string()
+            .uuid("courseDistanceId must be a valid UUID")
+            .optional(),
         scheduleAt: z.iso
             .datetime()
             .transform((v) => new Date(v))
@@ -213,7 +215,7 @@ const updateRegistrationStatusSchema = z
     });
 
 const assignRefereeSchema = z.object({
-    refereeId: z.string().uuid("refereeId must be a valid UUID"),
+    refereeId: z.uuid("refereeId must be a valid UUID"),
 });
 
 export {
