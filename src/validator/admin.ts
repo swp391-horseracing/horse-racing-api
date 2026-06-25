@@ -135,13 +135,11 @@ const tournamentReadinessSchema = z.object({
 const createRaceSchema = z.object({
     name: z.string().min(3).max(255),
     raceNumber: z.coerce.number().int().positive().optional(),
-    distanceMeters: z.coerce.number().int().positive().optional(),
-    trackCondition: z.enum(["dry", "wet", "muddy"]).optional(),
+    courseDistanceId: z.string().uuid("courseDistanceId must be a valid UUID"),
     scheduleAt: z.iso
         .datetime()
         .transform((v) => new Date(v))
         .optional(),
-    venue: z.string().max(255).optional(),
     laneCount: z.coerce.number().int().positive().optional(),
 });
 

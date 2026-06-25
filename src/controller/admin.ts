@@ -423,6 +423,31 @@ export const createTournamentRace = async (
             return res.status(404).json({ message: "Tournament not found" });
         }
 
+        const { courseDistanceId } = req.body;
+
+        const [distance] = await db
+            .select({
+                id: courseDistances.id,
+                courseId: courseDistances.courseId,
+            })
+            .from(courseDistances)
+            .where(eq(courseDistances.id, courseDistanceId));
+
+        if (!distance) {
+            return res.status(400).json({ message: "Course distance not found" });
+        }
+
+        const [course] = await db
+            .select({ status: raceCourses.status })
+            .from(raceCourses)
+            .where(eq(raceCourses.id, distance.courseId));
+
+        if (!course || course.status !== "active") {
+            return res.status(400).json({
+                message: "Cannot create race — course is not active",
+            });
+        }
+
         if (req.body.scheduleAt) {
             if (
                 req.body.scheduleAt < tournament.startDate ||
