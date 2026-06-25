@@ -1,4 +1,19 @@
 import { z } from "zod";
+
+export const createCourseSchema = z.object({
+    name: z.string().min(3).max(255),
+    country: z.string().max(100).default("Vietnam"),
+    city: z.string().min(1).max(150),
+    address: z.string().optional(),
+    surfaceType: z.enum(["turf", "dirt", "synthetic"]),
+    trackShapeId: z.uuid("trackShapeId must be a valid UUID"),
+    distanceMeters: z.coerce.number().int().positive(),
+    maxStartingPositions: z.coerce.number().int().positive(),
+    grandstandCapacity: z.coerce.number().int().positive(),
+    status: z
+        .enum(["active", "inactive", "under_maintainance"])
+        .default("active"),
+});
 export const updateCourseStatusSchema = z.object({
     status: z.enum(["active", "inactive", "under_maintainance"]),
 });

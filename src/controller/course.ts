@@ -131,6 +131,56 @@ export const getRaceCourse = async (
         next(err);
     }
 };
+
+export const createRaceCourse = async (
+    req: Request,
+    res: Response,
+    next: NextFunction,
+) => {
+    try {
+        const {
+            name,
+            country,
+            city,
+            address,
+            surfaceType,
+            trackShapeId,
+            distanceMeters,
+            maxStartingPositions,
+            grandstandCapacity,
+            status,
+        } = req.body;
+
+        const [trackShape] = await db
+            .select({ id: trackShapes.id })
+            .from(trackShapes)
+            .where(eq(trackShapes.id, trackShapeId));
+
+        if (!trackShape) {
+            return res.status(400).json({ message: "Track shape not found" });
+        }
+
+        const [newCourse] = await db
+            .insert(raceCourses)
+            .values({
+                name,
+                country,
+                city,
+                address: address ?? null,
+                surfaceType,
+                trackShapeId,
+                distanceMeters,
+                maxStartingPositions,
+                grandstandCapacity,
+                status,
+            })
+            .returning();
+
+        res.status(201).json(newCourse);
+    } catch (err) {
+        next(err);
+    }
+};
 export const updateCourseStatus = async (
     req: Request,
     res: Response,

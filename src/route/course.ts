@@ -4,21 +4,32 @@ import { authMiddleware } from "../middleware/auth.js";
 import { authorize } from "../middleware/authorize.js";
 import { validate } from "../middleware/validate.js";
 import {
+    createCourseSchema,
     updateCourseStatusSchema,
     createCourseDistanceSchema,
 } from "../validator/course.js";
 import {
     addCourseDistance,
+    createRaceCourse,
     getRaceCourse,
     getRaceCourses,
+    getTrackShapes,
     removeCourseDistance,
     updateCourseStatus,
 } from "../controller/course.js";
 const router = Router();
 
+router.get("/track-shapes", getTrackShapes);
 router.get("/", getRaceCourses);
 router.get("/:courseId", getRaceCourse);
 
+router.post(
+    "/",
+    authMiddleware,
+    authorize(Role.ADMIN),
+    validate(createCourseSchema),
+    createRaceCourse,
+);
 router.patch(
     "/:courseId/status",
     authMiddleware,
