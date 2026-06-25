@@ -155,7 +155,6 @@ const updateRaceSchema = z
             .datetime()
             .transform((v) => new Date(v))
             .optional(),
-        venue: z.string().max(255).optional(),
         laneCount: z.coerce.number().int().positive().optional(),
     })
     .superRefine((data, ctx) => {

@@ -434,7 +434,9 @@ export const createTournamentRace = async (
             .where(eq(courseDistances.id, courseDistanceId));
 
         if (!distance) {
-            return res.status(400).json({ message: "Course distance not found" });
+            return res
+                .status(400)
+                .json({ message: "Course distance not found" });
         }
 
         const [course] = await db
@@ -1058,7 +1060,10 @@ export const getRaceReport = async (
             })
             .from(races)
             .leftJoin(tournaments, eq(races.tournamentId, tournaments.id))
-            .leftJoin(courseDistances, eq(races.courseDistanceId, courseDistances.id))
+            .leftJoin(
+                courseDistances,
+                eq(races.courseDistanceId, courseDistances.id),
+            )
             .leftJoin(raceCourses, eq(courseDistances.courseId, raceCourses.id))
             .where(eq(races.id, raceId));
 
