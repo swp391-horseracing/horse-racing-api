@@ -986,10 +986,11 @@ export const getRaceReport = async (
                 id: races.id,
                 name: races.name,
                 raceNumber: races.raceNumber,
-                distanceMeters: races.distanceMeters,
-                trackCondition: races.trackCondition,
+                distanceMeters: courseDistances.distanceMeters,
+                courseName: raceCourses.name,
+                courseCity: raceCourses.city,
+                surfaceType: raceCourses.surfaceType,
                 scheduledAt: races.scheduleAt,
-                venue: races.venue,
                 laneCount: races.laneCount,
                 status: races.status,
                 tournament: {
@@ -999,6 +1000,8 @@ export const getRaceReport = async (
             })
             .from(races)
             .leftJoin(tournaments, eq(races.tournamentId, tournaments.id))
+            .leftJoin(courseDistances, eq(races.courseDistanceId, courseDistances.id))
+            .leftJoin(raceCourses, eq(courseDistances.courseId, raceCourses.id))
             .where(eq(races.id, raceId));
 
         if (!race) {
