@@ -238,6 +238,22 @@ export const addCourseDistance = async (
     }
 };
 
+export const getTrackShapes = async (
+    req: Request,
+    res: Response,
+    next: NextFunction,
+) => {
+    try {
+        const shapes = await db
+            .select()
+            .from(trackShapes)
+            .orderBy(trackShapes.shape);
+        res.json(shapes);
+    } catch (err) {
+        next(err);
+    }
+};
+
 export const removeCourseDistance = async (
     req: Request,
     res: Response,
