@@ -1,0 +1,190 @@
+import { NextFunction, Request, Response } from "express";
+import { validate as uuidValidate } from "uuid";
+import { and, desc, eq, sql } from "drizzle-orm";
+import db from "../config/db.js";
+import { raceCourses } from "../schema/raceCourses.js";
+import { courseDistances } from "../schema/courseDistances.js";
+import { trackShapes } from "../schema/trackShapes.js";
+import { races } from "../schema/races.js";
+import { courseQuerySchema } from "../validator/course.js";
+import { getPagination, paginatedResponse } from "../utils/paginate.js";
+
+export const getRaceCourses = async (
+    req: Request,
+    res: Response,
+    next: NextFunction,
+) => {
+    try {
+        const parsed = courseQuerySchema.safeParse(req.query);
+        if (!parsed.success) {
+            return res.status(400).json({
+                message: "Validation Errors",
+                errors: parsed.error.issues.map((issue) => ({
+                    field: issue.path.join("."),
+                    message: issue.message,
+                })),
+            });
+        }
+        const { search, status, surfaceType, page, limit } = parsed.data;
+        const { page: p, limit: l, offset } = getPagination({ page, limit });
+
+        const conditions = and(
+            status ? eq(raceCourses.status, status) : undefined,
+            surfaceType ? eq(raceCourses.surfaceType, surfaceType) : undefined,
+            search
+                ? sql`(${raceCourses.name} ILIKE ${`%${search}%`} OR ${raceCourses.city} ILIKE ${`%${search}%`})`
+                : undefined,
+        );
+
+        const [data, count] = await Promise.all([
+            db
+                .select({
+                    id: raceCourses.id,
+                    name: raceCourses.name,
+                    country: raceCourses.country,
+                    city: raceCourses.city,
+                    surfaceType: raceCourses.surfaceType,
+                    distanceMeters: raceCourses.distanceMeters,
+                    maxStartingPositions: raceCourses.maxStartingPositions,
+                    grandstandCapacity: raceCourses.grandstandCapacity,
+                    status: raceCourses.status,
+                    trackShape: {
+                        id: trackShapes.id,
+                        shape: trackShapes.shape,
+                    },
+                    createdAt: raceCourses.createdAt,
+                    updatedAt: raceCourses.updatedAt,
+                })
+                .from(raceCourses)
+                .leftJoin(
+                    trackShapes,
+                    eq(raceCourses.trackShapeId, trackShapes.id),
+                )
+                .where(conditions)
+                .orderBy(desc(raceCourses.createdAt), desc(raceCourses.id))
+                .limit(l)
+                .offset(offset),
+            db
+                .select({ count: sql<number>`count(*)` })
+                .from(raceCourses)
+                .where(conditions),
+        ]);
+
+        return res.json(
+            paginatedResponse(data, Number(count[0]?.count ?? 0), p, l),
+        );
+    } catch (err) {
+        next(err);
+    }
+};
+
+export const getRaceCourse = async (
+    req: Request,
+    res: Response,
+    next: NextFunction,
+) => {
+    try {
+        const courseId = req.params.courseId as string;
+        if (!uuidValidate(courseId)) {
+            return res.status(400).json({ message: "Invalid uuid" });
+        }
+
+        const [course] = await db
+            .select({
+                id: raceCourses.id,
+                name: raceCourses.name,
+                country: raceCourses.country,
+                city: raceCourses.city,
+                address: raceCourses.address,
+                surfaceType: raceCourses.surfaceType,
+                distanceMeters: raceCourses.distanceMeters,
+                maxStartingPositions: raceCourses.maxStartingPositions,
+                grandstandCapacity: raceCourses.grandstandCapacity,
+                status: raceCourses.status,
+                trackShape: {
+                    id: trackShapes.id,
+                    shape: trackShapes.shape,
+                    description: trackShapes.description,
+                },
+                createdAt: raceCourses.createdAt,
+                updatedAt: raceCourses.updatedAt,
+            })
+            .from(raceCourses)
+            .leftJoin(trackShapes, eq(raceCourses.trackShapeId, trackShapes.id))
+            .where(eq(raceCourses.id, courseId));
+
+        if (!course) {
+            return res.status(404).json({ message: "Race course not found" });
+        }
+
+        const distances = await db
+            .select({
+                id: courseDistances.id,
+                distanceMeters: courseDistances.distanceMeters,
+            })
+            .from(courseDistances)
+            .where(eq(courseDistances.courseId, courseId))
+            .orderBy(courseDistances.distanceMeters);
+
+        res.json({ ...course, distances });
+    } catch (err) {
+        next(err);
+    }
+};
+export const updateCourseStatus = async (
+    req: Request,
+    res: Response,
+    next: NextFunction,
+) => {
+    try {
+        const courseId = req.params.courseId as string;
+        if (!uuidValidate(courseId)) {
+            return res.status(400).json({ message: "Invalid uuid" });
+        }
+
+        const { status } = req.body;
+
+        const [course] = await db
+            .select({ id: raceCourses.id, status: raceCourses.status })
+            .from(raceCourses)
+            .where(eq(raceCourses.id, courseId));
+
+        if (!course) {
+            return res.status(404).json({ message: "Race course not found" });
+        }
+
+        if (status === "inactive" || status === "under_maintainance") {
+            const [activeRace] = await db
+                .select({ id: races.id })
+                .from(races)
+                .innerJoin(
+                    courseDistances,
+                    eq(races.courseDistanceId, courseDistances.id),
+                )
+                .where(
+                    and(
+                        eq(courseDistances.courseId, courseId),
+                        sql`${races.status} NOT IN ('draft', 'completed', 'cancelled')`,
+                    ),
+                )
+                .limit(1);
+
+            if (activeRace) {
+                return res.status(409).json({
+                    message:
+                        "Cannot deactivate course — active races reference it",
+                });
+            }
+        }
+
+        const [updated] = await db
+            .update(raceCourses)
+            .set({ status, updatedAt: new Date() })
+            .where(eq(raceCourses.id, courseId))
+            .returning();
+
+        res.json(updated);
+    } catch (err) {
+        next(err);
+    }
+};
