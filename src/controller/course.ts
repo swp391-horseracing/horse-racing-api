@@ -181,6 +181,49 @@ export const createRaceCourse = async (
         next(err);
     }
 };
+
+export const updateRaceCourse = async (
+    req: Request,
+    res: Response,
+    next: NextFunction,
+) => {
+    try {
+        const courseId = req.params.courseId as string;
+        if (!uuidValidate(courseId)) {
+            return res.status(400).json({ message: "Invalid uuid" });
+        }
+
+        const body = req.body;
+
+        if (body.trackShapeId) {
+            const [trackShape] = await db
+                .select({ id: trackShapes.id })
+                .from(trackShapes)
+                .where(eq(trackShapes.id, body.trackShapeId));
+
+            if (!trackShape) {
+                return res
+                    .status(400)
+                    .json({ message: "Track shape not found" });
+            }
+        }
+
+        const [updated] = await db
+            .update(raceCourses)
+            .set({ ...body, updatedAt: new Date() })
+            .where(eq(raceCourses.id, courseId))
+            .returning();
+
+        if (!updated) {
+            return res.status(404).json({ message: "Race course not found" });
+        }
+
+        res.json(updated);
+    } catch (err) {
+        next(err);
+    }
+};
+
 export const updateCourseStatus = async (
     req: Request,
     res: Response,
@@ -289,7 +332,7 @@ export const addCourseDistance = async (
 };
 
 export const getTrackShapes = async (
-    req: Request,
+    _req: Request,
     res: Response,
     next: NextFunction,
 ) => {

@@ -5,6 +5,7 @@ import { authorize } from "../middleware/authorize.js";
 import { validate } from "../middleware/validate.js";
 import {
     createCourseSchema,
+    updateCourseSchema,
     updateCourseStatusSchema,
     createCourseDistanceSchema,
 } from "../validator/course.js";
@@ -16,7 +17,9 @@ import {
     getTrackShapes,
     removeCourseDistance,
     updateCourseStatus,
+    updateRaceCourse,
 } from "../controller/course.js";
+
 const router = Router();
 
 router.get("/track-shapes", getTrackShapes);
@@ -29,6 +32,13 @@ router.post(
     authorize(Role.ADMIN),
     validate(createCourseSchema),
     createRaceCourse,
+);
+router.patch(
+    "/:courseId",
+    authMiddleware,
+    authorize(Role.ADMIN),
+    validate(updateCourseSchema),
+    updateRaceCourse,
 );
 router.patch(
     "/:courseId/status",

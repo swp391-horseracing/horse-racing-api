@@ -14,6 +14,28 @@ export const createCourseSchema = z.object({
         .enum(["active", "inactive", "under_maintainance"])
         .default("active"),
 });
+
+export const updateCourseSchema = z
+    .object({
+        name: z.string().min(3).max(255).optional(),
+        country: z.string().max(100).optional(),
+        city: z.string().min(1).max(150).optional(),
+        address: z.string().optional(),
+        surfaceType: z.enum(["turf", "dirt", "synthetic"]).optional(),
+        trackShapeId: z.uuid("trackShapeId must be a valid UUID").optional(),
+        distanceMeters: z.coerce.number().int().positive().optional(),
+        maxStartingPositions: z.coerce.number().int().positive().optional(),
+        grandstandCapacity: z.coerce.number().int().positive().optional(),
+    })
+    .superRefine((data, ctx) => {
+        if (Object.keys(data).length === 0) {
+            ctx.addIssue({
+                code: "custom",
+                message: "At least one field must be provided",
+            });
+        }
+    });
+
 export const updateCourseStatusSchema = z.object({
     status: z.enum(["active", "inactive", "under_maintainance"]),
 });
