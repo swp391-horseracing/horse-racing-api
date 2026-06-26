@@ -359,7 +359,12 @@ const getOwnerRaceDetail = async (userId: string, raceId: string) => {
             eq(races.courseDistanceId, courseDistances.id),
         )
         .leftJoin(raceCourses, eq(courseDistances.courseId, raceCourses.id))
-        .groupBy(races.id)
+        .groupBy(
+            races.id,
+            courseDistances.distanceMeters,
+            raceCourses.surfaceType,
+            raceCourses.name,
+        )
         .where(whereCondition)
         .orderBy(races.scheduleAt);
 
