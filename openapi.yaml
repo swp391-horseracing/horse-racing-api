@@ -2987,7 +2987,7 @@ paths:
           content:
             application/json:
               schema:
-                oneOf:
+                anyOf:
                   - $ref: "#/components/schemas/MeRaceDetail"
                   - $ref: "#/components/schemas/MeRefereeRaceDetail"
         "400":

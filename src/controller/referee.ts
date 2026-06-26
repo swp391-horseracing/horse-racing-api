@@ -617,7 +617,7 @@ export const getRefereeRaceEntries = async (
     }
 };
 
-// UC-RR-01: referee marks a horse entry Cleared, Disqualified, or Withdrawn)
+// UC-RR-01: referee marks a horse entry Cleared, Disqualified, or Withdrawn.
 export const inspectEntry = async (
     req: Request,
     res: Response,
@@ -647,46 +647,61 @@ export const inspectEntry = async (
             });
         }
 
-        const [race] = await db
-            .select({ status: races.status })
-            .from(races)
-            .where(eq(races.id, raceId));
-
-        if (!race) {
-            return res.status(404).json({ message: "Race not found" });
-        }
-        if (race.status !== "scheduled") {
-            return res.status(409).json({
-                message:
-                    "Cannot alter inspection status once the race is no longer scheduled",
-            });
-        }
-
-        const [entry] = await db
-            .select({ id: raceEntries.id })
-            .from(raceEntries)
-            .where(
-                and(
-                    eq(raceEntries.id, entryId),
-                    eq(raceEntries.raceId, raceId),
-                ),
-            );
-
-        if (!entry) {
-            return res
-                .status(404)
-                .json({ message: "Entry not found in this race" });
-        }
-
         const { result } = req.body as {
             result: "cleared" | "disqualified" | "withdrawn";
         };
         const entryStatus = result === "cleared" ? "confirmed" : result;
 
-        await db
-            .update(raceEntries)
-            .set({ entryStatus })
-            .where(eq(raceEntries.id, entryId));
+        const outcome = await db.transaction(async (tx) => {
+            const [race] = await tx
+                .select({ status: races.status })
+                .from(races)
+                .where(eq(races.id, raceId))
+                .for("update");
+
+            if (!race) {
+                return {
+                    ok: false as const,
+                    status: 404,
+                    message: "Race not found",
+                };
+            }
+            if (race.status !== "scheduled") {
+                return {
+                    ok: false as const,
+                    status: 409,
+                    message:
+                        "Cannot alter inspection status once the race is no longer scheduled",
+                };
+            }
+
+            const [updatedRow] = await tx
+                .update(raceEntries)
+                .set({ entryStatus })
+                .where(
+                    and(
+                        eq(raceEntries.id, entryId),
+                        eq(raceEntries.raceId, raceId),
+                    ),
+                )
+                .returning({ id: raceEntries.id });
+
+            if (!updatedRow) {
+                return {
+                    ok: false as const,
+                    status: 404,
+                    message: "Entry not found in this race",
+                };
+            }
+
+            return { ok: true as const };
+        });
+
+        if (!outcome.ok) {
+            return res
+                .status(outcome.status)
+                .json({ message: outcome.message });
+        }
 
         const [updated] = await db
             .select({
