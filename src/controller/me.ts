@@ -148,10 +148,9 @@ const getOwnerRaces = async (userId: string, limit: number, offset: number) => {
     const whereCondition = and(eq(horses.ownerId, userId));
     const [data, count] = await Promise.all([
         db
-            .select({
+            .selectDistinctOn([races.id], {
                 id: races.id,
                 tournamentId: races.tournamentId,
-                races: races.id,
                 name: races.name,
                 distanceMeters: courseDistances.distanceMeters,
                 trackCondition: raceCourses.surfaceType,
@@ -159,12 +158,9 @@ const getOwnerRaces = async (userId: string, limit: number, offset: number) => {
                 venue: raceCourses.name,
                 laneCount: races.laneCount,
                 status: races.status,
-                horse: horses.name,
-                jockey: users.fullName,
             })
             .from(races)
             .innerJoin(raceEntries, eq(raceEntries.raceId, races.id))
-            .leftJoin(users, eq(raceEntries.jockeyId, users.id))
             .innerJoin(horses, eq(raceEntries.horseId, horses.id))
             .leftJoin(
                 courseDistances,
@@ -174,7 +170,7 @@ const getOwnerRaces = async (userId: string, limit: number, offset: number) => {
             .where(whereCondition)
             .limit(limit)
             .offset(offset)
-            .orderBy(races.scheduleAt),
+            .orderBy(races.id, races.scheduleAt),
         db
             .select({ count: sql<number>`count(distinct(${races.id}))` })
             .from(races)
