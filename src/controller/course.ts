@@ -379,17 +379,12 @@ export const removeCourseDistance = async (
         const [activeRace] = await db
             .select({ id: races.id })
             .from(races)
-            .where(
-                and(
-                    eq(races.courseDistanceId, distanceId),
-                    sql`${races.status} NOT IN ('draft', 'completed', 'cancelled')`,
-                ),
-            )
+            .where(eq(races.courseDistanceId, distanceId))
             .limit(1);
 
         if (activeRace) {
             return res.status(409).json({
-                message: "Cannot remove distance — active races reference it",
+                message: "Cannot remove distance — races reference it",
             });
         }
 
