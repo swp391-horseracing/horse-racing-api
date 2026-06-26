@@ -10,6 +10,8 @@ import { violations } from "../schema/violations.js";
 import { refereeAssignments } from "../schema/refereeAssignments.js";
 import { horses } from "../schema/horses.js";
 import { users } from "../schema/users.js";
+import { courseDistances } from "../schema/courseDistances.js";
+import { raceCourses } from "../schema/raceCourses.js";
 
 async function ensureReportInitialized(raceId: string) {
     await db.transaction(async (tx) => {
@@ -89,13 +91,18 @@ export const getRefereeRaceReport = async (
                 id: races.id,
                 name: races.name,
                 raceNumber: races.raceNumber,
-                distanceMeters: races.distanceMeters,
-                trackCondition: races.trackCondition,
+                distanceMeters: courseDistances.distanceMeters,
+                trackCondition: raceCourses.surfaceType,
                 scheduledAt: races.scheduleAt,
-                venue: races.venue,
+                venue: raceCourses.name,
                 status: races.status,
             })
             .from(races)
+            .leftJoin(
+                courseDistances,
+                eq(races.courseDistanceId, courseDistances.id),
+            )
+            .leftJoin(raceCourses, eq(courseDistances.courseId, raceCourses.id))
             .where(eq(races.id, raceId));
 
         if (!race) {
