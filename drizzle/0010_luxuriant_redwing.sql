@@ -33,7 +33,7 @@ CREATE TABLE "track_shapes" (
 );
 --> statement-breakpoint
 DROP INDEX "uq_referee_race_idx";--> statement-breakpoint
-ALTER TABLE "races" ADD COLUMN "course_distance_id" uuid NOT NULL;--> statement-breakpoint
+ALTER TABLE "races" ADD COLUMN "course_distance_id" uuid;--> statement-breakpoint
 ALTER TABLE "course_distances" ADD CONSTRAINT "course_distances_course_id_race_courses_id_fk" FOREIGN KEY ("course_id") REFERENCES "public"."race_courses"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "race_courses" ADD CONSTRAINT "race_courses_track_shape_id_track_shapes_id_fk" FOREIGN KEY ("track_shape_id") REFERENCES "public"."track_shapes"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "races" ADD CONSTRAINT "races_course_distance_id_course_distances_id_fk" FOREIGN KEY ("course_distance_id") REFERENCES "public"."course_distances"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint

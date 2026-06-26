@@ -1205,9 +1205,8 @@ export const assignRaceReferee = async (
                 .insert(refereeAssignments)
                 .values({ raceId, refereeId, assignedBy: admin.id })
                 .onConflictDoUpdate({
-                    target: refereeAssignments.raceId,
+                    target: [refereeAssignments.raceId, refereeAssignments.refereeId],
                     set: {
-                        refereeId,
                         assignedBy: admin.id,
                         assignedAt: new Date(),
                     },
