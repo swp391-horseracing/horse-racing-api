@@ -7,6 +7,8 @@ import { raceEntries } from "../schema/raceEntries.js";
 import { horses } from "../schema/horses.js";
 import { users } from "../schema/users.js";
 import { predictions } from "../schema/predictions.js";
+import { courseDistances } from "../schema/courseDistances.js";
+import { raceCourses } from "../schema/raceCourses.js";
 import { createPredictionSchema } from "../validator/prediction.js";
 
 export const getRace = async (
@@ -22,8 +24,32 @@ export const getRace = async (
 
         const userRole = req.user?.role;
         const [race] = await db
-            .select()
+            .select({
+                id: races.id,
+                tournamentId: races.tournamentId,
+                courseDistanceId: races.courseDistanceId,
+                name: races.name,
+                raceNumber: races.raceNumber,
+                scheduleAt: races.scheduleAt,
+                laneCount: races.laneCount,
+                status: races.status,
+                createdAt: races.createdAt,
+                updatedAt: races.updatedAt,
+                course: {
+                    id: raceCourses.id,
+                    name: raceCourses.name,
+                    country: raceCourses.country,
+                    city: raceCourses.city,
+                    surfaceType: raceCourses.surfaceType,
+                    distanceMeters: courseDistances.distanceMeters,
+                },
+            })
             .from(races)
+            .leftJoin(
+                courseDistances,
+                eq(races.courseDistanceId, courseDistances.id),
+            )
+            .leftJoin(raceCourses, eq(courseDistances.courseId, raceCourses.id))
             .where(
                 userRole === "admin"
                     ? eq(races.id, raceId)

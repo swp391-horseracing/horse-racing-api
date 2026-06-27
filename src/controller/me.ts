@@ -7,6 +7,8 @@ import { jockeyProfile } from "../schema/jockeyProfile.js";
 import { raceEntries } from "../schema/raceEntries.js";
 import { races } from "../schema/races.js";
 import { raceResults } from "../schema/raceResults.js";
+import { courseDistances } from "../schema/courseDistances.js";
+import { raceCourses } from "../schema/raceCourses.js";
 import {
     tournamentRacesQuerySchema,
     myRegistrationsQuerySchema,
@@ -108,9 +110,9 @@ const getJockeyRaces = async (
                 id: races.id,
                 tournamentId: races.tournamentId,
                 name: races.name,
-                distanceMeters: races.distanceMeters,
+                distanceMeters: courseDistances.distanceMeters,
                 scheduledAt: races.scheduleAt,
-                venue: races.venue,
+                venue: raceCourses.name,
                 status: races.status,
                 ride: horses.name,
                 laneNumber: raceEntries.laneNumber,
@@ -122,6 +124,11 @@ const getJockeyRaces = async (
             .innerJoin(raceEntries, eq(raceEntries.raceId, races.id))
             .innerJoin(horses, eq(raceEntries.horseId, horses.id))
             .innerJoin(users, eq(horses.ownerId, users.id))
+            .leftJoin(
+                courseDistances,
+                eq(races.courseDistanceId, courseDistances.id),
+            )
+            .leftJoin(raceCourses, eq(courseDistances.courseId, raceCourses.id))
             .where(whereCondition)
             .limit(limit)
             .offset(offset)
@@ -141,28 +148,29 @@ const getOwnerRaces = async (userId: string, limit: number, offset: number) => {
     const whereCondition = and(eq(horses.ownerId, userId));
     const [data, count] = await Promise.all([
         db
-            .select({
+            .selectDistinctOn([races.id], {
                 id: races.id,
                 tournamentId: races.tournamentId,
-                races: races.id,
                 name: races.name,
-                distanceMeters: races.distanceMeters,
-                trackCondition: races.trackCondition,
+                distanceMeters: courseDistances.distanceMeters,
+                trackCondition: raceCourses.surfaceType,
                 scheduledAt: races.scheduleAt,
-                venue: races.venue,
+                venue: raceCourses.name,
                 laneCount: races.laneCount,
                 status: races.status,
-                horse: horses.name,
-                jockey: users.fullName,
             })
             .from(races)
             .innerJoin(raceEntries, eq(raceEntries.raceId, races.id))
-            .leftJoin(users, eq(raceEntries.jockeyId, users.id))
             .innerJoin(horses, eq(raceEntries.horseId, horses.id))
+            .leftJoin(
+                courseDistances,
+                eq(races.courseDistanceId, courseDistances.id),
+            )
+            .leftJoin(raceCourses, eq(courseDistances.courseId, raceCourses.id))
             .where(whereCondition)
             .limit(limit)
             .offset(offset)
-            .orderBy(races.scheduleAt),
+            .orderBy(races.id, races.scheduleAt),
         db
             .select({ count: sql<number>`count(distinct(${races.id}))` })
             .from(races)
@@ -187,10 +195,10 @@ const getRefereeRaces = async (
                 tournamentId: races.tournamentId,
                 name: races.name,
                 raceNumber: races.raceNumber,
-                distanceMeters: races.distanceMeters,
-                trackCondition: races.trackCondition,
+                distanceMeters: courseDistances.distanceMeters,
+                trackCondition: raceCourses.surfaceType,
                 scheduledAt: races.scheduleAt,
-                venue: races.venue,
+                venue: raceCourses.name,
                 laneCount: races.laneCount,
                 status: races.status,
                 tournamentName: tournaments.name,
@@ -200,6 +208,11 @@ const getRefereeRaces = async (
             .innerJoin(races, eq(refereeAssignments.raceId, races.id))
             .leftJoin(tournaments, eq(races.tournamentId, tournaments.id))
             .leftJoin(raceResults, eq(raceResults.raceId, races.id))
+            .leftJoin(
+                courseDistances,
+                eq(races.courseDistanceId, courseDistances.id),
+            )
+            .leftJoin(raceCourses, eq(courseDistances.courseId, raceCourses.id))
             .where(whereCondition)
             .limit(limit)
             .offset(offset)
@@ -288,10 +301,10 @@ const getJockeyRaceDetail = async (userId: string, raceId: string) => {
             ownerId: users.id,
             ownerName: users.fullName,
             name: races.name,
-            distanceMeters: races.distanceMeters,
-            trackCondition: races.trackCondition,
+            distanceMeters: courseDistances.distanceMeters,
+            trackCondition: raceCourses.surfaceType,
             scheduledAt: races.scheduleAt,
-            venue: races.venue,
+            venue: raceCourses.name,
             laneCount: races.laneCount,
             status: races.status,
             laneNumber: raceEntries.laneNumber,
@@ -302,6 +315,11 @@ const getJockeyRaceDetail = async (userId: string, raceId: string) => {
         .innerJoin(raceEntries, eq(raceEntries.raceId, races.id))
         .innerJoin(horses, eq(raceEntries.horseId, horses.id))
         .innerJoin(users, eq(horses.ownerId, users.id))
+        .leftJoin(
+            courseDistances,
+            eq(races.courseDistanceId, courseDistances.id),
+        )
+        .leftJoin(raceCourses, eq(courseDistances.courseId, raceCourses.id))
         .where(whereCondition)
         .orderBy(races.scheduleAt);
 
@@ -318,10 +336,10 @@ const getOwnerRaceDetail = async (userId: string, raceId: string) => {
             id: races.id,
             tournamentId: races.tournamentId,
             name: races.name,
-            distanceMeters: races.distanceMeters,
-            trackCondition: races.trackCondition,
+            distanceMeters: courseDistances.distanceMeters,
+            trackCondition: raceCourses.surfaceType,
             scheduledAt: races.scheduleAt,
-            venue: races.venue,
+            venue: raceCourses.name,
             laneCount: races.laneCount,
             status: races.status,
             // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -336,7 +354,17 @@ const getOwnerRaceDetail = async (userId: string, raceId: string) => {
         .from(races)
         .innerJoin(raceEntries, eq(raceEntries.raceId, races.id))
         .innerJoin(horses, eq(raceEntries.horseId, horses.id))
-        .groupBy(races.id)
+        .leftJoin(
+            courseDistances,
+            eq(races.courseDistanceId, courseDistances.id),
+        )
+        .leftJoin(raceCourses, eq(courseDistances.courseId, raceCourses.id))
+        .groupBy(
+            races.id,
+            courseDistances.distanceMeters,
+            raceCourses.surfaceType,
+            raceCourses.name,
+        )
         .where(whereCondition)
         .orderBy(races.scheduleAt);
 
@@ -849,7 +877,7 @@ const getJockeyInvitations = async (
                     id: races.id,
                     name: races.name,
                     scheduledAt: races.scheduleAt,
-                    venue: races.venue,
+                    venue: raceCourses.name,
                     status: races.status,
                 },
                 horse: {
@@ -866,6 +894,11 @@ const getJockeyInvitations = async (
             .innerJoin(races, eq(jockeyInvitations.raceId, races.id))
             .innerJoin(horses, eq(jockeyInvitations.horseId, horses.id))
             .innerJoin(users, eq(jockeyInvitations.ownerId, users.id))
+            .leftJoin(
+                courseDistances,
+                eq(races.courseDistanceId, courseDistances.id),
+            )
+            .leftJoin(raceCourses, eq(courseDistances.courseId, raceCourses.id))
             .where(condition)
             .limit(limit)
             .offset(offset)
@@ -935,10 +968,10 @@ export const getInvitationDetail = async (
                 race: {
                     id: races.id,
                     name: races.name,
-                    distanceMeters: races.distanceMeters,
-                    trackCondition: races.trackCondition,
+                    distanceMeters: courseDistances.distanceMeters,
+                    trackCondition: raceCourses.surfaceType,
                     scheduledAt: races.scheduleAt,
-                    venue: races.venue,
+                    venue: raceCourses.name,
                     laneCount: races.laneCount,
                     status: races.status,
                 },
@@ -957,6 +990,11 @@ export const getInvitationDetail = async (
             .innerJoin(races, eq(jockeyInvitations.raceId, races.id))
             .innerJoin(horses, eq(jockeyInvitations.horseId, horses.id))
             .innerJoin(users, eq(jockeyInvitations.ownerId, users.id))
+            .leftJoin(
+                courseDistances,
+                eq(races.courseDistanceId, courseDistances.id),
+            )
+            .leftJoin(raceCourses, eq(courseDistances.courseId, raceCourses.id))
             .where(
                 and(
                     eq(jockeyInvitations.invitationId, id),
@@ -1069,9 +1107,9 @@ export const getMyPredictions = async (
                     race: {
                         id: races.id,
                         name: races.name,
-                        distanceMeters: races.distanceMeters,
+                        distanceMeters: courseDistances.distanceMeters,
                         scheduledAt: races.scheduleAt,
-                        venue: races.venue,
+                        venue: raceCourses.name,
                         status: races.status,
                     },
                     predictedEntry: {
@@ -1087,6 +1125,14 @@ export const getMyPredictions = async (
                 .innerJoin(races, eq(predictions.raceId, races.id))
                 .innerJoin(re, eq(predictions.predictedEntryId, re.id))
                 .innerJoin(h, eq(re.horseId, h.id))
+                .leftJoin(
+                    courseDistances,
+                    eq(races.courseDistanceId, courseDistances.id),
+                )
+                .leftJoin(
+                    raceCourses,
+                    eq(courseDistances.courseId, raceCourses.id),
+                )
                 .where(conditions)
                 .limit(l)
                 .offset(offset)

@@ -30,6 +30,8 @@ import { raceResults } from "../schema/raceResults.js";
 import { refereeAssignments } from "../schema/refereeAssignments.js";
 import { violations } from "../schema/violations.js";
 import { horses } from "../schema/horses.js";
+import { courseDistances } from "../schema/courseDistances.js";
+import { raceCourses } from "../schema/raceCourses.js";
 import { reportsQuerySchema } from "../validator/report.js";
 import { eventBus } from "../websocket/eventBus.js";
 import { tournamentRegistrations } from "../schema/tournamentRegistrations.js";
@@ -421,6 +423,33 @@ export const createTournamentRace = async (
             return res.status(404).json({ message: "Tournament not found" });
         }
 
+        const { courseDistanceId } = req.body;
+
+        const [distance] = await db
+            .select({
+                id: courseDistances.id,
+                courseId: courseDistances.courseId,
+            })
+            .from(courseDistances)
+            .where(eq(courseDistances.id, courseDistanceId));
+
+        if (!distance) {
+            return res
+                .status(400)
+                .json({ message: "Course distance not found" });
+        }
+
+        const [course] = await db
+            .select({ status: raceCourses.status })
+            .from(raceCourses)
+            .where(eq(raceCourses.id, distance.courseId));
+
+        if (!course || course.status !== "active") {
+            return res.status(400).json({
+                message: "Cannot create race — course is not active",
+            });
+        }
+
         if (req.body.scheduleAt) {
             if (
                 req.body.scheduleAt < tournament.startDate ||
@@ -479,6 +508,37 @@ export const updateRace = async (
                     status: 403,
                     message: "Cannot update a ongoing race",
                 };
+            }
+
+            if (req.body.courseDistanceId) {
+                const [distance] = await tx
+                    .select({
+                        id: courseDistances.id,
+                        courseId: courseDistances.courseId,
+                    })
+                    .from(courseDistances)
+                    .where(eq(courseDistances.id, req.body.courseDistanceId));
+
+                if (!distance) {
+                    return {
+                        ok: false as const,
+                        status: 400,
+                        message: "Course distance not found",
+                    };
+                }
+
+                const [course] = await tx
+                    .select({ status: raceCourses.status })
+                    .from(raceCourses)
+                    .where(eq(raceCourses.id, distance.courseId));
+
+                if (!course || course.status !== "active") {
+                    return {
+                        ok: false as const,
+                        status: 400,
+                        message: "Cannot update race — course is not active",
+                    };
+                }
             }
 
             if (req.body.scheduleAt) {
@@ -986,10 +1046,11 @@ export const getRaceReport = async (
                 id: races.id,
                 name: races.name,
                 raceNumber: races.raceNumber,
-                distanceMeters: races.distanceMeters,
-                trackCondition: races.trackCondition,
+                distanceMeters: courseDistances.distanceMeters,
+                courseName: raceCourses.name,
+                courseCity: raceCourses.city,
+                surfaceType: raceCourses.surfaceType,
                 scheduledAt: races.scheduleAt,
-                venue: races.venue,
                 laneCount: races.laneCount,
                 status: races.status,
                 tournament: {
@@ -999,6 +1060,11 @@ export const getRaceReport = async (
             })
             .from(races)
             .leftJoin(tournaments, eq(races.tournamentId, tournaments.id))
+            .leftJoin(
+                courseDistances,
+                eq(races.courseDistanceId, courseDistances.id),
+            )
+            .leftJoin(raceCourses, eq(courseDistances.courseId, raceCourses.id))
             .where(eq(races.id, raceId));
 
         if (!race) {
@@ -1139,9 +1205,11 @@ export const assignRaceReferee = async (
                 .insert(refereeAssignments)
                 .values({ raceId, refereeId, assignedBy: admin.id })
                 .onConflictDoUpdate({
-                    target: refereeAssignments.raceId,
+                    target: [
+                        refereeAssignments.raceId,
+                        refereeAssignments.refereeId,
+                    ],
                     set: {
-                        refereeId,
                         assignedBy: admin.id,
                         assignedAt: new Date(),
                     },

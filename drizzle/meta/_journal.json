@@ -71,6 +71,13 @@
       "when": 1782145645517,
       "tag": "0009_fuzzy_squadron_sinister",
       "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1782374111879,
+      "tag": "0010_luxuriant_redwing",
+      "breakpoints": true
     }
   ]
 }
