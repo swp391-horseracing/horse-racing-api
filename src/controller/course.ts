@@ -310,6 +310,7 @@ export const addCourseDistance = async (
             .returning();
 
         res.status(201).json(newDistance);
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
     } catch (err: any) {
         if (err?.cause?.code === "23505") {
             return res.status(409).json({
