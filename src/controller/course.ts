@@ -321,6 +321,41 @@ export const addCourseDistance = async (
     }
 };
 
+export const getCourseDistances = async (
+    req: Request,
+    res: Response,
+    next: NextFunction,
+) => {
+    try {
+        const courseId = req.params.courseId as string;
+        if (!uuidValidate(courseId)) {
+            return res.status(400).json({ message: "Invalid uuid" });
+        }
+
+        const [course] = await db
+            .select({ id: raceCourses.id })
+            .from(raceCourses)
+            .where(eq(raceCourses.id, courseId));
+
+        if (!course) {
+            return res.status(404).json({ message: "Race course not found" });
+        }
+
+        const distances = await db
+            .select({
+                id: courseDistances.id,
+                distanceMeters: courseDistances.distanceMeters,
+            })
+            .from(courseDistances)
+            .where(eq(courseDistances.courseId, courseId))
+            .orderBy(courseDistances.distanceMeters);
+
+        res.json(distances);
+    } catch (err) {
+        next(err);
+    }
+};
+
 export const getTrackShapes = async (
     _req: Request,
     res: Response,

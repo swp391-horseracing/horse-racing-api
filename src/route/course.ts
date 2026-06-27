@@ -12,6 +12,7 @@ import {
 import {
     addCourseDistance,
     createRaceCourse,
+    getCourseDistances,
     getRaceCourse,
     getRaceCourses,
     getTrackShapes,
@@ -25,6 +26,7 @@ const router = Router();
 router.get("/track-shapes", getTrackShapes);
 router.get("/", getRaceCourses);
 router.get("/:courseId", getRaceCourse);
+router.get("/:courseId/distances", getCourseDistances);
 
 router.post(
     "/",
