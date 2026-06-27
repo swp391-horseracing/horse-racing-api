@@ -13,6 +13,8 @@ import {
 import { races } from "../schema/races.js";
 import { horses } from "../schema/horses.js";
 import { tournamentRegistrations } from "../schema/tournamentRegistrations.js";
+import { courseDistances } from "../schema/courseDistances.js";
+import { raceCourses } from "../schema/raceCourses.js";
 
 export const getTournaments = async (
     req: Request,
@@ -164,14 +166,22 @@ export const getTournamentRaces = async (
                     id: races.id,
                     tournamentId: races.tournamentId,
                     name: races.name,
-                    distanceMeters: races.distanceMeters,
-                    trackCondition: races.trackCondition,
+                    distanceMeters: courseDistances.distanceMeters,
+                    trackCondition: raceCourses.surfaceType,
                     scheduledAt: races.scheduleAt,
-                    venue: races.venue,
+                    venue: raceCourses.name,
                     laneCount: races.laneCount,
                     status: races.status,
                 })
                 .from(races)
+                .leftJoin(
+                    courseDistances,
+                    eq(races.courseDistanceId, courseDistances.id),
+                )
+                .leftJoin(
+                    raceCourses,
+                    eq(courseDistances.courseId, raceCourses.id),
+                )
                 .where(listRacescondition)
                 .limit(l)
                 .offset(offset)

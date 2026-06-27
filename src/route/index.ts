@@ -9,6 +9,7 @@ import meRoutes from "./me.js";
 import adminRoutes from "./admin.js";
 import jockeyRoutes from "./jockey.js";
 import refereeRoutes from "./referee.js";
+import courseRoutes from "./course.js";
 
 const router = Router();
 
@@ -20,6 +21,7 @@ router.use("/jockeys", jockeyRoutes);
 router.use("/referee", refereeRoutes);
 router.use("/schedules", scheduleRoutes);
 router.use("/races", raceRoutes);
+router.use("/courses", courseRoutes);
 router.use("/horses", horseRoutes);
 router.use("/tournaments", tournamentRoutes);
 

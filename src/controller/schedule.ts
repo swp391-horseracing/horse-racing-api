@@ -1,6 +1,7 @@
 import { NextFunction, Request, Response } from "express";
 import db from "../config/db.js";
-import { races } from "../schema/index.js";
+import { races, courseDistances, raceCourses } from "../schema/index.js";
+import { eq } from "drizzle-orm";
 import moment from "moment";
 import { sql } from "drizzle-orm";
 
@@ -33,10 +34,15 @@ export const getRaceSchedule = async (
                 tournamentId: races.tournamentId,
                 name: races.name,
                 scheduledAt: races.scheduleAt,
-                venue: races.venue,
+                venue: raceCourses.name,
                 status: races.status,
             })
             .from(races)
+            .leftJoin(
+                courseDistances,
+                eq(races.courseDistanceId, courseDistances.id),
+            )
+            .leftJoin(raceCourses, eq(courseDistances.courseId, raceCourses.id))
             .where(
                 sql`${races.scheduleAt} >= ${startDate} AND ${races.scheduleAt} < ${endDate}`,
             );

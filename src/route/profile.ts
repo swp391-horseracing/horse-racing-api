@@ -6,7 +6,7 @@ import { authMiddleware } from "../middleware/auth.js";
 
 const router = Router();
 
-router.get("/:id", authMiddleware, getProfile);
+router.get("/:id", getProfile);
 router.patch(
     "/:id",
     authMiddleware,
