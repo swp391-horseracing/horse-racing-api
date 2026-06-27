@@ -304,29 +304,18 @@ export const addCourseDistance = async (
 
         const { distanceMeters } = req.body;
 
-        const [existing] = await db
-            .select({ id: courseDistances.id })
-            .from(courseDistances)
-            .where(
-                and(
-                    eq(courseDistances.courseId, courseId),
-                    eq(courseDistances.distanceMeters, distanceMeters),
-                ),
-            );
-
-        if (existing) {
-            return res.status(409).json({
-                message: "Distance already exists for this course",
-            });
-        }
-
         const [newDistance] = await db
             .insert(courseDistances)
             .values({ courseId, distanceMeters })
             .returning();
 
         res.status(201).json(newDistance);
-    } catch (err) {
+    } catch (err: any) {
+        if (err?.cause?.code === "23505") {
+            return res.status(409).json({
+                message: "Distance already exists for this course",
+            });
+        }
         next(err);
     }
 };
