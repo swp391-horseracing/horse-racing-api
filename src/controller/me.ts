@@ -382,10 +382,10 @@ const getRefereeRaceDetail = async (userId: string, raceId: string) => {
             tournamentId: races.tournamentId,
             name: races.name,
             raceNumber: races.raceNumber,
-            distanceMeters: races.distanceMeters,
-            trackCondition: races.trackCondition,
+            distanceMeters: courseDistances.distanceMeters,
+            trackCondition: raceCourses.surfaceType,
             scheduledAt: races.scheduleAt,
-            venue: races.venue,
+            venue: raceCourses.name,
             laneCount: races.laneCount,
             status: races.status,
             tournamentName: tournaments.name,
@@ -393,6 +393,11 @@ const getRefereeRaceDetail = async (userId: string, raceId: string) => {
         })
         .from(refereeAssignments)
         .innerJoin(races, eq(refereeAssignments.raceId, races.id))
+        .leftJoin(
+            courseDistances,
+            eq(races.courseDistanceId, courseDistances.id),
+        )
+        .leftJoin(raceCourses, eq(courseDistances.courseId, raceCourses.id))
         .leftJoin(tournaments, eq(races.tournamentId, tournaments.id))
         .leftJoin(raceResults, eq(raceResults.raceId, races.id))
         .where(whereCondition);
