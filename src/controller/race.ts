@@ -30,7 +30,7 @@ export const getRace = async (
                 courseDistanceId: races.courseDistanceId,
                 name: races.name,
                 raceNumber: races.raceNumber,
-                scheduleAt: races.scheduleAt,
+                scheduledAt: races.scheduleAt,
                 laneCount: races.laneCount,
                 status: races.status,
                 createdAt: races.createdAt,
