@@ -1,18 +1,17 @@
 import { Router } from "express";
+import { getMeProfile } from "../controller/me/profile.js";
+import { getMeRaces, getMeRaceDetail } from "../controller/me/races.js";
+import { getMyRegistrations } from "../controller/me/registrations.js";
 import {
-    getMeProfile,
-    getMeRaceDetail,
-    getMeRaces,
-    getMyRegistrations,
     getRaceInvitations,
     inviteJockey,
     cancelInvitation,
-    acceptInvitation,
     confirmJockey,
     getMyInvitations,
     getInvitationDetail,
-    getMyPredictions,
-} from "../controller/me.js";
+    acceptInvitation,
+} from "../controller/me/invitations.js";
+import { getMyPredictions } from "../controller/me/predictions.js";
 import { authMiddleware } from "../middleware/auth.js";
 import { authorize } from "../middleware/authorize.js";
 import { Role } from "../types/roles.js";
