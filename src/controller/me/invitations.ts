@@ -111,7 +111,7 @@ export const inviteJockey = async (
         const result = await db.transaction(async (tx) => {
             // Verify this owner has this horse entered in this race
             const [entry] = await tx
-                .select({ id: raceEntries.id })
+                .select({ id: raceEntries.id, jockeyId: raceEntries.jockeyId })
                 .from(raceEntries)
                 .innerJoin(horses, eq(raceEntries.horseId, horses.id))
                 .where(
@@ -127,6 +127,14 @@ export const inviteJockey = async (
                     ok: false as const,
                     status: 404,
                     message: "No race entry found for this horse in this race",
+                };
+            }
+            if (entry.jockeyId) {
+                return {
+                    ok: false as const,
+                    status: 409,
+                    message:
+                        "A jockey already confirmed for this horse to join this race",
                 };
             }
 
