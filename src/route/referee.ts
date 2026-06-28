@@ -6,12 +6,15 @@ import { validate } from "../middleware/validate.js";
 import {
     createViolation,
     deleteViolation,
+    getRefereeRaceEntries,
     getRefereeRaceReport,
+    inspectEntry,
     submitReport,
     updatePlacements,
 } from "../controller/referee.js";
 import {
     createViolationSchema,
+    inspectEntrySchema,
     submitReportSchema,
     updatePlacementsSchema,
 } from "../validator/referee.js";
@@ -23,6 +26,21 @@ router.get(
     authMiddleware,
     authorize(Role.REFEREE),
     getRefereeRaceReport,
+);
+
+router.get(
+    "/races/:raceId/entries",
+    authMiddleware,
+    authorize(Role.REFEREE),
+    getRefereeRaceEntries,
+);
+
+router.patch(
+    "/races/:raceId/entries/:entryId/inspection",
+    authMiddleware,
+    authorize(Role.REFEREE),
+    validate(inspectEntrySchema),
+    inspectEntry,
 );
 
 router.put(

@@ -371,6 +371,40 @@ const getOwnerRaceDetail = async (userId: string, raceId: string) => {
     return data;
 };
 
+const getRefereeRaceDetail = async (userId: string, raceId: string) => {
+    const whereCondition = and(
+        eq(refereeAssignments.refereeId, userId),
+        eq(races.id, raceId),
+    );
+    const [data] = await db
+        .select({
+            id: races.id,
+            tournamentId: races.tournamentId,
+            name: races.name,
+            raceNumber: races.raceNumber,
+            distanceMeters: courseDistances.distanceMeters,
+            trackCondition: raceCourses.surfaceType,
+            scheduledAt: races.scheduleAt,
+            venue: raceCourses.name,
+            laneCount: races.laneCount,
+            status: races.status,
+            tournamentName: tournaments.name,
+            resultStatus: raceResults.resultStatus,
+        })
+        .from(refereeAssignments)
+        .innerJoin(races, eq(refereeAssignments.raceId, races.id))
+        .leftJoin(
+            courseDistances,
+            eq(races.courseDistanceId, courseDistances.id),
+        )
+        .leftJoin(raceCourses, eq(courseDistances.courseId, raceCourses.id))
+        .leftJoin(tournaments, eq(races.tournamentId, tournaments.id))
+        .leftJoin(raceResults, eq(raceResults.raceId, races.id))
+        .where(whereCondition);
+
+    return data;
+};
+
 export const getMeRaceDetail = async (
     req: Request,
     res: Response,
@@ -396,6 +430,9 @@ export const getMeRaceDetail = async (
                 break;
             case "horse_owner":
                 result = await getOwnerRaceDetail(user.id, raceId);
+                break;
+            case "referee":
+                result = await getRefereeRaceDetail(user.id, raceId);
                 break;
             default:
                 return res

@@ -568,3 +568,170 @@ export const submitReport = async (
         next(err);
     }
 };
+
+export const getRefereeRaceEntries = async (
+    req: Request,
+    res: Response,
+    next: NextFunction,
+) => {
+    try {
+        const raceId = req.params.raceId as string;
+        if (!uuidValidate(raceId)) {
+            return res.status(400).json({ message: "Invalid uuid" });
+        }
+
+        const [assignment] = await db
+            .select({ id: refereeAssignments.id })
+            .from(refereeAssignments)
+            .where(
+                and(
+                    eq(refereeAssignments.raceId, raceId),
+                    eq(refereeAssignments.refereeId, req.user!.id),
+                ),
+            );
+
+        if (!assignment) {
+            return res.status(403).json({
+                message:
+                    "Unauthorized: You are not assigned to officiate this track event.",
+            });
+        }
+
+        const entries = await db
+            .select({
+                id: raceEntries.id,
+                laneNumber: raceEntries.laneNumber,
+                entryStatus: raceEntries.entryStatus,
+                horse: {
+                    id: horses.id,
+                    name: horses.name,
+                    breed: horses.breed,
+                },
+                jockey: {
+                    id: users.id,
+                    fullName: users.fullName,
+                },
+            })
+            .from(raceEntries)
+            .innerJoin(horses, eq(raceEntries.horseId, horses.id))
+            .leftJoin(users, eq(raceEntries.jockeyId, users.id))
+            .where(eq(raceEntries.raceId, raceId))
+            .orderBy(raceEntries.laneNumber);
+
+        res.json({ entries });
+    } catch (err) {
+        next(err);
+    }
+};
+
+// UC-RR-01: referee marks a horse entry Cleared, Disqualified, or Withdrawn.
+export const inspectEntry = async (
+    req: Request,
+    res: Response,
+    next: NextFunction,
+) => {
+    try {
+        const raceId = req.params.raceId as string;
+        const entryId = req.params.entryId as string;
+        if (!uuidValidate(raceId) || !uuidValidate(entryId)) {
+            return res.status(400).json({ message: "Invalid uuid" });
+        }
+
+        const [assignment] = await db
+            .select({ id: refereeAssignments.id })
+            .from(refereeAssignments)
+            .where(
+                and(
+                    eq(refereeAssignments.raceId, raceId),
+                    eq(refereeAssignments.refereeId, req.user!.id),
+                ),
+            );
+
+        if (!assignment) {
+            return res.status(403).json({
+                message:
+                    "Unauthorized: You are not assigned to officiate this track event.",
+            });
+        }
+
+        const { result } = req.body as {
+            result: "cleared" | "disqualified" | "withdrawn";
+        };
+        const entryStatus = result === "cleared" ? "confirmed" : result;
+
+        const outcome = await db.transaction(async (tx) => {
+            const [race] = await tx
+                .select({ status: races.status })
+                .from(races)
+                .where(eq(races.id, raceId))
+                .for("update");
+
+            if (!race) {
+                return {
+                    ok: false as const,
+                    status: 404,
+                    message: "Race not found",
+                };
+            }
+            if (race.status !== "scheduled") {
+                return {
+                    ok: false as const,
+                    status: 409,
+                    message:
+                        "Cannot alter inspection status once the race is no longer scheduled",
+                };
+            }
+
+            const [updatedRow] = await tx
+                .update(raceEntries)
+                .set({ entryStatus })
+                .where(
+                    and(
+                        eq(raceEntries.id, entryId),
+                        eq(raceEntries.raceId, raceId),
+                    ),
+                )
+                .returning({ id: raceEntries.id });
+
+            if (!updatedRow) {
+                return {
+                    ok: false as const,
+                    status: 404,
+                    message: "Entry not found in this race",
+                };
+            }
+
+            return { ok: true as const };
+        });
+
+        if (!outcome.ok) {
+            return res
+                .status(outcome.status)
+                .json({ message: outcome.message });
+        }
+
+        const [updated] = await db
+            .select({
+                id: raceEntries.id,
+                laneNumber: raceEntries.laneNumber,
+                entryStatus: raceEntries.entryStatus,
+                horse: {
+                    id: horses.id,
+                    name: horses.name,
+                    breed: horses.breed,
+                },
+                jockey: {
+                    id: users.id,
+                    fullName: users.fullName,
+                },
+            })
+            .from(raceEntries)
+            .innerJoin(horses, eq(raceEntries.horseId, horses.id))
+            .leftJoin(users, eq(raceEntries.jockeyId, users.id))
+            .where(eq(raceEntries.id, entryId));
+
+        res.json({ entry: updated });
+    } catch (err) {
+        next(err);
+    }
+};
