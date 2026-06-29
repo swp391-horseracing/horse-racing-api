@@ -104,9 +104,9 @@ export const getHorseEntries = async (
             })
             .from(races)
             .where(eq(races.id, raceId))
-            .leftJoin(raceEntries, eq(races.id, raceEntries.raceId))
-            .leftJoin(horses, eq(raceEntries.horseId, horses.id))
-            .leftJoin(users, eq(raceEntries.jockeyId, users.id));
+            .innerJoin(raceEntries, eq(races.id, raceEntries.raceId))
+            .innerJoin(horses, eq(raceEntries.horseId, horses.id))
+            .innerJoin(users, eq(raceEntries.jockeyId, users.id));
 
         res.json(horseEntries);
     } catch (err) {
