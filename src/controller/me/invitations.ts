@@ -601,3 +601,53 @@ export const acceptInvitation = async (
         next(err);
     }
 };
+
+export const declineInvitation = async (
+    req: Request,
+    res: Response,
+    next: NextFunction,
+) => {
+    try {
+        const user = req.user!;
+        const { id } = req.params as { id: string };
+        if (!uuidValidate(id)) {
+            return res.status(400).json({ message: "Invalid uuid" });
+        }
+
+        const [invitation] = await db
+            .select({
+                jockeyId: jockeyInvitations.jockeyId,
+            })
+            .from(jockeyInvitations)
+            .where(eq(jockeyInvitations.invitationId, id));
+
+        if (!invitation) {
+            return res.status(404).json({ message: "Invitation not found" });
+        }
+        if (invitation.jockeyId !== user.id) {
+            return res.status(403).json({ message: "Forbidden" });
+        }
+
+        const [updated] = await db
+            .update(jockeyInvitations)
+            .set({ status: "declined", respondedAt: new Date() })
+            .where(
+                and(
+                    eq(jockeyInvitations.invitationId, id),
+                    eq(jockeyInvitations.jockeyId, user.id),
+                    eq(jockeyInvitations.status, "pending"),
+                ),
+            )
+            .returning();
+
+        if (!updated) {
+            return res
+                .status(409)
+                .json({ message: "Only pending invitations can be declined" });
+        }
+
+        return res.json({ invitation: updated });
+    } catch (err) {
+        next(err);
+    }
+};
