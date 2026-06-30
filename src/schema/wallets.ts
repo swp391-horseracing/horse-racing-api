@@ -1,9 +1,4 @@
-import {
-    integer,
-    pgTable,
-    timestamp,
-    uuid,
-} from "drizzle-orm/pg-core";
+import { integer, pgTable, timestamp, uuid } from "drizzle-orm/pg-core";
 import { users } from "./users.js";
 
 export const wallets = pgTable("wallets", {
@@ -16,15 +11,9 @@ export const wallets = pgTable("wallets", {
             onDelete: "cascade",
         }),
 
-    balance: integer("balance")
-        .notNull()
-        .default(1000),
+    balance: integer("balance").notNull().default(1000),
 
-    createdAt: timestamp("created_at")
-        .defaultNow()
-        .notNull(),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
 
-    updatedAt: timestamp("updated_at")
-        .defaultNow()
-        .notNull(),
+    updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });
