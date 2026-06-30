@@ -673,12 +673,12 @@ export const inspectEntry = async (
                     message: "Race not found",
                 };
             }
-            if (race.status !== "scheduled") {
+            if (race.status !== "pre_race") {
                 return {
                     ok: false as const,
                     status: 409,
                     message:
-                        "Cannot alter inspection status once the race is no longer scheduled",
+                        "Cannot alter inspection status once the race is already started or completed.",
                 };
             }
 
