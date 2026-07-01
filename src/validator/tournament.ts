@@ -69,11 +69,29 @@ const inviteJockeySchema = z.object({
     horseId: z.string().uuid("horseId must be a valid UUID"),
 });
 
+const myResultsQuerySchema = z.object({
+    status: z
+        .enum([
+            "scheduled",
+            "pre_race",
+            "ongoing",
+            "under_review",
+            "result_confirmed",
+            "completed",
+            "postponed",
+            "cancelled",
+        ])
+        .optional(),
+    page: z.coerce.number().int().min(1).default(1).optional(),
+    limit: z.coerce.number().int().min(1).max(100).default(10).optional(),
+});
+
 export {
     tournamentsQuerySchema,
     tournamentRacesQuerySchema,
     registerForTournamentSchema,
     myRegistrationsQuerySchema,
+    myResultsQuerySchema,
     inviteJockeySchema,
     adminTournamentsQuerySchema,
 };

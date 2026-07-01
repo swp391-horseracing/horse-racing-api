@@ -11,7 +11,7 @@ import { users } from "../../schema/users.js";
 import { courseDistances } from "../../schema/courseDistances.js";
 import { raceCourses } from "../../schema/raceCourses.js";
 import { getPagination, paginatedResponse } from "../../utils/paginate.js";
-import { tournamentRacesQuerySchema } from "../../validator/tournament.js";
+import { myResultsQuerySchema } from "../../validator/tournament.js";
 
 const resultEntryFields = {
     entryId: raceResultEntries.entryId,
@@ -37,8 +37,15 @@ const getJockeyResults = async (
     userId: string,
     limit: number,
     offset: number,
+    status?: string,
 ) => {
-    const whereCondition = eq(raceEntries.jockeyId, userId);
+    const conditions: ReturnType<typeof eq>[] = [
+        eq(raceEntries.jockeyId, userId),
+        eq(raceResults.resultStatus, "published"),
+    ];
+    if (status) conditions.push(eq(races.status, status as typeof races.$inferSelect.status));
+
+    const whereCondition = and(...conditions);
 
     const [data, countArr] = await Promise.all([
         db
@@ -86,8 +93,15 @@ const getOwnerResults = async (
     userId: string,
     limit: number,
     offset: number,
+    status?: string,
 ) => {
-    const whereCondition = eq(horses.ownerId, userId);
+    const conditions: ReturnType<typeof eq>[] = [
+        eq(horses.ownerId, userId),
+        eq(raceResults.resultStatus, "published"),
+    ];
+    if (status) conditions.push(eq(races.status, status as typeof races.$inferSelect.status));
+
+    const whereCondition = and(...conditions);
 
     const [data, countArr] = await Promise.all([
         db
@@ -145,7 +159,7 @@ export const getMyResults = async (
             return res.status(401).json({ message: "Unauthorized" });
         }
 
-        const parsed = tournamentRacesQuerySchema.safeParse(req.query);
+        const parsed = myResultsQuerySchema.safeParse(req.query);
         if (!parsed.success) {
             return res.status(400).json({
                 message: "Validation Errors",
@@ -156,7 +170,7 @@ export const getMyResults = async (
             });
         }
 
-        const { page, limit } = parsed.data;
+        const { page, limit, status } = parsed.data;
         const { page: p, limit: l, offset } = getPagination({ page, limit });
 
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -164,10 +178,10 @@ export const getMyResults = async (
 
         switch (user.role) {
             case "jockey":
-                result = await getJockeyResults(user.id, l, offset);
+                result = await getJockeyResults(user.id, l, offset, status);
                 break;
             case "horse_owner":
-                result = await getOwnerResults(user.id, l, offset);
+                result = await getOwnerResults(user.id, l, offset, status);
                 break;
             default:
                 return res
@@ -201,6 +215,7 @@ const getMyRaceResultDetail = async (userId: string, raceId: string) => {
             and(
                 eq(raceResultEntries.raceId, raceId),
                 eq(raceEntries.jockeyId, userId),
+                eq(raceResults.resultStatus, "published"),
             ),
         )
         .orderBy(raceResultEntries.finishedPosition, raceResultEntries.id);
@@ -226,6 +241,7 @@ const getOwnerRaceResultDetail = async (userId: string, raceId: string) => {
             and(
                 eq(raceResultEntries.raceId, raceId),
                 eq(horses.ownerId, userId),
+                eq(raceResults.resultStatus, "published"),
             ),
         )
         .orderBy(raceResultEntries.finishedPosition, raceResultEntries.id);
@@ -246,6 +262,50 @@ export const getMyResultDetail = async (
             return res.status(400).json({ message: "Invalid uuid" });
         }
 
+        let isInvolved = false;
+
+        switch (user.role) {
+            case "jockey": {
+                const [entry] = await db
+                    .select({ id: raceEntries.id })
+                    .from(raceEntries)
+                    .where(
+                        and(
+                            eq(raceEntries.raceId, raceId),
+                            eq(raceEntries.jockeyId, user.id),
+                        ),
+                    )
+                    .limit(1);
+                isInvolved = !!entry;
+                break;
+            }
+            case "horse_owner": {
+                const [entry] = await db
+                    .select({ id: raceEntries.id })
+                    .from(raceEntries)
+                    .innerJoin(horses, eq(raceEntries.horseId, horses.id))
+                    .where(
+                        and(
+                            eq(raceEntries.raceId, raceId),
+                            eq(horses.ownerId, user.id),
+                        ),
+                    )
+                    .limit(1);
+                isInvolved = !!entry;
+                break;
+            }
+            default:
+                return res
+                    .status(403)
+                    .json({ success: false, error: "Invalid user role" });
+        }
+
+        if (!isInvolved) {
+            return res
+                .status(403)
+                .json({ message: "You are not involved in this race" });
+        }
+
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         let entries: any[] = [];
 
@@ -256,16 +316,12 @@ export const getMyResultDetail = async (
             case "horse_owner":
                 entries = await getOwnerRaceResultDetail(user.id, raceId);
                 break;
-            default:
-                return res
-                    .status(403)
-                    .json({ success: false, error: "Invalid user role" });
         }
 
         if (entries.length === 0) {
             return res
-                .status(403)
-                .json({ message: "You are not involved in this race" });
+                .status(404)
+                .json({ message: "Result not yet available" });
         }
 
         return res.json({ entries });
