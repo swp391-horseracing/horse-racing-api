@@ -31,7 +31,6 @@ const resultEntryFields = {
     finishTime: raceResultEntries.finishTime,
     finishStatus: raceResultEntries.finishStatus,
     points: raceResultEntries.points,
-    previousFinishStatus: raceResultEntries.previousFinishStatus,
 };
 
 const getJockeyResults = async (

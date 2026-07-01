@@ -280,7 +280,6 @@ export const getRaceResult = async (
                 finishTime: raceResultEntries.finishTime,
                 finishStatus: raceResultEntries.finishStatus,
                 points: raceResultEntries.points,
-                previousFinishStatus: raceResultEntries.previousFinishStatus,
             })
             .from(raceResultEntries)
             .where(conditions)
