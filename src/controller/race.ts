@@ -282,7 +282,10 @@ export const getRaceResult = async (
                 points: raceResultEntries.points,
             })
             .from(raceResultEntries)
-            .innerJoin(raceResults, eq(raceResultEntries.resultId, raceResults.id))
+            .innerJoin(
+                raceResults,
+                eq(raceResultEntries.resultId, raceResults.id),
+            )
             .leftJoin(
                 raceEntries,
                 eq(raceEntries.id, raceResultEntries.entryId),
@@ -298,7 +301,9 @@ export const getRaceResult = async (
             .orderBy(raceResultEntries.finishedPosition, raceResultEntries.id);
 
         if (result.length === 0) {
-            return res.status(404).json({ message: "Results not yet available" });
+            return res
+                .status(404)
+                .json({ message: "Results not yet available" });
         }
         res.json(result);
     } catch (err) {

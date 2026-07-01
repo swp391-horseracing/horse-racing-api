@@ -43,7 +43,10 @@ const getJockeyResults = async (
         eq(raceEntries.jockeyId, userId),
         eq(raceResults.resultStatus, "published"),
     ];
-    if (status) conditions.push(eq(races.status, status as typeof races.$inferSelect.status));
+    if (status)
+        conditions.push(
+            eq(races.status, status as typeof races.$inferSelect.status),
+        );
 
     const whereCondition = and(...conditions);
 
@@ -99,7 +102,10 @@ const getOwnerResults = async (
         eq(horses.ownerId, userId),
         eq(raceResults.resultStatus, "published"),
     ];
-    if (status) conditions.push(eq(races.status, status as typeof races.$inferSelect.status));
+    if (status)
+        conditions.push(
+            eq(races.status, status as typeof races.$inferSelect.status),
+        );
 
     const whereCondition = and(...conditions);
 
