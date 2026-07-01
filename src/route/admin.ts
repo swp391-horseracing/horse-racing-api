@@ -91,7 +91,7 @@ router.patch(
 router.patch(
     "/races/:raceId/status",
     authMiddleware,
-    authorize(Role.ADMIN),
+    authorize(Role.ADMIN, Role.REFEREE),
     validate(updateRaceStatusSchema),
     updateRaceStatus,
 );
