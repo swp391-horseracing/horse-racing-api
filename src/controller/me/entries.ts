@@ -7,6 +7,7 @@ import { horses } from "../../schema/horses.js";
 import { users } from "../../schema/users.js";
 import { courseDistances } from "../../schema/courseDistances.js";
 import { raceCourses } from "../../schema/raceCourses.js";
+import { tournaments } from "../../schema/tournament.js";
 import { jockeyInvitations } from "../../schema/jockeyInvitations.js";
 import { myResultsQuerySchema } from "../../validator/tournament.js";
 import { getPagination, paginatedResponse } from "../../utils/paginate.js";
@@ -55,6 +56,8 @@ export const getMyEntries = async (
                     raceName: races.name,
                     scheduleAt: races.scheduleAt,
                     raceStatus: races.status,
+                    tournamentId: tournaments.id,
+                    tournamentName: tournaments.name,
                     horseId: horses.id,
                     horseName: horses.name,
                     weightKg: horses.weightKg,
@@ -68,6 +71,7 @@ export const getMyEntries = async (
                 })
                 .from(raceEntries)
                 .innerJoin(races, eq(raceEntries.raceId, races.id))
+                .innerJoin(tournaments, eq(races.tournamentId, tournaments.id))
                 .innerJoin(horses, eq(raceEntries.horseId, horses.id))
                 .leftJoin(users, eq(raceEntries.jockeyId, users.id))
                 .leftJoin(

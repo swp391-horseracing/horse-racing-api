@@ -15,6 +15,7 @@ import { horses } from "../schema/horses.js";
 import { tournamentRegistrations } from "../schema/tournamentRegistrations.js";
 import { courseDistances } from "../schema/courseDistances.js";
 import { raceCourses } from "../schema/raceCourses.js";
+import { raceEntries } from "../schema/raceEntries.js";
 
 export const getTournaments = async (
     req: Request,
@@ -172,6 +173,7 @@ export const getTournamentRaces = async (
                     venue: raceCourses.name,
                     laneCount: races.laneCount,
                     status: races.status,
+                    avaiableSlots: sql<number>`${races.laneCount} - (select count(*) from ${raceEntries} where ${raceEntries.raceId} = ${races.id})`,
                 })
                 .from(races)
                 .leftJoin(
