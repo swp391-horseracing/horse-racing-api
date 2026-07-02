@@ -1,7 +1,7 @@
 import { NextFunction, Request, Response } from "express";
 import { validate as uuidValidate } from "uuid";
 import db from "../../config/db.js";
-import { and, eq, inArray, isNull, ne, sql } from "drizzle-orm";
+import { and, eq, inArray, ne, sql } from "drizzle-orm";
 import { jockeyInvitations } from "../../schema/jockeyInvitations.js";
 import { raceEntries } from "../../schema/raceEntries.js";
 import { races } from "../../schema/races.js";
@@ -313,39 +313,14 @@ export const confirmJockey = async (
                 };
             }
 
-            // Ensure the race entry exists before confirming
-            const [existingEntry] = await tx
-                .select({ id: raceEntries.id })
-                .from(raceEntries)
-                .where(
-                    and(
-                        eq(raceEntries.raceId, raceId),
-                        eq(raceEntries.horseId, invitation.horseId),
-                    ),
-                );
-
-            if (!existingEntry) {
-                return {
-                    ok: false as const,
-                    status: 404,
-                    message: "Race entry not found",
-                };
-            }
-
-            // Assign the chosen jockey and confirm the race entry, unless
-            // another jockey has already been confirmed for this horse
+            // Assign the chosen jockey to the race entry
             const [entry] = await tx
                 .update(raceEntries)
-                .set({
-                    jockeyId: invitation.jockeyId,
-                    entryStatus: "confirmed",
-                    confirmedAt: new Date(),
-                })
+                .set({ jockeyId: invitation.jockeyId })
                 .where(
                     and(
                         eq(raceEntries.raceId, raceId),
                         eq(raceEntries.horseId, invitation.horseId),
-                        isNull(raceEntries.jockeyId),
                     ),
                 )
                 .returning();
@@ -353,16 +328,15 @@ export const confirmJockey = async (
             if (!entry) {
                 return {
                     ok: false as const,
-                    status: 409,
-                    message:
-                        "A jockey has already been confirmed for this horse",
+                    status: 500,
+                    message: "Failed to assign jockey to race entry",
                 };
             }
 
-            // Decline the other invitations (pending or accepted) for this horse entry
+            // Cancel the other invitations (pending or accepted) for this horse entry
             await tx
                 .update(jockeyInvitations)
-                .set({ status: "declined", respondedAt: new Date() })
+                .set({ status: "cancelled", respondedAt: new Date() })
                 .where(
                     and(
                         eq(jockeyInvitations.raceId, raceId),
