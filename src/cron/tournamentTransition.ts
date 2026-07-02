@@ -1,7 +1,6 @@
-import { and, eq, sql, inArray } from "drizzle-orm";
+import { and, eq, sql } from "drizzle-orm";
 import db from "../config/db.js";
 import { tournaments } from "../schema/tournament.js";
-import { races } from "../schema/races.js";
 import { eventBus } from "../websocket/eventBus.js";
 
 export async function transitionTournaments(): Promise<void> {

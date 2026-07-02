@@ -34,7 +34,9 @@ export function startScheduler(): void {
         }
     });
 
-    console.log("[cron] Scheduler started (tournaments: 5min, races: 5min + 1min precision)");
+    console.log(
+        "[cron] Scheduler started (tournaments: 5min, races: 5min + 1min precision)",
+    );
 }
 
 export function stopScheduler(): void {
