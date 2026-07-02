@@ -3,6 +3,9 @@ import { jockeyQuerySchema } from "../validator/jockey.js";
 import { getPagination, paginatedResponse } from "../utils/paginate.js";
 import { and, eq, ilike, ne, sql } from "drizzle-orm";
 import { users } from "../schema/users.js";
+import { raceEntries } from "../schema/raceEntries.js";
+import { races } from "../schema/races.js";
+import { jockeyProfile } from "../schema/jockeyProfile.js";
 import db from "../config/db.js";
 
 export const getJockeys = async (
@@ -36,8 +39,19 @@ export const getJockeys = async (
                     id: users.id,
                     fullName: users.fullName,
                     avatarUrl: users.avatar_url,
+                    weightKg: jockeyProfile.weightKg,
+                    experienceYear: jockeyProfile.experienceYear,
+                    isRacing: sql<boolean>`exists(
+                        select 1 from ${raceEntries} re
+                        inner join ${races} r on r.id = re.race_id
+                        where re.jockey_id = ${users.id}
+                        and re.entry_status = 'confirmed'
+                        and r.status != 'completed'
+                        and r.status != 'cancelled'
+                    )`,
                 })
                 .from(users)
+                .leftJoin(jockeyProfile, eq(jockeyProfile.userId, users.id))
                 .where(conditions)
                 .limit(l)
                 .offset(offset),

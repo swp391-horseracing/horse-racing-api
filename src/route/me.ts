@@ -14,6 +14,7 @@ import {
 } from "../controller/me/invitations.js";
 import { getMyPredictions } from "../controller/me/predictions.js";
 import { getMyResults, getMyResultDetail } from "../controller/me/result.js";
+import { getMyEntries } from "../controller/me/entries.js";
 import { authMiddleware } from "../middleware/auth.js";
 import { authorize } from "../middleware/authorize.js";
 import { Role } from "../types/roles.js";
@@ -41,7 +42,7 @@ router.get(
     getRaceInvitations,
 );
 router.post(
-    "/races/:raceId/invitations",
+    "/invitations",
     authMiddleware,
     authorize(Role.HORSE_OWNER),
     inviteJockey,
@@ -93,6 +94,14 @@ router.get(
     authMiddleware,
     authorize(Role.SPECTATOR),
     getMyPredictions,
+);
+
+// entries for horse owner
+router.get(
+    "/entries",
+    authMiddleware,
+    authorize(Role.HORSE_OWNER),
+    getMyEntries,
 );
 
 // results for jockey and horse owner
