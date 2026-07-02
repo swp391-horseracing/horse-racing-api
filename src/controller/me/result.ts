@@ -86,6 +86,7 @@ const getJockeyResults = async (
                 raceResults,
                 eq(raceResultEntries.resultId, raceResults.id),
             )
+            .innerJoin(races, eq(raceResultEntries.raceId, races.id))
             .where(whereCondition),
     ]);
 
