@@ -15,6 +15,10 @@ import {
 import { getMyPredictions } from "../controller/me/predictions.js";
 import { getMyResults, getMyResultDetail } from "../controller/me/result.js";
 import { getMyEntries } from "../controller/me/entries.js";
+import {
+    createRaceEntry,
+    withdrawRaceEntry,
+} from "../controller/me/raceEntries.js";
 import { authMiddleware } from "../middleware/auth.js";
 import { authorize } from "../middleware/authorize.js";
 import { Role } from "../types/roles.js";
@@ -102,6 +106,20 @@ router.get(
     authMiddleware,
     authorize(Role.HORSE_OWNER),
     getMyEntries,
+);
+
+// owner race entries (enter/withdraw horse from race)
+router.post(
+    "/races/:raceId/entries",
+    authMiddleware,
+    authorize(Role.HORSE_OWNER),
+    createRaceEntry,
+);
+router.delete(
+    "/races/:raceId/entries/:entryId",
+    authMiddleware,
+    authorize(Role.HORSE_OWNER),
+    withdrawRaceEntry,
 );
 
 // results for jockey and horse owner
