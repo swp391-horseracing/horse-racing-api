@@ -33,15 +33,27 @@ export type RaceResultPublishedEvent = BaseEvent<
     }
 >;
 
+export type TournamentStatusChangedEvent = BaseEvent<
+    "tournament:status_changed",
+    {
+        tournamentId: string;
+        status: string;
+        previousStatus: string;
+        timestamp: string;
+    }
+>;
+
 export type AppEvent =
     | RaceStatusChangedEvent
     | RaceResultUpdatedEvent
-    | RaceResultPublishedEvent;
+    | RaceResultPublishedEvent
+    | TournamentStatusChangedEvent;
 
 type EventMap = {
     "race:status_changed": RaceStatusChangedEvent;
     "race:result_updated": RaceResultUpdatedEvent;
     "race:result_published": RaceResultPublishedEvent;
+    "tournament:status_changed": TournamentStatusChangedEvent;
 };
 
 class EventBus {
