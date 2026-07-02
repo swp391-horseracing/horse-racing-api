@@ -449,6 +449,8 @@ const getJockeyInvitations = async (
             .select({
                 id: jockeyInvitations.invitationId,
                 status: jockeyInvitations.status,
+                title: jockeyInvitations.title,
+                message: jockeyInvitations.message,
                 invitedAt: jockeyInvitations.invitedAt,
                 respondedAt: jockeyInvitations.respondedAt,
                 race: {
@@ -545,7 +547,6 @@ export const getInvitationDetail = async (
                 message: jockeyInvitations.message,
                 invitedAt: jockeyInvitations.invitedAt,
                 respondedAt: jockeyInvitations.respondedAt,
-
                 race: {
                     id: races.id,
                     name: races.name,
