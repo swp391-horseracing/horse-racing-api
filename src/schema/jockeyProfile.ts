@@ -6,6 +6,10 @@ export const jockeyProfile = pgTable("jockey_profile", {
     userId: uuid("user_id")
         .references(() => users.id)
         .notNull(),
-    weightKg: decimal("weight_kg", { precision: 5, scale: 2 }).notNull(),
+    weightKg: decimal("weight_kg", {
+        precision: 5,
+        scale: 2,
+        mode: "number",
+    }).notNull(),
     experienceYear: smallint("experience_year").notNull(),
 });

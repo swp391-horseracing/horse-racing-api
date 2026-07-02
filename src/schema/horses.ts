@@ -15,7 +15,11 @@ export const horses = pgTable("horses", {
     name: varchar("name", { length: 255 }).notNull().unique(),
     breed: varchar("breed", { length: 255 }).notNull(),
     birthDate: date("birth_date"),
-    weightKg: numeric("weight_kg", { precision: 6, scale: 2 }),
+    weightKg: numeric("weight_kg", {
+        precision: 6,
+        scale: 2,
+        mode: "number",
+    }),
     imageUrl: varchar("image_url", { length: 255 }),
     healthStatus: varchar("health_status", { length: 255 }),
     isRetired: boolean("isRetired"),
