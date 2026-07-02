@@ -2,7 +2,7 @@ import { NextFunction, Request, Response } from "express";
 import db from "../config/db.js";
 import { races } from "../schema/races.js";
 import { validate as uuidValidate } from "uuid";
-import { eq, ne, and } from "drizzle-orm";
+import { eq, ne, and, sql } from "drizzle-orm";
 import { raceEntries } from "../schema/raceEntries.js";
 import { horses } from "../schema/horses.js";
 import { users } from "../schema/users.js";
@@ -37,6 +37,7 @@ export const getRace = async (
                 status: races.status,
                 createdAt: races.createdAt,
                 updatedAt: races.updatedAt,
+                avaiableSlots: sql<number>`${races.laneCount} - (select count(*) from ${raceEntries} where ${raceEntries.raceId} = ${races.id})`,
                 course: {
                     id: raceCourses.id,
                     name: raceCourses.name,
