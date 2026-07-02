@@ -1,7 +1,7 @@
 import { NextFunction, Request, Response } from "express";
 import { validate as uuidValidate } from "uuid";
 import db from "../../config/db.js";
-import { and, eq, inArray, ne, sql } from "drizzle-orm";
+import { and, eq, inArray, isNull, ne, sql } from "drizzle-orm";
 import { jockeyInvitations } from "../../schema/jockeyInvitations.js";
 import { raceEntries } from "../../schema/raceEntries.js";
 import { races } from "../../schema/races.js";
@@ -313,7 +313,27 @@ export const confirmJockey = async (
                 };
             }
 
-            // Assign the chosen jockey to the race entry
+            // Ensure the race entry exists before assigning
+            const [existingEntry] = await tx
+                .select({ id: raceEntries.id })
+                .from(raceEntries)
+                .where(
+                    and(
+                        eq(raceEntries.raceId, raceId),
+                        eq(raceEntries.horseId, invitation.horseId),
+                    ),
+                );
+
+            if (!existingEntry) {
+                return {
+                    ok: false as const,
+                    status: 404,
+                    message: "Race entry not found",
+                };
+            }
+
+            // Assign the chosen jockey to the race entry, unless
+            // another jockey has already been confirmed for this horse
             const [entry] = await tx
                 .update(raceEntries)
                 .set({ jockeyId: invitation.jockeyId })
@@ -321,6 +341,7 @@ export const confirmJockey = async (
                     and(
                         eq(raceEntries.raceId, raceId),
                         eq(raceEntries.horseId, invitation.horseId),
+                        isNull(raceEntries.jockeyId),
                     ),
                 )
                 .returning();
@@ -328,8 +349,9 @@ export const confirmJockey = async (
             if (!entry) {
                 return {
                     ok: false as const,
-                    status: 500,
-                    message: "Failed to assign jockey to race entry",
+                    status: 409,
+                    message:
+                        "A jockey has already been confirmed for this horse",
                 };
             }
 
