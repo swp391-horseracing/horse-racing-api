@@ -13,6 +13,7 @@ import {
     declineInvitation,
 } from "../controller/me/invitations.js";
 import { getMyPredictions } from "../controller/me/predictions.js";
+import { getMyResults, getMyResultDetail } from "../controller/me/result.js";
 import { authMiddleware } from "../middleware/auth.js";
 import { authorize } from "../middleware/authorize.js";
 import { Role } from "../types/roles.js";
@@ -93,5 +94,9 @@ router.get(
     authorize(Role.SPECTATOR),
     getMyPredictions,
 );
+
+// results for jockey and horse owner
+router.get("/results", authMiddleware, getMyResults);
+router.get("/results/:raceId", authMiddleware, getMyResultDetail);
 
 export default router;

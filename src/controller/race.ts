@@ -10,6 +10,8 @@ import { predictions } from "../schema/predictions.js";
 import { courseDistances } from "../schema/courseDistances.js";
 import { raceCourses } from "../schema/raceCourses.js";
 import { createPredictionSchema } from "../validator/prediction.js";
+import { raceResultEntries } from "../schema/raceResultEntries.js";
+import { raceResults } from "../schema/raceResults.js";
 
 export const getRace = async (
     req: Request,
@@ -104,8 +106,8 @@ export const getHorseEntries = async (
             })
             .from(races)
             .where(eq(races.id, raceId))
-            .leftJoin(raceEntries, eq(races.id, raceEntries.raceId))
-            .leftJoin(horses, eq(raceEntries.horseId, horses.id))
+            .innerJoin(raceEntries, eq(races.id, raceEntries.raceId))
+            .innerJoin(horses, eq(raceEntries.horseId, horses.id))
             .leftJoin(users, eq(raceEntries.jockeyId, users.id));
 
         res.json(horseEntries);
@@ -251,6 +253,60 @@ export const createPrediction = async (
                 .status(409)
                 .json({ message: "You have already predicted this race" });
         }
+        next(err);
+    }
+};
+
+export const getRaceResult = async (
+    req: Request,
+    res: Response,
+    next: NextFunction,
+) => {
+    try {
+        const raceId = req.params.raceId as string;
+        if (!uuidValidate(raceId)) {
+            return res.status(400).json({ message: "Invalid uuid" });
+        }
+
+        const result = await db
+            .select({
+                id: raceResultEntries.id,
+                raceId: raceResultEntries.raceId,
+                jockeyId: users.id,
+                jockeyName: users.fullName,
+                horseId: horses.id,
+                horseName: horses.name,
+                finishedPosition: raceResultEntries.finishedPosition,
+                finishTime: raceResultEntries.finishTime,
+                finishStatus: raceResultEntries.finishStatus,
+                points: raceResultEntries.points,
+            })
+            .from(raceResultEntries)
+            .innerJoin(
+                raceResults,
+                eq(raceResultEntries.resultId, raceResults.id),
+            )
+            .leftJoin(
+                raceEntries,
+                eq(raceEntries.id, raceResultEntries.entryId),
+            )
+            .leftJoin(users, eq(raceEntries.jockeyId, users.id))
+            .leftJoin(horses, eq(raceEntries.horseId, horses.id))
+            .where(
+                and(
+                    eq(raceResultEntries.raceId, raceId),
+                    eq(raceResults.resultStatus, "published"),
+                ),
+            )
+            .orderBy(raceResultEntries.finishedPosition, raceResultEntries.id);
+
+        if (result.length === 0) {
+            return res
+                .status(404)
+                .json({ message: "Results not yet available" });
+        }
+        res.json(result);
+    } catch (err) {
         next(err);
     }
 };

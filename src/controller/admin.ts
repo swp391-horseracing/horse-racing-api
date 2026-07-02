@@ -656,13 +656,7 @@ export const updateRaceStatus = async (
             scheduled: ["pre_race", "postponed", "cancelled"],
             pre_race: ["ongoing", "postponed", "cancelled"],
             ongoing: ["under_review", "postponed", "cancelled"],
-            under_review: [
-                "result_confirmed",
-                "ongoing",
-                "postponed",
-                "cancelled",
-            ],
-            result_confirmed: ["completed", "cancelled"],
+            under_review: ["ongoing", "postponed", "cancelled"],
             completed: [],
             postponed: ["scheduled", "ongoing", "under_review", "cancelled"],
         };
