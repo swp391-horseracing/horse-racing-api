@@ -5,7 +5,6 @@ import { and, eq, sql } from "drizzle-orm";
 import { raceEntries } from "../../schema/raceEntries.js";
 import { races } from "../../schema/races.js";
 import { horses } from "../../schema/horses.js";
-import { tournaments } from "../../schema/tournament.js";
 import { tournamentRegistrations } from "../../schema/tournamentRegistrations.js";
 import { createRaceEntryRequest } from "../../validator/raceEntry.js";
 
