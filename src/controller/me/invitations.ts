@@ -167,6 +167,7 @@ export const inviteJockey = async (
                 .where(
                     and(
                         eq(raceEntries.jockeyId, jockeyId),
+                        eq(raceEntries.entryStatus, "confirmed"),
                         ne(races.status, "completed"),
                         ne(races.status, "cancelled"),
                     ),
@@ -201,6 +202,27 @@ export const inviteJockey = async (
                     status: 409,
                     message:
                         "You already have a pending invitation to this jockey for this race",
+                };
+            }
+
+            // Check if jockey is already assigned to another entry in this same race
+            const [sameRaceEntry] = await tx
+                .select({ id: raceEntries.id })
+                .from(raceEntries)
+                .where(
+                    and(
+                        eq(raceEntries.jockeyId, jockeyId),
+                        eq(raceEntries.raceId, entry.raceId),
+                    ),
+                )
+                .limit(1);
+
+            if (sameRaceEntry) {
+                return {
+                    ok: false as const,
+                    status: 409,
+                    message:
+                        "This jockey is already assigned to another horse in this race",
                 };
             }
 

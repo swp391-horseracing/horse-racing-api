@@ -45,6 +45,7 @@ export const getJockeys = async (
                         select 1 from ${raceEntries} re
                         inner join ${races} r on r.id = re.race_id
                         where re.jockey_id = ${users.id}
+                        and re.entry_status = 'confirmed'
                         and r.status != 'completed'
                         and r.status != 'cancelled'
                     )`,
