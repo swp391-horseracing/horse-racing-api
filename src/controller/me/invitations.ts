@@ -69,7 +69,7 @@ export const getRaceInvitations = async (
                 .where(condition)
                 .limit(l)
                 .offset(offset)
-                .orderBy(jockeyInvitations.invitedAt),
+                .orderBy(desc(jockeyInvitations.invitedAt)),
             db
                 .select({ count: sql<number>`count(*)` })
                 .from(jockeyInvitations)
@@ -440,7 +440,7 @@ const getJockeyInvitations = async (
             .where(condition)
             .limit(limit)
             .offset(offset)
-            .orderBy(jockeyInvitations.invitedAt),
+            .orderBy(desc(jockeyInvitations.invitedAt)),
         db
             .select({ count: sql<number>`count(*)` })
             .from(jockeyInvitations)
