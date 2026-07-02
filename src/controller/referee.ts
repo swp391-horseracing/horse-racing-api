@@ -12,6 +12,7 @@ import { horses } from "../schema/horses.js";
 import { users } from "../schema/users.js";
 import { courseDistances } from "../schema/courseDistances.js";
 import { raceCourses } from "../schema/raceCourses.js";
+import { jockeyProfile } from "../schema/jockeyProfile.js";
 
 async function ensureReportInitialized(raceId: string) {
     await db.transaction(async (tx) => {
@@ -606,15 +607,18 @@ export const getRefereeRaceEntries = async (
                     id: horses.id,
                     name: horses.name,
                     breed: horses.breed,
+                    weightKg: horses.weightKg,
                 },
                 jockey: {
                     id: users.id,
                     fullName: users.fullName,
+                    weightKg: jockeyProfile.weightKg,
                 },
             })
             .from(raceEntries)
             .innerJoin(horses, eq(raceEntries.horseId, horses.id))
             .leftJoin(users, eq(raceEntries.jockeyId, users.id))
+            .innerJoin(jockeyProfile, eq(users.id, jockeyProfile.userId))
             .where(eq(raceEntries.raceId, raceId))
             .orderBy(raceEntries.laneNumber);
 
