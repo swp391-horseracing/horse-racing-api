@@ -91,10 +91,6 @@ export const inviteJockey = async (
 ) => {
     try {
         const user = req.user!;
-        const raceId = req.params.raceId as string;
-        if (!uuidValidate(raceId)) {
-            return res.status(400).json({ message: "Invalid uuid" });
-        }
 
         const parsed = inviteJockeySchema.safeParse(req.body);
         if (!parsed.success) {
@@ -121,7 +117,6 @@ export const inviteJockey = async (
                 .innerJoin(horses, eq(raceEntries.horseId, horses.id))
                 .where(
                     and(
-                        eq(raceEntries.raceId, raceId),
                         eq(raceEntries.id, entryId),
                         eq(horses.ownerId, user.id),
                     ),
@@ -193,7 +188,7 @@ export const inviteJockey = async (
                 .from(jockeyInvitations)
                 .where(
                     and(
-                        eq(jockeyInvitations.raceId, raceId),
+                        eq(jockeyInvitations.raceId, entry.raceId),
                         eq(jockeyInvitations.jockeyId, jockeyId),
                         eq(jockeyInvitations.ownerId, user.id),
                         eq(jockeyInvitations.status, "pending"),
@@ -212,7 +207,7 @@ export const inviteJockey = async (
             const [invitation] = await tx
                 .insert(jockeyInvitations)
                 .values({
-                    raceId,
+                    raceId: entry.raceId,
                     horseId: entry.horseId,
                     ownerId: user.id,
                     title: title,
@@ -528,6 +523,7 @@ export const getInvitationDetail = async (
                 message: jockeyInvitations.message,
                 invitedAt: jockeyInvitations.invitedAt,
                 respondedAt: jockeyInvitations.respondedAt,
+
                 race: {
                     id: races.id,
                     name: races.name,

@@ -41,7 +41,7 @@ router.get(
     getRaceInvitations,
 );
 router.post(
-    "/races/:raceId/invitations",
+    "/invitations",
     authMiddleware,
     authorize(Role.HORSE_OWNER),
     inviteJockey,
