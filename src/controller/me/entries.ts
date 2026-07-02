@@ -35,7 +35,7 @@ export const getMyEntries = async (
             });
         }
 
-        const { page, limit, status } = parsed.data;
+        const { page, limit, status = "scheduled" } = parsed.data;
         const { page: p, limit: l, offset } = getPagination({ page, limit });
 
         const conditions: ReturnType<typeof eq>[] = [
