@@ -4,6 +4,7 @@ import {
     pgEnum,
     timestamp,
     text,
+    varchar,
     check,
 } from "drizzle-orm/pg-core";
 import { sql } from "drizzle-orm";
@@ -35,6 +36,7 @@ export const jockeyInvitations = pgTable(
             .references(() => users.id)
             .notNull(),
         status: invitationStatusEnums("status").default("pending").notNull(),
+        title: varchar("title", { length: 255 }),
         message: text("message"),
         invitedAt: timestamp("invited_at").defaultNow().notNull(),
         respondedAt: timestamp("responded_at"),

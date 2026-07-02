@@ -106,13 +106,14 @@ export const inviteJockey = async (
                 })),
             });
         }
-        const { jockeyId, entryId } = parsed.data;
+        const { jockeyId, entryId, title } = parsed.data;
 
         const result = await db.transaction(async (tx) => {
             // Verify this owner has this horse entered in this race
             const [entry] = await tx
                 .select({
                     id: raceEntries.id,
+                    raceId: raceEntries.raceId,
                     horseId: raceEntries.horseId,
                     jockeyId: raceEntries.jockeyId,
                 })
@@ -191,6 +192,7 @@ export const inviteJockey = async (
                     raceId,
                     horseId: entry.horseId,
                     ownerId: user.id,
+                    title: title,
                     jockeyId,
                 })
                 .returning();
@@ -499,6 +501,8 @@ export const getInvitationDetail = async (
             .select({
                 id: jockeyInvitations.invitationId,
                 status: jockeyInvitations.status,
+                title: jockeyInvitations.title,
+                message: jockeyInvitations.message,
                 invitedAt: jockeyInvitations.invitedAt,
                 respondedAt: jockeyInvitations.respondedAt,
                 race: {
