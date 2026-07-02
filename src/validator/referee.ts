@@ -32,3 +32,7 @@ export const createViolationSchema = z.object({
 export const submitReportSchema = z.object({
     notes: z.string().optional(),
 });
+
+export const inspectEntrySchema = z.object({
+    result: z.enum(["cleared", "disqualified", "withdrawn"]),
+});

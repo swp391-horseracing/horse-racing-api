@@ -10,6 +10,7 @@ import {
     getMyInvitations,
     getInvitationDetail,
     acceptInvitation,
+    declineInvitation,
 } from "../controller/me/invitations.js";
 import { getMyPredictions } from "../controller/me/predictions.js";
 import { authMiddleware } from "../middleware/auth.js";
@@ -77,6 +78,12 @@ router.patch(
     authMiddleware,
     authorize(Role.JOCKEY),
     acceptInvitation,
+);
+router.patch(
+    "/invitations/:id/decline",
+    authMiddleware,
+    authorize(Role.JOCKEY),
+    declineInvitation,
 );
 
 // spectator predictions

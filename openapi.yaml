@@ -1793,6 +1793,57 @@ components:
         notes:
           type: string
 
+    RefereeRaceEntry:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        laneNumber:
+          type:
+            - integer
+            - "null"
+        entryStatus:
+          $ref: "#/components/schemas/EntryStatus"
+        horse:
+          type: object
+          properties:
+            id:
+              type: string
+              format: uuid
+            name:
+              type: string
+            breed:
+              type: string
+        jockey:
+          type: object
+          properties:
+            id:
+              type:
+                - string
+                - "null"
+              format: uuid
+            fullName:
+              type:
+                - string
+                - "null"
+
+    InspectEntryRequest:
+      type: object
+      required:
+        - result
+      properties:
+        result:
+          type: string
+          description: >-
+            Pre-race inspection outcome. 'cleared' sets entryStatus to
+            'confirmed'; 'disqualified'/'withdrawn' map directly to the
+            matching entryStatus value.
+          enum:
+            - cleared
+            - disqualified
+            - withdrawn
+
     MeRaceDetail:
       type: object
       properties:
@@ -1840,6 +1891,53 @@ components:
             - string
             - "null"
           format: date-time
+
+    MeRefereeRaceDetail:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        tournamentId:
+          type: string
+          format: uuid
+        name:
+          type: string
+        raceNumber:
+          type:
+            - integer
+            - "null"
+        distanceMeters:
+          type:
+            - integer
+            - "null"
+        trackCondition:
+          oneOf:
+            - $ref: "#/components/schemas/TrackCondition"
+            - type: "null"
+        scheduledAt:
+          type:
+            - string
+            - "null"
+          format: date-time
+        venue:
+          type:
+            - string
+            - "null"
+        laneCount:
+          type:
+            - integer
+            - "null"
+        status:
+          $ref: "#/components/schemas/RaceStatus"
+        tournamentName:
+          type:
+            - string
+            - "null"
+        resultStatus:
+          oneOf:
+            - $ref: "#/components/schemas/ReportStatus"
+            - type: "null"
 
     JockeyInvitationDetail:
       type: object
@@ -2072,6 +2170,83 @@ paths:
           $ref: "#/components/responses/BadRequest"
         "404":
           $ref: "#/components/responses/NotFound"
+        "500":
+          $ref: "#/components/responses/ServerError"
+
+  /referee/races/{raceId}/entries:
+    get:
+      tags:
+        - Referee
+      summary: List entries for an assigned race
+      description: Requires referee role. The referee must be assigned to the race.
+      security:
+        - BearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/RaceIdParam"
+      responses:
+        "200":
+          description: Race entries.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  entries:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/RefereeRaceEntry"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "500":
+          $ref: "#/components/responses/ServerError"
+
+  /referee/races/{raceId}/entries/{entryId}/inspection:
+    patch:
+      tags:
+        - Referee
+      summary: Record a pre-race inspection outcome for a horse entry
+      description: >-
+        Requires referee role. The referee must be assigned to the race
+      security:
+        - BearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/RaceIdParam"
+        - name: entryId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/InspectEntryRequest"
+      responses:
+        "200":
+          description: Inspection outcome recorded.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  entry:
+                    $ref: "#/components/schemas/RefereeRaceEntry"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
         "500":
           $ref: "#/components/responses/ServerError"
 
@@ -2808,11 +2983,13 @@ paths:
         - $ref: "#/components/parameters/RaceIdParam"
       responses:
         "200":
-          description: Race detail scoped to the authenticated jockey or horse owner.
+          description: Race detail scoped to the authenticated jockey, horse owner, or referee.
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/MeRaceDetail"
+                anyOf:
+                  - $ref: "#/components/schemas/MeRaceDetail"
+                  - $ref: "#/components/schemas/MeRefereeRaceDetail"
         "400":
           $ref: "#/components/responses/BadRequest"
         "401":

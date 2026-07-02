@@ -106,18 +106,22 @@ export const inviteJockey = async (
                 })),
             });
         }
-        const { jockeyId, horseId } = parsed.data;
+        const { jockeyId, entryId } = parsed.data;
 
         const result = await db.transaction(async (tx) => {
             // Verify this owner has this horse entered in this race
             const [entry] = await tx
-                .select({ id: raceEntries.id, jockeyId: raceEntries.jockeyId })
+                .select({
+                    id: raceEntries.id,
+                    horseId: raceEntries.horseId,
+                    jockeyId: raceEntries.jockeyId,
+                })
                 .from(raceEntries)
                 .innerJoin(horses, eq(raceEntries.horseId, horses.id))
                 .where(
                     and(
                         eq(raceEntries.raceId, raceId),
-                        eq(raceEntries.horseId, horseId),
+                        eq(raceEntries.id, entryId),
                         eq(horses.ownerId, user.id),
                     ),
                 );
@@ -183,7 +187,12 @@ export const inviteJockey = async (
 
             const [invitation] = await tx
                 .insert(jockeyInvitations)
-                .values({ raceId, horseId, ownerId: user.id, jockeyId })
+                .values({
+                    raceId,
+                    horseId: entry.horseId,
+                    ownerId: user.id,
+                    jockeyId,
+                })
                 .returning();
 
             return { ok: true as const, invitation };
@@ -304,7 +313,7 @@ export const confirmJockey = async (
                 };
             }
 
-            // Ensure the race entry exists before confirming
+            // Ensure the race entry exists before assigning
             const [existingEntry] = await tx
                 .select({ id: raceEntries.id })
                 .from(raceEntries)
@@ -323,15 +332,11 @@ export const confirmJockey = async (
                 };
             }
 
-            // Assign the chosen jockey and confirm the race entry, unless
+            // Assign the chosen jockey to the race entry, unless
             // another jockey has already been confirmed for this horse
             const [entry] = await tx
                 .update(raceEntries)
-                .set({
-                    jockeyId: invitation.jockeyId,
-                    entryStatus: "confirmed",
-                    confirmedAt: new Date(),
-                })
+                .set({ jockeyId: invitation.jockeyId })
                 .where(
                     and(
                         eq(raceEntries.raceId, raceId),
@@ -350,10 +355,10 @@ export const confirmJockey = async (
                 };
             }
 
-            // Decline the other invitations (pending or accepted) for this horse entry
+            // Cancel the other invitations (pending or accepted) for this horse entry
             await tx
                 .update(jockeyInvitations)
-                .set({ status: "declined", respondedAt: new Date() })
+                .set({ status: "cancelled", respondedAt: new Date() })
                 .where(
                     and(
                         eq(jockeyInvitations.raceId, raceId),
@@ -585,6 +590,56 @@ export const acceptInvitation = async (
             return res
                 .status(409)
                 .json({ message: "Only pending invitations can be accepted" });
+        }
+
+        return res.json({ invitation: updated });
+    } catch (err) {
+        next(err);
+    }
+};
+
+export const declineInvitation = async (
+    req: Request,
+    res: Response,
+    next: NextFunction,
+) => {
+    try {
+        const user = req.user!;
+        const { id } = req.params as { id: string };
+        if (!uuidValidate(id)) {
+            return res.status(400).json({ message: "Invalid uuid" });
+        }
+
+        const [invitation] = await db
+            .select({
+                jockeyId: jockeyInvitations.jockeyId,
+            })
+            .from(jockeyInvitations)
+            .where(eq(jockeyInvitations.invitationId, id));
+
+        if (!invitation) {
+            return res.status(404).json({ message: "Invitation not found" });
+        }
+        if (invitation.jockeyId !== user.id) {
+            return res.status(403).json({ message: "Forbidden" });
+        }
+
+        const [updated] = await db
+            .update(jockeyInvitations)
+            .set({ status: "declined", respondedAt: new Date() })
+            .where(
+                and(
+                    eq(jockeyInvitations.invitationId, id),
+                    eq(jockeyInvitations.jockeyId, user.id),
+                    eq(jockeyInvitations.status, "pending"),
+                ),
+            )
+            .returning();
+
+        if (!updated) {
+            return res
+                .status(409)
+                .json({ message: "Only pending invitations can be declined" });
         }
 
         return res.json({ invitation: updated });

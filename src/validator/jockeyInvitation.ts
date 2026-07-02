@@ -2,7 +2,7 @@ import { z } from "zod";
 
 export const inviteJockeySchema = z.object({
     jockeyId: z.string().uuid("jockeyId must be a valid UUID"),
-    horseId: z.string().uuid("horseId must be a valid UUID"),
+    entryId: z.string().uuid("entryId must be a valid UUID"),
 });
 
 export const invitationsQuerySchema = z.object({
