@@ -1,7 +1,7 @@
 import { NextFunction, Request, Response } from "express";
 import { validate as uuidValidate } from "uuid";
 import db from "../../config/db.js";
-import { and, eq, inArray, isNull, ne, sql } from "drizzle-orm";
+import { and, desc, eq, inArray, isNull, ne, sql } from "drizzle-orm";
 import { jockeyInvitations } from "../../schema/jockeyInvitations.js";
 import { raceEntries } from "../../schema/raceEntries.js";
 import { races } from "../../schema/races.js";
@@ -161,6 +161,29 @@ export const inviteJockey = async (
                     ok: false as const,
                     status: 400,
                     message: "User is not a jockey",
+                };
+            }
+
+            // Check if jockey is already active in another non-completed, non-cancelled race
+            const [activeEntry] = await tx
+                .select({ id: raceEntries.id })
+                .from(raceEntries)
+                .innerJoin(races, eq(raceEntries.raceId, races.id))
+                .where(
+                    and(
+                        eq(raceEntries.jockeyId, jockeyId),
+                        ne(races.status, "completed"),
+                        ne(races.status, "cancelled"),
+                    ),
+                )
+                .limit(1);
+
+            if (activeEntry) {
+                return {
+                    ok: false as const,
+                    status: 409,
+                    message:
+                        "This jockey is already actively racing in another race",
                 };
             }
 
