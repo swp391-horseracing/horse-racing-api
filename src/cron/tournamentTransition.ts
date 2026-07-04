@@ -51,11 +51,7 @@ async function transitionRegistrationOpenToClosed(now: Date): Promise<void> {
         console.log(
             `[cron:tournament] Transitioned ${t.id} registration_open → registration_closed`,
         );
-        emitTournamentEvent(
-            t.id,
-            "registration_closed",
-            "registration_open",
-        );
+        emitTournamentEvent(t.id, "registration_closed", "registration_open");
     }
 }
 

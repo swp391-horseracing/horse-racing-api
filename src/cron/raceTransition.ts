@@ -28,9 +28,7 @@ async function transitionScheduledToPreRace(now: Date): Promise<void> {
         .returning();
 
     for (const race of updatedRaces) {
-        console.log(
-            `[cron:race] Transitioned ${race.id} scheduled → pre_race`,
-        );
+        console.log(`[cron:race] Transitioned ${race.id} scheduled → pre_race`);
         emitRaceEvent(race.id, "pre_race", "scheduled");
     }
 }
@@ -49,9 +47,7 @@ async function transitionPreRaceToOngoing(now: Date): Promise<void> {
         .returning();
 
     for (const race of updatedRaces) {
-        console.log(
-            `[cron:race] Transitioned ${race.id} pre_race → ongoing`,
-        );
+        console.log(`[cron:race] Transitioned ${race.id} pre_race → ongoing`);
         emitRaceEvent(race.id, "ongoing", "pre_race");
     }
 }
