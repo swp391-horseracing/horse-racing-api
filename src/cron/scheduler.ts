@@ -9,13 +9,17 @@ let raceJob: ScheduledTask | null = null;
 export function startScheduler(): void {
     console.log("[cron] Starting scheduler...");
 
-    tournamentJob = cron.schedule(CRON_EVERY_5_MIN, async () => {
-        try {
-            await transitionTournaments();
-        } catch (err) {
-            console.error("[cron] Tournament transition error:", err);
-        }
-    });
+    tournamentJob = cron.schedule(
+        CRON_EVERY_5_MIN,
+        async () => {
+            try {
+                await transitionTournaments();
+            } catch (err) {
+                console.error("[cron] Tournament transition error:", err);
+            }
+        },
+        { noOverlap: true },
+    );
 
     raceJob = cron.schedule(
         CRON_EVERY_5_MIN,
