@@ -13,7 +13,7 @@ export async function transitionTournaments(): Promise<void> {
 
 async function transitionUpcomingToRegistrationOpen(now: Date): Promise<void> {
     console.log("[cron:tournament] Checking upcoming → registration_open");
-    const [updated] = await db
+    const updatedTournaments = await db
         .update(tournaments)
         .set({ status: "registration_open" })
         .where(
@@ -24,11 +24,11 @@ async function transitionUpcomingToRegistrationOpen(now: Date): Promise<void> {
         )
         .returning();
 
-    if (updated) {
+    for (const t of updatedTournaments) {
         console.log(
-            `[cron:tournament] Transitioned ${updated.id} upcoming → registration_open`,
+            `[cron:tournament] Transitioned ${t.id} upcoming → registration_open`,
         );
-        emitTournamentEvent(updated.id, "registration_open", "upcoming");
+        emitTournamentEvent(t.id, "registration_open", "upcoming");
     }
 }
 
@@ -36,7 +36,7 @@ async function transitionRegistrationOpenToClosed(now: Date): Promise<void> {
     console.log(
         "[cron:tournament] Checking registration_open → registration_closed",
     );
-    const [updated] = await db
+    const updatedTournaments = await db
         .update(tournaments)
         .set({ status: "registration_closed" })
         .where(
@@ -47,12 +47,12 @@ async function transitionRegistrationOpenToClosed(now: Date): Promise<void> {
         )
         .returning();
 
-    if (updated) {
+    for (const t of updatedTournaments) {
         console.log(
-            `[cron:tournament] Transitioned ${updated.id} registration_open → registration_closed`,
+            `[cron:tournament] Transitioned ${t.id} registration_open → registration_closed`,
         );
         emitTournamentEvent(
-            updated.id,
+            t.id,
             "registration_closed",
             "registration_open",
         );
@@ -61,7 +61,7 @@ async function transitionRegistrationOpenToClosed(now: Date): Promise<void> {
 
 async function transitionRegistrationClosedToOngoing(now: Date): Promise<void> {
     console.log("[cron:tournament] Checking registration_closed → ongoing");
-    const [updated] = await db
+    const updatedTournaments = await db
         .update(tournaments)
         .set({ status: "ongoing" })
         .where(
@@ -72,11 +72,11 @@ async function transitionRegistrationClosedToOngoing(now: Date): Promise<void> {
         )
         .returning();
 
-    if (updated) {
+    for (const t of updatedTournaments) {
         console.log(
-            `[cron:tournament] Transitioned ${updated.id} registration_closed → ongoing`,
+            `[cron:tournament] Transitioned ${t.id} registration_closed → ongoing`,
         );
-        emitTournamentEvent(updated.id, "ongoing", "registration_closed");
+        emitTournamentEvent(t.id, "ongoing", "registration_closed");
     }
 }
 

@@ -16,7 +16,7 @@ async function transitionScheduledToPreRace(now: Date): Promise<void> {
     const windowMs = PRE_RACE_WINDOW_MINUTES * 60 * 1000;
     const windowTime = new Date(now.getTime() + windowMs);
 
-    const [updated] = await db
+    const updatedRaces = await db
         .update(races)
         .set({ status: "pre_race" })
         .where(
@@ -27,17 +27,17 @@ async function transitionScheduledToPreRace(now: Date): Promise<void> {
         )
         .returning();
 
-    if (updated) {
+    for (const race of updatedRaces) {
         console.log(
-            `[cron:race] Transitioned ${updated.id} scheduled → pre_race`,
+            `[cron:race] Transitioned ${race.id} scheduled → pre_race`,
         );
-        emitRaceEvent(updated.id, "pre_race", "scheduled");
+        emitRaceEvent(race.id, "pre_race", "scheduled");
     }
 }
 
 async function transitionPreRaceToOngoing(now: Date): Promise<void> {
     console.log("[cron:race] Checking pre_race → ongoing");
-    const [updated] = await db
+    const updatedRaces = await db
         .update(races)
         .set({ status: "ongoing" })
         .where(
@@ -48,11 +48,11 @@ async function transitionPreRaceToOngoing(now: Date): Promise<void> {
         )
         .returning();
 
-    if (updated) {
+    for (const race of updatedRaces) {
         console.log(
-            `[cron:race] Transitioned ${updated.id} pre_race → ongoing`,
+            `[cron:race] Transitioned ${race.id} pre_race → ongoing`,
         );
-        emitRaceEvent(updated.id, "ongoing", "pre_race");
+        emitRaceEvent(race.id, "ongoing", "pre_race");
     }
 }
 
