@@ -13,6 +13,7 @@ import { migrate } from "drizzle-orm/node-postgres/migrator";
 import db from "./config/db.js";
 import cors from "cors";
 import { setupWebSocket } from "./websocket/handler.js";
+import { startScheduler } from "./cron/scheduler.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -25,6 +26,8 @@ const wss = new WebSocketServer({ server });
 setupWebSocket(wss);
 
 await migrate(db, { migrationsFolder: "./drizzle" });
+
+startScheduler();
 
 app.use(cors());
 app.use(morgan("dev"));
