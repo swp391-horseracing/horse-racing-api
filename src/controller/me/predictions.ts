@@ -63,6 +63,9 @@ export const getMyPredictions = async (
                     predictedEntry: {
                         entryId: predictions.predictedEntryId,
                         horseName: h.name,
+                        baseSpeed: h.baseSpeed,
+                        stamina: h.stamina,
+                        acceleration: h.acceleration,
                     },
                     predictedPosition: predictions.predictedPosition,
                     placedAt: predictions.placedAt,

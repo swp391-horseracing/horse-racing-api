@@ -715,6 +715,9 @@ export const getRegistrations = async (
                         id: horses.id,
                         name: horses.name,
                         breed: horses.breed,
+                        baseSpeed: horses.baseSpeed,
+                        stamina: horses.stamina,
+                        acceleration: horses.acceleration,
                     },
                     owner: {
                         id: users.id,
@@ -1028,6 +1031,9 @@ export const getRaceReport = async (
                     id: horses.id,
                     name: horses.name,
                     breed: horses.breed,
+                    baseSpeed: horses.baseSpeed,
+                    stamina: horses.stamina,
+                    acceleration: horses.acceleration,
                 },
                 jockey: {
                     id: users.id,
