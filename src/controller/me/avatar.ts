@@ -10,6 +10,8 @@ export const uploadAvatar = async (
     res: Response,
     next: NextFunction,
 ) => {
+    let uploadedKey: string | null = null;
+
     try {
         const userId = req.user?.id;
 
@@ -34,6 +36,7 @@ export const uploadAvatar = async (
         const key = `avatars/${userId}/${randomHex(16)}.${ext}`;
 
         await uploadFile(key, req.file);
+        uploadedKey = key;
 
         await db
             .update(users)
@@ -41,11 +44,14 @@ export const uploadAvatar = async (
             .where(eq(users.id, userId));
 
         if (user.avatar_url) {
-            await deleteFile(user.avatar_url).catch(() => {});
+            await deleteFile(user.avatar_url).catch(next);
         }
 
         res.json({ avatar_url: key });
     } catch (err) {
+        if (uploadedKey) {
+            await deleteFile(uploadedKey).catch(next);
+        }
         next(err);
     }
 };
