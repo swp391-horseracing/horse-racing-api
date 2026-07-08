@@ -13,6 +13,8 @@ import { users } from "../schema/users.js";
 import { courseDistances } from "../schema/courseDistances.js";
 import { raceCourses } from "../schema/raceCourses.js";
 import { jockeyProfile } from "../schema/jockeyProfile.js";
+import { eventBus } from "../websocket/eventBus.js";
+import { resolvePredictions } from "../utils/resolvePredictions.js";
 
 async function ensureReportInitialized(raceId: string) {
     await db.transaction(async (tx) => {
@@ -553,18 +555,47 @@ export const submitReport = async (
 
         const { notes } = req.body;
 
-        const [updated] = await db
-            .update(raceResults)
-            .set({
-                resultStatus: "referee_confirmed",
-                refereeConfirmedBy: req.user!.id,
-                refereeConfirmedAt: new Date(),
-                notes: notes ?? null,
-            })
-            .where(eq(raceResults.id, report.id))
-            .returning();
+        const [race] = await db
+            .select({ status: races.status })
+            .from(races)
+            .where(eq(races.id, raceId));
 
-        res.json({ message: "Report submitted", report: updated });
+        await db.transaction(async (tx) => {
+            await tx
+                .update(raceResults)
+                .set({
+                    resultStatus: "published",
+                    refereeConfirmedBy: req.user!.id,
+                    refereeConfirmedAt: new Date(),
+                    publishedBy: req.user!.id,
+                    publishedAt: new Date(),
+                    notes: notes ?? null,
+                })
+                .where(eq(raceResults.id, report.id));
+
+            await tx
+                .update(races)
+                .set({ status: "completed" })
+                .where(eq(races.id, raceId));
+
+            await resolvePredictions(raceId, tx);
+        });
+
+        try {
+            eventBus.emit({
+                type: "race:status_changed",
+                data: {
+                    raceId,
+                    status: "completed",
+                    previousStatus: race?.status ?? "",
+                    timestamp: new Date().toISOString(),
+                },
+            });
+        } catch (emitErr) {
+            console.error(`Failed to emit race:status_changed ${emitErr}`);
+        }
+
+        res.json({ message: "Report submitted and race result published" });
     } catch (err) {
         next(err);
     }

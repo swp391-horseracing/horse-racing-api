@@ -11,7 +11,6 @@ import {
     getReports,
     getUser,
     getUsers,
-    publishRaceResult,
     updateRace,
     updateRaceStatus,
     updateRegistrationStatus,
@@ -129,13 +128,6 @@ router.get(
     authMiddleware,
     authorize(Role.ADMIN),
     getRaceReport,
-);
-
-router.patch(
-    "/races/:raceId/publish",
-    authMiddleware,
-    authorize(Role.ADMIN),
-    publishRaceResult,
 );
 
 export default router;

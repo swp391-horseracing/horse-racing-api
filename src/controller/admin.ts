@@ -6,24 +6,11 @@ import {
     usersQuerySchema,
 } from "../validator/admin.js";
 import { users } from "../schema/users.js";
-import {
-    and,
-    desc,
-    eq,
-    ExtractTablesWithRelations,
-    ilike,
-    inArray,
-    isNotNull,
-    isNull,
-    sql,
-} from "drizzle-orm";
-import type { PgTransaction } from "drizzle-orm/pg-core";
-import type { NodePgQueryResultHKT } from "drizzle-orm/node-postgres";
+import { and, desc, eq, ilike, inArray, sql } from "drizzle-orm";
 import { getPagination, paginatedResponse } from "../utils/paginate.js";
 import db from "../config/db.js";
 import { tournaments } from "../schema/tournament.js";
 import { races } from "../schema/races.js";
-import { predictions } from "../schema/predictions.js";
 import { raceResultEntries } from "../schema/raceResultEntries.js";
 import { raceEntries } from "../schema/raceEntries.js";
 import { raceResults } from "../schema/raceResults.js";
@@ -582,68 +569,6 @@ export const updateRace = async (
         next(err);
     }
 };
-
-async function resolvePredictions(
-    raceId: string,
-    tx: PgTransaction<
-        NodePgQueryResultHKT,
-        Record<string, never>,
-        ExtractTablesWithRelations<Record<string, never>>
-    >,
-) {
-    const results = await tx
-        .select({
-            entryId: raceResultEntries.entryId,
-            position: raceResultEntries.finishedPosition,
-        })
-        .from(raceResultEntries)
-        .where(
-            and(
-                eq(raceResultEntries.raceId, raceId),
-                isNotNull(raceResultEntries.finishedPosition),
-            ),
-        );
-
-    const resultMap = new Map(results.map((r) => [r.entryId, r.position]));
-
-    const pendingPredictions = await tx
-        .select({
-            id: predictions.id,
-            predictedEntryId: predictions.predictedEntryId,
-            predictedPosition: predictions.predictedPosition,
-        })
-        .from(predictions)
-        .where(
-            and(eq(predictions.raceId, raceId), isNull(predictions.isCorrect)),
-        );
-
-    const correctIds: string[] = [];
-    const incorrectIds: string[] = [];
-
-    for (const p of pendingPredictions) {
-        const actualPosition = resultMap.get(p.predictedEntryId);
-        if (actualPosition === p.predictedPosition) {
-            correctIds.push(p.id);
-        } else {
-            incorrectIds.push(p.id);
-        }
-    }
-
-    await Promise.all([
-        correctIds.length > 0
-            ? tx
-                  .update(predictions)
-                  .set({ isCorrect: true, rewardAmount: "100.00" })
-                  .where(inArray(predictions.id, correctIds))
-            : Promise.resolve(),
-        incorrectIds.length > 0
-            ? tx
-                  .update(predictions)
-                  .set({ isCorrect: false })
-                  .where(inArray(predictions.id, incorrectIds))
-            : Promise.resolve(),
-    ]);
-}
 
 export const updateRaceStatus = async (
     req: Request,
@@ -1218,87 +1143,6 @@ export const assignRaceReferee = async (
         }
 
         res.json({ assignment: result.assignment });
-    } catch (err) {
-        next(err);
-    }
-};
-
-export const publishRaceResult = async (
-    req: Request,
-    res: Response,
-    next: NextFunction,
-) => {
-    try {
-        const raceId = req.params.raceId as string;
-        if (!uuidValidate(raceId)) {
-            return res.status(400).json({ message: "Invalid uuid" });
-        }
-
-        const [report] = await db
-            .select({ id: raceResults.id, status: raceResults.resultStatus })
-            .from(raceResults)
-            .where(eq(raceResults.raceId, raceId));
-
-        if (!report) {
-            return res.status(404).json({
-                message: "No report found. Referee must submit first.",
-            });
-        }
-
-        if (report.status !== "referee_confirmed") {
-            return res.status(409).json({
-                message: "Report must be referee_confirmed before publishing",
-            });
-        }
-
-        const [race] = await db
-            .select({ status: races.status })
-            .from(races)
-            .where(eq(races.id, raceId));
-
-        await db.transaction(async (tx) => {
-            const [updated] = await tx
-                .update(raceResults)
-                .set({
-                    resultStatus: "published",
-                    publishedBy: req.user!.id,
-                    publishedAt: new Date(),
-                })
-                .where(eq(raceResults.id, report.id))
-                .returning();
-
-            if (!updated) {
-                throw new Error("Failed to publish report");
-            }
-
-            const [updatedRace] = await tx
-                .update(races)
-                .set({ status: "completed" })
-                .where(eq(races.id, raceId))
-                .returning();
-
-            if (!updatedRace) {
-                throw new Error("Failed to complete race");
-            }
-
-            await resolvePredictions(raceId, tx);
-        });
-
-        try {
-            eventBus.emit({
-                type: "race:status_changed",
-                data: {
-                    raceId,
-                    status: "completed",
-                    previousStatus: race?.status ?? "",
-                    timestamp: new Date().toISOString(),
-                },
-            });
-        } catch (emitErr) {
-            console.error(`Failed to emit race:status_changed ${emitErr}`);
-        }
-
-        res.json({ message: "Race result published and race completed" });
     } catch (err) {
         next(err);
     }
