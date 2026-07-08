@@ -5,6 +5,7 @@ import jwt from "jsonwebtoken";
 import config from "../config/config.js";
 import db from "../config/db.js";
 import { users } from "../schema/users.js";
+import { getSignedUrlByKey } from "../utils/s3.js";
 
 export const getProfile = async (
     req: Request,
@@ -34,6 +35,10 @@ export const getProfile = async (
             return res.status(404).json({ message: "User not found" });
         }
 
+        if (user.avatar_url) {
+            user.avatar_url = await getSignedUrlByKey(user.avatar_url);
+        }
+
         res.json(user);
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
     } catch (err: any) {
@@ -53,16 +58,14 @@ export const updateProfile = async (
             return res.status(403).json({ message: "Forbidden" });
         }
 
-        const { full_name, email, password, phone, address, avatar_url } =
-            req.body;
+        const { full_name, email, password, phone, address } = req.body;
 
         if (
             full_name === undefined &&
             email === undefined &&
             password === undefined &&
             phone === undefined &&
-            address === undefined &&
-            avatar_url === undefined
+            address === undefined
         ) {
             return res.status(400).json({ message: "No fields to update" });
         }
@@ -78,7 +81,6 @@ export const updateProfile = async (
         }
         if (phone !== undefined) set.phone = phone;
         if (address !== undefined) set.address = address;
-        if (avatar_url !== undefined) set.avatar_url = avatar_url;
 
         const credentialsChanged =
             email !== undefined || password !== undefined;
