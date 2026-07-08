@@ -85,6 +85,13 @@
       "when": 1782971599448,
       "tag": "0011_unknown_proemial_gods",
       "breakpoints": true
+    },
+    {
+      "idx": 12,
+      "version": "7",
+      "when": 1783479425380,
+      "tag": "0012_chilly_gressill",
+      "breakpoints": true
     }
   ]
 }
