@@ -68,7 +68,6 @@ export const getHorses = async (
                     isRetired: horses.isRetired,
                     baseSpeed: horses.baseSpeed,
                     stamina: horses.stamina,
-                    acceleration: horses.acceleration,
                     createdAt: horses.createdAt,
                     updatedAt: horses.updatedAt,
                     isRacing: isRacingSubquery,
@@ -138,7 +137,6 @@ export const getOwnerHorses = async (
                     isRetired: horses.isRetired,
                     baseSpeed: horses.baseSpeed,
                     stamina: horses.stamina,
-                    acceleration: horses.acceleration,
                     createdAt: horses.createdAt,
                     updatedAt: horses.updatedAt,
                     isRacing: isRacingSubquery,
@@ -185,7 +183,6 @@ export const getHorse = async (
                 isRetired: horses.isRetired,
                 baseSpeed: horses.baseSpeed,
                 stamina: horses.stamina,
-                acceleration: horses.acceleration,
                 createdAt: horses.createdAt,
                 updatedAt: horses.updatedAt,
                 isRacing: isRacingSubquery,
@@ -218,7 +215,6 @@ export const addHorse = async (
             healthStatus,
             baseSpeed,
             stamina,
-            acceleration,
         } = req.body;
 
         const [horse] = await db
@@ -234,7 +230,6 @@ export const addHorse = async (
                 isRetired: false,
                 baseSpeed: baseSpeed ?? 0,
                 stamina: stamina ?? 0,
-                acceleration: acceleration ?? 0,
             })
             .returning();
 
@@ -286,7 +281,6 @@ export const updateHorse = async (
             healthStatus,
             baseSpeed,
             stamina,
-            acceleration,
         } = req.body;
 
         if (
@@ -297,8 +291,7 @@ export const updateHorse = async (
             imageUrl === undefined &&
             healthStatus === undefined &&
             baseSpeed === undefined &&
-            stamina === undefined &&
-            acceleration === undefined
+            stamina === undefined
         ) {
             return res.status(400).json({ message: "No fields to update" });
         }
@@ -313,7 +306,6 @@ export const updateHorse = async (
         if (healthStatus !== undefined) updates.healthStatus = healthStatus;
         if (baseSpeed !== undefined) updates.baseSpeed = baseSpeed;
         if (stamina !== undefined) updates.stamina = stamina;
-        if (acceleration !== undefined) updates.acceleration = acceleration;
 
         const [updatedHorse] = await db
             .update(horses)

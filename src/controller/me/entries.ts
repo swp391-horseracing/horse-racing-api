@@ -63,7 +63,6 @@ export const getMyEntries = async (
                     weightKg: horses.weightKg,
                     baseSpeed: horses.baseSpeed,
                     stamina: horses.stamina,
-                    acceleration: horses.acceleration,
                     jockeyId: raceEntries.jockeyId,
                     jockeyName: users.fullName,
                     laneNumber: raceEntries.laneNumber,

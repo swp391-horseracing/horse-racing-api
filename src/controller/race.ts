@@ -104,7 +104,6 @@ export const getHorseEntries = async (
                 weightKg: horses.weightKg,
                 baseSpeed: horses.baseSpeed,
                 stamina: horses.stamina,
-                acceleration: horses.acceleration,
                 entryStatus: raceEntries.entryStatus,
                 laneNumber: raceEntries.laneNumber,
             })
@@ -156,7 +155,6 @@ export const getRaceEntries = async (
                     breed: horses.breed,
                     baseSpeed: horses.baseSpeed,
                     stamina: horses.stamina,
-                    acceleration: horses.acceleration,
                 },
                 jockey: {
                     id: users.id,

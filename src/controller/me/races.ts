@@ -217,7 +217,6 @@ const getJockeyRaceDetail = async (userId: string, raceId: string) => {
             horseWeight: horses.weightKg,
             horseBaseSpeed: horses.baseSpeed,
             horseStamina: horses.stamina,
-            horseAcceleration: horses.acceleration,
             ownerId: users.id,
             ownerName: users.fullName,
             name: races.name,
@@ -269,7 +268,6 @@ const getOwnerRaceDetail = async (userId: string, raceId: string) => {
                     'name', ${horses.name},
                     'baseSpeed', ${horses.baseSpeed},
                     'stamina', ${horses.stamina},
-                    'acceleration', ${horses.acceleration},
                     'laneNumber', ${raceEntries.laneNumber},
                     'entryStatus', ${raceEntries.entryStatus},
                     'confirmedAt', ${raceEntries.confirmedAt}
