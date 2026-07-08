@@ -51,6 +51,8 @@ export const getMyRegistrations = async (
                         id: horses.id,
                         name: horses.name,
                         breed: horses.breed,
+                        baseSpeed: horses.baseSpeed,
+                        stamina: horses.stamina,
                     },
                 })
                 .from(tournamentRegistrations)

@@ -146,6 +146,8 @@ export const getRefereeRaceReport = async (
                         id: horses.id,
                         name: horses.name,
                         breed: horses.breed,
+                        baseSpeed: horses.baseSpeed,
+                        stamina: horses.stamina,
                     },
                     jockey: {
                         id: users.id,
@@ -639,6 +641,8 @@ export const getRefereeRaceEntries = async (
                     name: horses.name,
                     breed: horses.breed,
                     weightKg: horses.weightKg,
+                    baseSpeed: horses.baseSpeed,
+                    stamina: horses.stamina,
                 },
                 jockey: {
                     id: users.id,
@@ -754,6 +758,8 @@ export const inspectEntry = async (
                     id: horses.id,
                     name: horses.name,
                     breed: horses.breed,
+                    baseSpeed: horses.baseSpeed,
+                    stamina: horses.stamina,
                 },
                 jockey: {
                     id: users.id,

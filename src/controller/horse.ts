@@ -66,6 +66,8 @@ export const getHorses = async (
                     imageUrl: horses.imageUrl,
                     healthStatus: horses.healthStatus,
                     isRetired: horses.isRetired,
+                    baseSpeed: horses.baseSpeed,
+                    stamina: horses.stamina,
                     createdAt: horses.createdAt,
                     updatedAt: horses.updatedAt,
                     isRacing: isRacingSubquery,
@@ -133,6 +135,8 @@ export const getOwnerHorses = async (
                     imageUrl: horses.imageUrl,
                     healthStatus: horses.healthStatus,
                     isRetired: horses.isRetired,
+                    baseSpeed: horses.baseSpeed,
+                    stamina: horses.stamina,
                     createdAt: horses.createdAt,
                     updatedAt: horses.updatedAt,
                     isRacing: isRacingSubquery,
@@ -177,6 +181,8 @@ export const getHorse = async (
                 imageUrl: horses.imageUrl,
                 healthStatus: horses.healthStatus,
                 isRetired: horses.isRetired,
+                baseSpeed: horses.baseSpeed,
+                stamina: horses.stamina,
                 createdAt: horses.createdAt,
                 updatedAt: horses.updatedAt,
                 isRacing: isRacingSubquery,
@@ -200,8 +206,16 @@ export const addHorse = async (
     next: NextFunction,
 ) => {
     try {
-        const { name, breed, birthDate, weightKg, imageUrl, healthStatus } =
-            req.body;
+        const {
+            name,
+            breed,
+            birthDate,
+            weightKg,
+            imageUrl,
+            healthStatus,
+            baseSpeed,
+            stamina,
+        } = req.body;
 
         const [horse] = await db
             .insert(horses)
@@ -214,6 +228,8 @@ export const addHorse = async (
                 imageUrl: imageUrl ?? null,
                 healthStatus: healthStatus ?? null,
                 isRetired: false,
+                baseSpeed: baseSpeed ?? 0,
+                stamina: stamina ?? 0,
             })
             .returning();
 
@@ -256,8 +272,16 @@ export const updateHorse = async (
                 .json({ message: "Cannot update a retired horse" });
         }
 
-        const { name, breed, birthDate, weightKg, imageUrl, healthStatus } =
-            req.body;
+        const {
+            name,
+            breed,
+            birthDate,
+            weightKg,
+            imageUrl,
+            healthStatus,
+            baseSpeed,
+            stamina,
+        } = req.body;
 
         if (
             name === undefined &&
@@ -265,7 +289,9 @@ export const updateHorse = async (
             birthDate === undefined &&
             weightKg === undefined &&
             imageUrl === undefined &&
-            healthStatus === undefined
+            healthStatus === undefined &&
+            baseSpeed === undefined &&
+            stamina === undefined
         ) {
             return res.status(400).json({ message: "No fields to update" });
         }
@@ -278,6 +304,8 @@ export const updateHorse = async (
         if (weightKg !== undefined) updates.weightKg = weightKg;
         if (imageUrl !== undefined) updates.imageUrl = imageUrl;
         if (healthStatus !== undefined) updates.healthStatus = healthStatus;
+        if (baseSpeed !== undefined) updates.baseSpeed = baseSpeed;
+        if (stamina !== undefined) updates.stamina = stamina;
 
         const [updatedHorse] = await db
             .update(horses)
