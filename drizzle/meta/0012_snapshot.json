@@ -1,5 +1,5 @@
 {
-  "id": "a561dc60-36c2-4d58-a443-bc873eaf14d4",
+  "id": "d0e0d3d2-721b-4c63-88ed-f06efae4d614",
   "prevId": "1f7d5b63-686c-49c1-895d-e5fd34d084af",
   "version": "7",
   "dialect": "postgresql",
@@ -127,13 +127,6 @@
         },
         "stamina": {
           "name": "stamina",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true,
-          "default": 0
-        },
-        "acceleration": {
-          "name": "acceleration",
           "type": "integer",
           "primaryKey": false,
           "notNull": true,

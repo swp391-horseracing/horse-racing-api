@@ -22,7 +22,6 @@ export const horses = pgTable("horses", {
     isRetired: boolean("isRetired"),
     baseSpeed: integer("base_speed").default(0).notNull(),
     stamina: integer("stamina").default(0).notNull(),
-    acceleration: integer("acceleration").default(0).notNull(),
     createdAt: timestamp("created_at").defaultNow().notNull(),
     updatedAt: timestamp("updated_at")
         .defaultNow()
