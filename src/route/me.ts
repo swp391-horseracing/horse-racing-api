@@ -1,5 +1,6 @@
 import { Router } from "express";
 import { getMeProfile } from "../controller/me/profile.js";
+import { uploadAvatar } from "../controller/me/avatar.js";
 import { getMeRaces, getMeRaceDetail } from "../controller/me/races.js";
 import { getMyRegistrations } from "../controller/me/registrations.js";
 import {
@@ -21,12 +22,24 @@ import {
 } from "../controller/me/raceEntries.js";
 import { authMiddleware } from "../middleware/auth.js";
 import { authorize } from "../middleware/authorize.js";
+import { createUpload } from "../middleware/upload.js";
 import { Role } from "../types/roles.js";
+
+const avatarUpload = createUpload({
+    maxSizeMB: 2,
+    allowedTypes: ["image/jpeg", "image/png", "image/webp"],
+});
 
 const router = Router();
 
 // profile route
 router.get("/profile", authMiddleware, getMeProfile);
+router.patch(
+    "/avatar",
+    authMiddleware,
+    avatarUpload.single("avatar"),
+    uploadAvatar,
+);
 router.get("/races", authMiddleware, getMeRaces);
 router.get("/races/:raceId", authMiddleware, getMeRaceDetail);
 
