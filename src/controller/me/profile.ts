@@ -3,6 +3,7 @@ import db from "../../config/db.js";
 import { users } from "../../schema/users.js";
 import { eq } from "drizzle-orm";
 import { jockeyProfile } from "../../schema/jockeyProfile.js";
+import { getSignedUrlByKey } from "../../utils/s3.js";
 
 const getJockeyUser = async (userId: string) => {
     const [result] = await db
@@ -26,6 +27,10 @@ const getJockeyUser = async (userId: string) => {
         return null;
     }
 
+    if (result.avatarUrl) {
+        result.avatarUrl = await getSignedUrlByKey(result.avatarUrl);
+    }
+
     return result;
 };
 
@@ -46,6 +51,10 @@ const getRegularUser = async (userId: string) => {
 
     if (!result) {
         return null;
+    }
+
+    if (result.avatarUrl) {
+        result.avatarUrl = await getSignedUrlByKey(result.avatarUrl);
     }
 
     return result;

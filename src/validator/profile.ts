@@ -15,7 +15,6 @@ const updateProfileSchema = z.object({
         .string()
         .max(225, "Address must be at most 225 characters")
         .optional(),
-    avatar_url: z.string().url("Invalid URL").optional(),
 });
 
 export { updateProfileSchema };
