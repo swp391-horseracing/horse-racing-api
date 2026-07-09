@@ -10,9 +10,10 @@ import { predictions } from "../schema/predictions.js";
 import { courseDistances } from "../schema/courseDistances.js";
 import { raceCourses } from "../schema/raceCourses.js";
 import { createPredictionSchema } from "../validator/prediction.js";
+import { listRacesQuerySchema } from "../validator/race.js";
 import { raceResultEntries } from "../schema/raceResultEntries.js";
 import { raceResults } from "../schema/raceResults.js";
-import { getPagination, paginatedResponse } from "../utils/paginate.js";
+import { paginatedResponse } from "../utils/paginate.js";
 
 export const listRaces = async (
     req: Request,
@@ -20,45 +21,50 @@ export const listRaces = async (
     next: NextFunction,
 ) => {
     try {
-        const { status, sort, order } = req.query;
+        const parsed = listRacesQuerySchema.safeParse(req.query);
 
-        const { page, limit, offset } = getPagination(req.query);
+        if (!parsed.success) {
+            return res.status(400).json({
+                message: "Validation Errors",
+                errors: parsed.error.issues.map((issue) => ({
+                    field: issue.path.join("."),
+                    message: issue.message,
+                })),
+            });
+        }
 
-        const conditions = [];
+        const { status, sort, order, page, limit } = parsed.data;
+        const offset = (page! - 1) * limit!;
 
-        if (status && typeof status === "string") {
+        const conditions: Parameters<typeof and>[number][] = [];
+
+        if (status) {
             const statuses = status.split(",").filter(Boolean);
-            if (statuses.length > 0) {
-                conditions.push(
-                    inArray(
-                        races.status,
-                        statuses as (typeof races.status.enumValues)[number][],
-                    ),
-                );
-            }
+            conditions.push(
+                inArray(
+                    races.status,
+                    statuses as (typeof races.status.enumValues)[number][],
+                ),
+            );
         } else {
             conditions.push(ne(races.status, "draft"));
         }
 
-        const whereClause =
-            conditions.length > 0 ? and(...conditions) : undefined;
-
-        const sortField = typeof sort === "string" ? sort : "scheduleAt";
-        const sortOrder = order === "desc" ? "desc" : "asc";
+        const whereClause = and(...conditions);
 
         const sortColumn =
-            sortField === "name"
+            sort === "name"
                 ? races.name
-                : sortField === "createdAt"
+                : sort === "createdAt"
                   ? races.createdAt
-                  : sortField === "status"
+                  : sort === "status"
                     ? races.status
-                    : sortField === "raceNumber"
+                    : sort === "raceNumber"
                       ? races.raceNumber
                       : races.scheduleAt;
 
         const orderByClause =
-            sortOrder === "desc" ? desc(sortColumn) : asc(sortColumn);
+            order === "desc" ? desc(sortColumn) : asc(sortColumn);
 
         const [countResult] = await db
             .select({ count: count() })
@@ -86,10 +92,10 @@ export const listRaces = async (
             .leftJoin(raceCourses, eq(courseDistances.courseId, raceCourses.id))
             .where(whereClause)
             .orderBy(orderByClause)
-            .limit(limit)
+            .limit(limit!)
             .offset(offset);
 
-        res.json(paginatedResponse(raceList, total, page, limit));
+        res.json(paginatedResponse(raceList, total, page!, limit!));
     } catch (err) {
         next(err);
     }
