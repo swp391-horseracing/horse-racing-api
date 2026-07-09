@@ -2,7 +2,7 @@ import { NextFunction, Request, Response } from "express";
 import db from "../config/db.js";
 import { races } from "../schema/races.js";
 import { validate as uuidValidate } from "uuid";
-import { eq, ne, and, sql } from "drizzle-orm";
+import { eq, ne, and, sql, inArray, count, asc, desc } from "drizzle-orm";
 import { raceEntries } from "../schema/raceEntries.js";
 import { horses } from "../schema/horses.js";
 import { users } from "../schema/users.js";
@@ -12,6 +12,88 @@ import { raceCourses } from "../schema/raceCourses.js";
 import { createPredictionSchema } from "../validator/prediction.js";
 import { raceResultEntries } from "../schema/raceResultEntries.js";
 import { raceResults } from "../schema/raceResults.js";
+import { getPagination, paginatedResponse } from "../utils/paginate.js";
+
+export const listRaces = async (
+    req: Request,
+    res: Response,
+    next: NextFunction,
+) => {
+    try {
+        const { status, sort, order } = req.query;
+
+        const { page, limit, offset } = getPagination(req.query);
+
+        const conditions = [];
+
+        if (status && typeof status === "string") {
+            const statuses = status.split(",").filter(Boolean);
+            if (statuses.length > 0) {
+                conditions.push(
+                    inArray(
+                        races.status,
+                        statuses as (typeof races.status.enumValues)[number][],
+                    ),
+                );
+            }
+        } else {
+            conditions.push(ne(races.status, "draft"));
+        }
+
+        const whereClause =
+            conditions.length > 0 ? and(...conditions) : undefined;
+
+        const sortField = typeof sort === "string" ? sort : "scheduleAt";
+        const sortOrder = order === "desc" ? "desc" : "asc";
+
+        const sortColumn =
+            sortField === "name"
+                ? races.name
+                : sortField === "createdAt"
+                  ? races.createdAt
+                  : sortField === "status"
+                    ? races.status
+                    : sortField === "raceNumber"
+                      ? races.raceNumber
+                      : races.scheduleAt;
+
+        const orderByClause =
+            sortOrder === "desc" ? desc(sortColumn) : asc(sortColumn);
+
+        const [countResult] = await db
+            .select({ count: count() })
+            .from(races)
+            .where(whereClause);
+
+        const total = countResult ? Number(countResult.count) : 0;
+
+        const raceList = await db
+            .select({
+                id: races.id,
+                tournamentId: races.tournamentId,
+                name: races.name,
+                raceNumber: races.raceNumber,
+                scheduledAt: races.scheduleAt,
+                laneCount: races.laneCount,
+                status: races.status,
+                venue: raceCourses.name,
+            })
+            .from(races)
+            .leftJoin(
+                courseDistances,
+                eq(races.courseDistanceId, courseDistances.id),
+            )
+            .leftJoin(raceCourses, eq(courseDistances.courseId, raceCourses.id))
+            .where(whereClause)
+            .orderBy(orderByClause)
+            .limit(limit)
+            .offset(offset);
+
+        res.json(paginatedResponse(raceList, total, page, limit));
+    } catch (err) {
+        next(err);
+    }
+};
 
 export const getRace = async (
     req: Request,

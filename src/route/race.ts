@@ -5,6 +5,7 @@ import {
     getHorseEntries,
     getRace,
     getRaceResult,
+    listRaces,
 } from "../controller/race.js";
 import { optionalAuthMiddleware } from "../middleware/optionalAuth.js";
 import { authMiddleware } from "../middleware/auth.js";
@@ -13,6 +14,7 @@ import { Role } from "../types/roles.js";
 
 const router = Router();
 
+router.get("/", listRaces);
 router.get("/:raceId", optionalAuthMiddleware, getRace);
 router.get("/:raceId/horses", optionalAuthMiddleware, getHorseEntries);
 router.get("/:raceId/entries", optionalAuthMiddleware, getRaceEntries);
