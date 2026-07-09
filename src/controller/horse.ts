@@ -7,6 +7,8 @@ import { races } from "../schema/races.js";
 import { raceEntries } from "../schema/raceEntries.js";
 import { horsesQuerySchema } from "../validator/horse.js";
 import { getPagination, paginatedResponse } from "../utils/paginate.js";
+import { uploadFile, deleteFile, getSignedUrlByKey } from "../utils/s3.js";
+import { randomHex } from "../utils/randomHex.js";
 
 const isRacingSubquery = sql<boolean>`EXISTS(
   SELECT 1 FROM ${raceEntries} re
@@ -82,8 +84,22 @@ export const getHorses = async (
                 .where(conditions),
         ]);
 
+        const horsesWithUrls = await Promise.all(
+            data.map(async (horse) => ({
+                ...horse,
+                imageUrl: horse.imageUrl
+                    ? await getSignedUrlByKey(horse.imageUrl)
+                    : null,
+            })),
+        );
+
         return res.json(
-            paginatedResponse(data, Number(count[0]?.count ?? 0), p, l),
+            paginatedResponse(
+                horsesWithUrls,
+                Number(count[0]?.count ?? 0),
+                p,
+                l,
+            ),
         );
     } catch (err) {
         next(err);
@@ -151,8 +167,22 @@ export const getOwnerHorses = async (
                 .where(conditions),
         ]);
 
+        const horsesWithUrls = await Promise.all(
+            data.map(async (horse) => ({
+                ...horse,
+                imageUrl: horse.imageUrl
+                    ? await getSignedUrlByKey(horse.imageUrl)
+                    : null,
+            })),
+        );
+
         return res.json(
-            paginatedResponse(data, Number(count[0]?.count ?? 0), p, l),
+            paginatedResponse(
+                horsesWithUrls,
+                Number(count[0]?.count ?? 0),
+                p,
+                l,
+            ),
         );
     } catch (err) {
         next(err);
@@ -194,6 +224,10 @@ export const getHorse = async (
             return res.status(404).json({ message: "Horse not found" });
         }
 
+        if (horse.imageUrl) {
+            horse.imageUrl = await getSignedUrlByKey(horse.imageUrl);
+        }
+
         res.json({ horse });
     } catch (err) {
         next(err);
@@ -205,17 +239,35 @@ export const addHorse = async (
     res: Response,
     next: NextFunction,
 ) => {
+    let uploadedKey: string | null = null;
+
     try {
         const {
             name,
             breed,
             birthDate,
             weightKg,
-            imageUrl,
             healthStatus,
             baseSpeed,
             stamina,
         } = req.body;
+
+        let imageUrl: string | null = null;
+
+        if (req.file) {
+            const ext = req.file.mimetype.split("/")[1];
+            const key = `horses/${crypto.randomUUID()}/${randomHex(16)}.${ext}`;
+            try {
+                await uploadFile(key, req.file);
+            } catch (uploadErr) {
+                console.error("S3 upload failed:", uploadErr);
+                return res
+                    .status(500)
+                    .json({ message: "Failed to upload image" });
+            }
+            uploadedKey = key;
+            imageUrl = key;
+        }
 
         const [horse] = await db
             .insert(horses)
@@ -225,7 +277,7 @@ export const addHorse = async (
                 breed,
                 birthDate: birthDate ?? null,
                 weightKg: weightKg ?? null,
-                imageUrl: imageUrl ?? null,
+                imageUrl,
                 healthStatus: healthStatus ?? null,
                 isRetired: false,
                 baseSpeed: baseSpeed ?? 0,
@@ -233,9 +285,20 @@ export const addHorse = async (
             })
             .returning();
 
+        if (horse?.imageUrl) {
+            horse.imageUrl = await getSignedUrlByKey(horse.imageUrl);
+        }
+
         res.status(201).json({ horse });
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
     } catch (err: any) {
+        if (uploadedKey) {
+            try {
+                await deleteFile(uploadedKey);
+            } catch (deleteErr) {
+                console.error("Failed to cleanup uploaded file:", deleteErr);
+            }
+        }
         if (err?.cause?.code === "23505") {
             return res
                 .status(409)
@@ -250,6 +313,8 @@ export const updateHorse = async (
     res: Response,
     next: NextFunction,
 ) => {
+    let uploadedKey: string | null = null;
+
     try {
         const id = req.params.id as string;
         if (!uuidValidate(id)) {
@@ -277,7 +342,6 @@ export const updateHorse = async (
             breed,
             birthDate,
             weightKg,
-            imageUrl,
             healthStatus,
             baseSpeed,
             stamina,
@@ -288,10 +352,10 @@ export const updateHorse = async (
             breed === undefined &&
             birthDate === undefined &&
             weightKg === undefined &&
-            imageUrl === undefined &&
             healthStatus === undefined &&
             baseSpeed === undefined &&
-            stamina === undefined
+            stamina === undefined &&
+            !req.file
         ) {
             return res.status(400).json({ message: "No fields to update" });
         }
@@ -302,10 +366,24 @@ export const updateHorse = async (
         if (breed !== undefined) updates.breed = breed;
         if (birthDate !== undefined) updates.birthDate = birthDate;
         if (weightKg !== undefined) updates.weightKg = weightKg;
-        if (imageUrl !== undefined) updates.imageUrl = imageUrl;
         if (healthStatus !== undefined) updates.healthStatus = healthStatus;
         if (baseSpeed !== undefined) updates.baseSpeed = baseSpeed;
         if (stamina !== undefined) updates.stamina = stamina;
+
+        if (req.file) {
+            const ext = req.file.mimetype.split("/")[1];
+            const key = `horses/${id}/${randomHex(16)}.${ext}`;
+            try {
+                await uploadFile(key, req.file);
+            } catch (uploadErr) {
+                console.error("S3 upload failed:", uploadErr);
+                return res
+                    .status(500)
+                    .json({ message: "Failed to upload image" });
+            }
+            uploadedKey = key;
+            updates.imageUrl = key;
+        }
 
         const [updatedHorse] = await db
             .update(horses)
@@ -313,9 +391,26 @@ export const updateHorse = async (
             .where(eq(horses.id, id))
             .returning();
 
+        if (req.file && horse?.imageUrl) {
+            await deleteFile(horse.imageUrl);
+        }
+
+        if (updatedHorse?.imageUrl) {
+            updatedHorse.imageUrl = await getSignedUrlByKey(
+                updatedHorse.imageUrl,
+            );
+        }
+
         res.json({ horse: updatedHorse });
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
     } catch (err: any) {
+        if (uploadedKey) {
+            try {
+                await deleteFile(uploadedKey);
+            } catch (deleteErr) {
+                console.error("Failed to cleanup uploaded file:", deleteErr);
+            }
+        }
         if (err?.cause?.code === "23505") {
             return res
                 .status(409)

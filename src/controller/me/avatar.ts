@@ -44,13 +44,17 @@ export const uploadAvatar = async (
             .where(eq(users.id, userId));
 
         if (user.avatar_url) {
-            await deleteFile(user.avatar_url).catch(next);
+            await deleteFile(user.avatar_url);
         }
 
         res.json({ avatar_url: key });
     } catch (err) {
         if (uploadedKey) {
-            await deleteFile(uploadedKey).catch(next);
+            try {
+                await deleteFile(uploadedKey);
+            } catch (deleteErr) {
+                console.error("Failed to cleanup uploaded file:", deleteErr);
+            }
         }
         next(err);
     }
