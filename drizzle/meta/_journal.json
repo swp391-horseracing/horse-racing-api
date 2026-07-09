@@ -92,6 +92,13 @@
       "when": 1783494637508,
       "tag": "0012_naive_goliath",
       "breakpoints": true
+    },
+    {
+      "idx": 13,
+      "version": "7",
+      "when": 1783528902636,
+      "tag": "0013_square_mojo",
+      "breakpoints": true
     }
   ]
 }
