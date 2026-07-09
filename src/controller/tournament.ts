@@ -309,6 +309,8 @@ export const registerForTournament = async (
                     id: horses.id,
                     ownerId: horses.ownerId,
                     isRetired: horses.isRetired,
+                    birthDate: horses.birthDate,
+                    sex: horses.sex,
                 })
                 .from(horses)
                 .where(eq(horses.id, horseId));
@@ -333,6 +335,36 @@ export const registerForTournament = async (
                     status: 409,
                     message: "Horse is retired",
                 };
+            }
+
+            if (tournament.sex && horse.sex !== tournament.sex) {
+                return {
+                    ok: false as const,
+                    status: 409,
+                    message: "Horse does not meet sex requirement",
+                };
+            }
+
+            if (horse.birthDate) {
+                const birthDate = new Date(horse.birthDate);
+                const referenceDate =
+                    tournament.registrationCloseDate ?? new Date();
+                const age = calculateAge(birthDate, referenceDate);
+
+                if (tournament.minAge !== null && age < tournament.minAge) {
+                    return {
+                        ok: false as const,
+                        status: 409,
+                        message: "Horse does not meet minimum age requirement",
+                    };
+                }
+                if (tournament.maxAge !== null && age > tournament.maxAge) {
+                    return {
+                        ok: false as const,
+                        status: 409,
+                        message: "Horse does not meet maximum age requirement",
+                    };
+                }
             }
 
             const [registration] = await tx
