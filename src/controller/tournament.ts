@@ -17,6 +17,18 @@ import { courseDistances } from "../schema/courseDistances.js";
 import { raceCourses } from "../schema/raceCourses.js";
 import { raceEntries } from "../schema/raceEntries.js";
 
+const calculateAge = (birthDate: Date, referenceDate: Date): number => {
+    const age = referenceDate.getFullYear() - birthDate.getFullYear();
+    const monthDiff = referenceDate.getMonth() - birthDate.getMonth();
+    if (
+        monthDiff < 0 ||
+        (monthDiff === 0 && referenceDate.getDate() < birthDate.getDate())
+    ) {
+        return age - 1;
+    }
+    return age;
+};
+
 export const getTournaments = async (
     req: Request,
     res: Response,
