@@ -293,7 +293,11 @@ export const addHorse = async (
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
     } catch (err: any) {
         if (uploadedKey) {
-            await deleteFile(uploadedKey).catch(next);
+            try {
+                await deleteFile(uploadedKey);
+            } catch (deleteErr) {
+                console.error("Failed to cleanup uploaded file:", deleteErr);
+            }
         }
         if (err?.cause?.code === "23505") {
             return res
@@ -388,7 +392,7 @@ export const updateHorse = async (
             .returning();
 
         if (req.file && horse?.imageUrl) {
-            await deleteFile(horse.imageUrl).catch(next);
+            await deleteFile(horse.imageUrl);
         }
 
         if (updatedHorse?.imageUrl) {
@@ -401,7 +405,11 @@ export const updateHorse = async (
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
     } catch (err: any) {
         if (uploadedKey) {
-            await deleteFile(uploadedKey).catch(next);
+            try {
+                await deleteFile(uploadedKey);
+            } catch (deleteErr) {
+                console.error("Failed to cleanup uploaded file:", deleteErr);
+            }
         }
         if (err?.cause?.code === "23505") {
             return res
