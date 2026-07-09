@@ -345,6 +345,17 @@ export const registerForTournament = async (
                 };
             }
 
+            if (tournament.minAge !== null || tournament.maxAge !== null) {
+                if (!horse.birthDate) {
+                    return {
+                        ok: false as const,
+                        status: 409,
+                        message:
+                            "Horse birth date is required for this tournament",
+                    };
+                }
+            }
+
             if (horse.birthDate) {
                 const birthDate = new Date(horse.birthDate);
                 const referenceDate =
