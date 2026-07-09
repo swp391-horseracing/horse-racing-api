@@ -63,7 +63,7 @@ export const createRaceEntry = async (
 
             // Verify horse belongs to the owner
             const [horse] = await tx
-                .select({ id: horses.id })
+                .select({ id: horses.id, healthStatus: horses.healthStatus })
                 .from(horses)
                 .where(
                     and(eq(horses.id, horseId), eq(horses.ownerId, user.id)),
@@ -74,6 +74,14 @@ export const createRaceEntry = async (
                     ok: false as const,
                     status: 404,
                     message: "No horse found",
+                };
+            }
+
+            if (horse.healthStatus !== "healthy") {
+                return {
+                    ok: false as const,
+                    status: 409,
+                    message: "Horse is not healthy to race",
                 };
             }
 
