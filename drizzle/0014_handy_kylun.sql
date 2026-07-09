@@ -1,0 +1,2 @@
+CREATE TYPE "public"."horse_health_status" AS ENUM('healthy', 'injured', 'sick', 'rest');--> statement-breakpoint
+ALTER TABLE "horses" ALTER COLUMN "health_status" SET DATA TYPE "public"."horse_health_status" USING "health_status"::"public"."horse_health_status";

@@ -1,5 +1,7 @@
 import { z } from "zod";
 
+const healthStatusSchema = z.enum(["healthy", "injured", "sick", "rest"]);
+
 const birthDateField = z
     .string()
     .regex(/^\d{4}-\d{2}-\d{2}$/, "birthDate must be YYYY-MM-DD")
@@ -18,7 +20,7 @@ const addHorseSchema = z.object({
     breed: z.string().min(1, "Breed is required"),
     birthDate: birthDateField,
     weightKg: weightKgField,
-    healthStatus: z.string().optional(),
+    healthStatus: healthStatusSchema.optional(),
     baseSpeed: z.number().int().min(0).max(100).optional(),
     stamina: z.number().int().min(0).max(100).optional(),
 });
@@ -28,7 +30,7 @@ const updateHorseSchema = z.object({
     breed: z.string().min(1, "Breed cannot be empty").optional(),
     birthDate: birthDateField,
     weightKg: weightKgField,
-    healthStatus: z.string().optional(),
+    healthStatus: healthStatusSchema.optional(),
     baseSpeed: z.number().int().min(0).max(100).optional(),
     stamina: z.number().int().min(0).max(100).optional(),
 });

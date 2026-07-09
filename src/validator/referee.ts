@@ -35,4 +35,5 @@ export const submitReportSchema = z.object({
 
 export const inspectEntrySchema = z.object({
     result: z.enum(["cleared", "disqualified", "withdrawn"]),
+    healthStatus: z.enum(["healthy", "injured", "sick", "rest"]).optional(),
 });

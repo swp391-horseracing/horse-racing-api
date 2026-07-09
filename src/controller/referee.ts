@@ -12,6 +12,7 @@ import { horses } from "../schema/horses.js";
 import { users } from "../schema/users.js";
 import { courseDistances } from "../schema/courseDistances.js";
 import { raceCourses } from "../schema/raceCourses.js";
+import { tournaments as tournamentsTable } from "../schema/tournament.js";
 import { jockeyProfile } from "../schema/jockeyProfile.js";
 import { eventBus } from "../websocket/eventBus.js";
 import { resolvePredictions } from "../utils/resolvePredictions.js";
@@ -693,14 +694,18 @@ export const inspectEntry = async (
             });
         }
 
-        const { result } = req.body as {
+        const { result, healthStatus } = req.body as {
             result: "cleared" | "disqualified" | "withdrawn";
+            healthStatus?: "healthy" | "injured" | "sick" | "rest";
         };
         const entryStatus = result === "cleared" ? "confirmed" : result;
 
         const outcome = await db.transaction(async (tx) => {
             const [race] = await tx
-                .select({ status: races.status })
+                .select({
+                    status: races.status,
+                    tournamentId: races.tournamentId,
+                })
                 .from(races)
                 .where(eq(races.id, raceId))
                 .for("update");
@@ -721,6 +726,54 @@ export const inspectEntry = async (
                 };
             }
 
+            if (entryStatus === "confirmed" && healthStatus) {
+                if (healthStatus !== "healthy") {
+                    return {
+                        ok: false as const,
+                        status: 409,
+                        message: "Horse is not fit to race",
+                    };
+                }
+            }
+
+            if (entryStatus === "confirmed") {
+                const [tournament] = await tx
+                    .select({ carryWeight: tournamentsTable.carryWeight })
+                    .from(tournamentsTable)
+                    .where(eq(tournamentsTable.id, race.tournamentId));
+
+                if (tournament?.carryWeight) {
+                    const [entry] = await tx
+                        .select({ jockeyId: raceEntries.jockeyId })
+                        .from(raceEntries)
+                        .where(
+                            and(
+                                eq(raceEntries.id, entryId),
+                                eq(raceEntries.raceId, raceId),
+                            ),
+                        );
+
+                    if (entry?.jockeyId) {
+                        const [jockey] = await tx
+                            .select({ weightKg: jockeyProfile.weightKg })
+                            .from(jockeyProfile)
+                            .where(eq(jockeyProfile.userId, entry.jockeyId));
+
+                        if (
+                            jockey?.weightKg &&
+                            Number(jockey.weightKg) >
+                                Number(tournament.carryWeight)
+                        ) {
+                            return {
+                                ok: false as const,
+                                status: 409,
+                                message: "Jockey exceeds carry weight limit",
+                            };
+                        }
+                    }
+                }
+            }
+
             const [updatedRow] = await tx
                 .update(raceEntries)
                 .set({ entryStatus })
@@ -730,7 +783,10 @@ export const inspectEntry = async (
                         eq(raceEntries.raceId, raceId),
                     ),
                 )
-                .returning({ id: raceEntries.id });
+                .returning({
+                    id: raceEntries.id,
+                    horseId: raceEntries.horseId,
+                });
 
             if (!updatedRow) {
                 return {
@@ -738,6 +794,13 @@ export const inspectEntry = async (
                     status: 404,
                     message: "Entry not found in this race",
                 };
+            }
+
+            if (healthStatus && updatedRow.horseId) {
+                await tx
+                    .update(horses)
+                    .set({ healthStatus })
+                    .where(eq(horses.id, updatedRow.horseId));
             }
 
             return { ok: true as const };
