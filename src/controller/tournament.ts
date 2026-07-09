@@ -239,6 +239,12 @@ export const registerForTournament = async (
                 .select({
                     id: tournamentsTable.id,
                     status: tournamentsTable.status,
+                    registrationCloseDate:
+                        tournamentsTable.registrationCloseDate,
+                    maximumParticipants: tournamentsTable.maximumParticipants,
+                    minAge: tournamentsTable.minAge,
+                    maxAge: tournamentsTable.maxAge,
+                    sex: tournamentsTable.sex,
                 })
                 .from(tournamentsTable)
                 .where(eq(tournamentsTable.id, tournamentId));
