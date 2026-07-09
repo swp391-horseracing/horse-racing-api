@@ -276,6 +276,34 @@ export const registerForTournament = async (
                 };
             }
 
+            if (
+                tournament.registrationCloseDate &&
+                new Date() >= tournament.registrationCloseDate
+            ) {
+                return {
+                    ok: false as const,
+                    status: 409,
+                    message: "Registration period has ended",
+                };
+            }
+
+            if (tournament.maximumParticipants) {
+                const [result] = await tx
+                    .select({ count: sql<number>`count(*)` })
+                    .from(tournamentRegistrations)
+                    .where(
+                        eq(tournamentRegistrations.tournamentId, tournamentId),
+                    );
+
+                if (result && result.count >= tournament.maximumParticipants) {
+                    return {
+                        ok: false as const,
+                        status: 409,
+                        message: "Tournament is full",
+                    };
+                }
+            }
+
             const [horse] = await tx
                 .select({
                     id: horses.id,
