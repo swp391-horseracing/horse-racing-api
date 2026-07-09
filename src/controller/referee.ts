@@ -727,7 +727,7 @@ export const inspectEntry = async (
             }
 
             if (entryStatus === "confirmed" && healthStatus) {
-                if (healthStatus === "injured" || healthStatus === "sick") {
+                if (healthStatus !== "healthy") {
                     return {
                         ok: false as const,
                         status: 409,
@@ -783,7 +783,10 @@ export const inspectEntry = async (
                         eq(raceEntries.raceId, raceId),
                     ),
                 )
-                .returning({ id: raceEntries.id });
+                .returning({
+                    id: raceEntries.id,
+                    horseId: raceEntries.horseId,
+                });
 
             if (!updatedRow) {
                 return {
@@ -793,23 +796,11 @@ export const inspectEntry = async (
                 };
             }
 
-            if (healthStatus) {
-                const [entry] = await tx
-                    .select({ horseId: raceEntries.horseId })
-                    .from(raceEntries)
-                    .where(
-                        and(
-                            eq(raceEntries.id, entryId),
-                            eq(raceEntries.raceId, raceId),
-                        ),
-                    );
-
-                if (entry) {
-                    await tx
-                        .update(horses)
-                        .set({ healthStatus })
-                        .where(eq(horses.id, entry.horseId));
-                }
+            if (healthStatus && updatedRow.horseId) {
+                await tx
+                    .update(horses)
+                    .set({ healthStatus })
+                    .where(eq(horses.id, updatedRow.horseId));
             }
 
             return { ok: true as const };
