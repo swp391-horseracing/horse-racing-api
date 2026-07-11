@@ -1137,6 +1137,7 @@ export const assignRaceReferee = async (
         }
 
         res.json({ assignment: result.assignment });
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
     } catch (err: any) {
         if (err.cause.code === "23505") {
             return res
