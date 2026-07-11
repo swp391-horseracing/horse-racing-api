@@ -11,6 +11,7 @@ import {
     getReports,
     getUser,
     getUsers,
+    unassignRaceReferee,
     updateRace,
     updateRaceStatus,
     updateRegistrationStatus,
@@ -119,6 +120,12 @@ router.put(
     authorize(Role.ADMIN),
     validate(assignRefereeSchema),
     assignRaceReferee,
+);
+router.delete(
+    "/races/:raceId/referee/:refereeId",
+    authMiddleware,
+    authorize(Role.ADMIN),
+    unassignRaceReferee,
 );
 
 router.get("/reports", authMiddleware, authorize(Role.ADMIN), getReports);

@@ -1127,16 +1127,6 @@ export const assignRaceReferee = async (
             const [assignment] = await tx
                 .insert(refereeAssignments)
                 .values({ raceId, refereeId, assignedBy: admin.id })
-                .onConflictDoUpdate({
-                    target: [
-                        refereeAssignments.raceId,
-                        refereeAssignments.refereeId,
-                    ],
-                    set: {
-                        assignedBy: admin.id,
-                        assignedAt: new Date(),
-                    },
-                })
                 .returning();
 
             return { ok: true as const, assignment };
@@ -1147,6 +1137,56 @@ export const assignRaceReferee = async (
         }
 
         res.json({ assignment: result.assignment });
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    } catch (err: any) {
+        if (err?.cause?.code === "23505") {
+            return res
+                .status(409)
+                .json({ message: "Referee is already assigned to this race" });
+        }
+        next(err);
+    }
+};
+
+export const unassignRaceReferee = async (
+    req: Request,
+    res: Response,
+    next: NextFunction,
+) => {
+    try {
+        const raceId = req.params.raceId as string;
+        const refereeId = req.params.refereeId as string;
+
+        if (!uuidValidate(raceId) || !uuidValidate(refereeId)) {
+            return res.status(400).json({ message: "Invalid uuid" });
+        }
+
+        const [race] = await db
+            .select({ id: races.id })
+            .from(races)
+            .where(eq(races.id, raceId));
+
+        if (!race) {
+            return res.status(404).json({ message: "Race not found" });
+        }
+
+        const [deleted] = await db
+            .delete(refereeAssignments)
+            .where(
+                and(
+                    eq(refereeAssignments.raceId, raceId),
+                    eq(refereeAssignments.refereeId, refereeId),
+                ),
+            )
+            .returning({ id: refereeAssignments.id });
+
+        if (!deleted) {
+            return res
+                .status(404)
+                .json({ message: "Referee assignment not found" });
+        }
+
+        res.json({ message: "Referee unassigned successfully" });
     } catch (err) {
         next(err);
     }
