@@ -55,7 +55,7 @@ const MAX_RACE_TIME = 100;
 // IMPORTANT: This should match the DT used in raceCalculate.js multiplied by 1000
 // If DT = 0.3s, then TIME_STEP_MS = 300.
 // If you change DT in raceCalculate.js, update this value accordingly.
-const TIME_STEP_MS = 300;
+const TIME_STEP_MS = 50;
 
 const replay = generateReplay(TRACK_LENGTH, MAX_RACE_TIME, entries);
 
