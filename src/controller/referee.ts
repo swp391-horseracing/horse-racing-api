@@ -7,6 +7,7 @@ import { raceResults } from "../schema/raceResults.js";
 import { raceResultEntries } from "../schema/raceResultEntries.js";
 import { raceEntries } from "../schema/raceEntries.js";
 import { violations } from "../schema/violations.js";
+import { violationTypeConfig } from "../schema/violationTypeConfig.js";
 import { refereeAssignments } from "../schema/refereeAssignments.js";
 import { horses } from "../schema/horses.js";
 import { users } from "../schema/users.js";
@@ -115,79 +116,110 @@ export const getRefereeRaceReport = async (
 
         await ensureReportInitialized(raceId);
 
-        const [reportResult, referees, placements] = await Promise.all([
-            db
-                .select({
-                    id: raceResults.id,
-                    status: raceResults.resultStatus,
-                    notes: raceResults.notes,
-                    refereeConfirmedBy: raceResults.refereeConfirmedBy,
-                    refereeConfirmedAt: raceResults.refereeConfirmedAt,
-                    publishedBy: raceResults.publishedBy,
-                    publishedAt: raceResults.publishedAt,
-                    createdAt: raceResults.createdAt,
-                    updatedAt: raceResults.updatedAt,
-                })
-                .from(raceResults)
-                .where(eq(raceResults.raceId, raceId))
-                .then((rows) => rows[0] ?? null),
-            db
-                .select({
-                    id: users.id,
-                    fullName: users.fullName,
-                })
-                .from(refereeAssignments)
-                .innerJoin(users, eq(refereeAssignments.refereeId, users.id))
-                .where(eq(refereeAssignments.raceId, raceId)),
-            db
-                .select({
-                    entryId: raceResultEntries.entryId,
-                    laneNumber: raceEntries.laneNumber,
-                    horse: {
-                        id: horses.id,
-                        name: horses.name,
-                        breed: horses.breed,
-                        baseSpeed: horses.baseSpeed,
-                        stamina: horses.stamina,
-                    },
-                    jockey: {
+        const [reportResult, referees, placements, violationRows] =
+            await Promise.all([
+                db
+                    .select({
+                        id: raceResults.id,
+                        status: raceResults.resultStatus,
+                        notes: raceResults.notes,
+                        refereeConfirmedBy: raceResults.refereeConfirmedBy,
+                        refereeConfirmedAt: raceResults.refereeConfirmedAt,
+                        publishedBy: raceResults.publishedBy,
+                        publishedAt: raceResults.publishedAt,
+                        createdAt: raceResults.createdAt,
+                        updatedAt: raceResults.updatedAt,
+                    })
+                    .from(raceResults)
+                    .where(eq(raceResults.raceId, raceId))
+                    .then((rows) => rows[0] ?? null),
+                db
+                    .select({
                         id: users.id,
                         fullName: users.fullName,
-                    },
-                    finishedPosition: raceResultEntries.finishedPosition,
-                    finishTime: raceResultEntries.finishTime,
-                    finishStatus: raceResultEntries.finishStatus,
-                    points: raceResultEntries.points,
-                    violation: {
+                    })
+                    .from(refereeAssignments)
+                    .innerJoin(
+                        users,
+                        eq(refereeAssignments.refereeId, users.id),
+                    )
+                    .where(eq(refereeAssignments.raceId, raceId)),
+                db
+                    .select({
+                        entryId: raceResultEntries.entryId,
+                        laneNumber: raceEntries.laneNumber,
+                        horse: {
+                            id: horses.id,
+                            name: horses.name,
+                            breed: horses.breed,
+                            baseSpeed: horses.baseSpeed,
+                            stamina: horses.stamina,
+                        },
+                        jockey: {
+                            id: users.id,
+                            fullName: users.fullName,
+                        },
+                        finishedPosition: raceResultEntries.finishedPosition,
+                        finishTime: raceResultEntries.finishTime,
+                        finishStatus: raceResultEntries.finishStatus,
+                        points: raceResultEntries.points,
+                    })
+                    .from(raceResultEntries)
+                    .innerJoin(
+                        raceEntries,
+                        eq(raceResultEntries.entryId, raceEntries.id),
+                    )
+                    .innerJoin(horses, eq(raceEntries.horseId, horses.id))
+                    .leftJoin(users, eq(raceEntries.jockeyId, users.id))
+                    .where(eq(raceResultEntries.raceId, raceId))
+                    .orderBy(raceResultEntries.finishedPosition),
+                db
+                    .select({
+                        entryId: violations.entryId,
                         id: violations.id,
-                        violationType: violations.violationType,
-                        description: violations.description,
+                        violationTypeConfigId: violations.violationTypeConfigId,
+                        violationType: violationTypeConfig.violationType,
                         severity: violations.severity,
                         note: violations.note,
                         occurredAt: violations.occurredAt,
                         refereeId: violations.refereeId,
-                    },
-                })
-                .from(raceResultEntries)
-                .innerJoin(
-                    raceEntries,
-                    eq(raceResultEntries.entryId, raceEntries.id),
-                )
-                .innerJoin(horses, eq(raceEntries.horseId, horses.id))
-                .leftJoin(users, eq(raceEntries.jockeyId, users.id))
-                .leftJoin(
-                    violations,
-                    eq(raceResultEntries.violationId, violations.id),
-                )
-                .where(eq(raceResultEntries.raceId, raceId))
-                .orderBy(raceResultEntries.finishedPosition),
-        ]);
+                    })
+                    .from(violations)
+                    .innerJoin(
+                        violationTypeConfig,
+                        eq(
+                            violations.violationTypeConfigId,
+                            violationTypeConfig.id,
+                        ),
+                    )
+                    .innerJoin(
+                        raceEntries,
+                        eq(violations.entryId, raceEntries.id),
+                    )
+                    .where(eq(raceEntries.raceId, raceId)),
+            ]);
+
+        type ViolationRow = (typeof violationRows)[0];
+        const violationMap = new Map<string, ViolationRow[]>();
+        for (const v of violationRows) {
+            const list = violationMap.get(v.entryId);
+            if (list) {
+                list.push(v);
+            } else {
+                violationMap.set(v.entryId, [v]);
+            }
+        }
+
+        const placementsWithViolations = placements.map((p) => ({
+            ...p,
+            violations: violationMap.get(p.entryId) ?? [],
+        }));
 
         res.json({
             race,
             referees,
             report: reportResult,
-            placements,
+            placements: placementsWithViolations,
         });
     } catch (err) {
         next(err);
@@ -272,6 +304,7 @@ export const updatePlacements = async (
                         finishTime: p.finishTime ?? null,
                         finishStatus: p.finishStatus,
                         points: p.points,
+                        basePoints: p.points,
                     })
                     .where(
                         and(
@@ -332,14 +365,8 @@ export const createViolation = async (
             });
         }
 
-        const {
-            entryId,
-            occurredAt,
-            violationType,
-            description,
-            severity,
-            note,
-        } = req.body;
+        const { entryId, occurredAt, violationTypeConfigId, severity, note } =
+            req.body;
 
         const [entry] = await db
             .select({ id: raceEntries.id })
@@ -358,16 +385,58 @@ export const createViolation = async (
         }
 
         const [violation] = await db.transaction(async (tx) => {
+            const [current] = await tx
+                .select({
+                    basePoints: raceResultEntries.basePoints,
+                    points: raceResultEntries.points,
+                    finishStatus: raceResultEntries.finishStatus,
+                })
+                .from(raceResultEntries)
+                .where(
+                    and(
+                        eq(raceResultEntries.raceId, raceId),
+                        eq(raceResultEntries.entryId, entryId),
+                    ),
+                )
+                .for("update");
+
+            if (!current) {
+                throw new Error("Entry result not found");
+            }
+
+            const isZeroing =
+                severity === "disqualification" ||
+                severity === "result_cancellation";
+
+            let pointsDeducted: number | null = null;
+
+            if (severity === "point_deduction") {
+                const [config] = await tx
+                    .select({
+                        amount: violationTypeConfig.pointsDeducted,
+                    })
+                    .from(violationTypeConfig)
+                    .where(eq(violationTypeConfig.id, violationTypeConfigId));
+
+                pointsDeducted = config?.amount ?? 0;
+            } else if (isZeroing) {
+                pointsDeducted = current.points;
+            }
+
             const [v] = await tx
                 .insert(violations)
                 .values({
                     entryId,
                     refereeId: req.user!.id,
                     occurredAt: new Date(occurredAt),
-                    violationType,
-                    description,
+                    violationTypeConfigId,
                     severity,
                     note: note ?? null,
+                    pointsDeducted,
+                    previousFinishStatus:
+                        severity === "disqualification"
+                            ? current.finishStatus
+                            : null,
                 })
                 .returning();
 
@@ -375,36 +444,50 @@ export const createViolation = async (
                 throw new Error("Failed to create violation");
             }
 
-            if (severity === "disqualification") {
-                const [current] = await tx
-                    .select({ finishStatus: raceResultEntries.finishStatus })
-                    .from(raceResultEntries)
-                    .where(
-                        and(
-                            eq(raceResultEntries.raceId, raceId),
-                            eq(raceResultEntries.entryId, entryId),
-                        ),
-                    )
-                    .for("update");
+            const updateFields: Record<string, unknown> = {};
 
-                await tx
-                    .update(raceResultEntries)
-                    .set({
-                        finishStatus: "dsq",
-                        previousFinishStatus:
-                            current?.finishStatus ?? "finished",
-                        violationId: v.id,
+            if (isZeroing) {
+                updateFields.points = 0;
+                if (severity === "disqualification") {
+                    updateFields.finishStatus = "dsq";
+                }
+            } else if (severity === "point_deduction") {
+                const allViolations = await tx
+                    .select({
+                        severity: violations.severity,
+                        pointsDeducted: violations.pointsDeducted,
                     })
-                    .where(
-                        and(
-                            eq(raceResultEntries.raceId, raceId),
-                            eq(raceResultEntries.entryId, entryId),
-                        ),
+                    .from(violations)
+                    .where(eq(violations.entryId, entryId));
+
+                const hasZeroing = allViolations.some(
+                    (v) =>
+                        v.severity === "disqualification" ||
+                        v.severity === "result_cancellation",
+                );
+
+                if (hasZeroing) {
+                    updateFields.points = 0;
+                } else {
+                    const totalPointsDeducted = allViolations
+                        .filter((v) => v.severity === "point_deduction")
+                        .reduce(
+                            (sum, row) => sum + (row.pointsDeducted ?? 0),
+                            0,
+                        );
+
+                    const base = current.basePoints ?? current.points;
+                    updateFields.points = Math.max(
+                        0,
+                        base - totalPointsDeducted,
                     );
-            } else {
+                }
+            }
+
+            if (Object.keys(updateFields).length > 0) {
                 await tx
                     .update(raceResultEntries)
-                    .set({ violationId: v.id })
+                    .set(updateFields)
                     .where(
                         and(
                             eq(raceResultEntries.raceId, raceId),
@@ -467,18 +550,17 @@ export const deleteViolation = async (
         const [violation] = await db
             .select({
                 id: violations.id,
+                entryId: violations.entryId,
                 severity: violations.severity,
-                previousFinishStatus: raceResultEntries.previousFinishStatus,
+                previousFinishStatus: violations.previousFinishStatus,
+                pointsDeducted: violations.pointsDeducted,
             })
             .from(violations)
-            .innerJoin(
-                raceResultEntries,
-                eq(raceResultEntries.violationId, violations.id),
-            )
+            .innerJoin(raceEntries, eq(violations.entryId, raceEntries.id))
             .where(
                 and(
                     eq(violations.id, violationId),
-                    eq(raceResultEntries.raceId, raceId),
+                    eq(raceEntries.raceId, raceId),
                 ),
             );
 
@@ -487,26 +569,75 @@ export const deleteViolation = async (
         }
 
         await db.transaction(async (tx) => {
-            await tx
-                .update(raceResultEntries)
-                .set(
-                    violation.severity === "disqualification"
-                        ? {
-                              violationId: null,
-                              finishStatus:
-                                  violation.previousFinishStatus ?? "finished",
-                              previousFinishStatus: null,
-                          }
-                        : { violationId: null },
-                )
+            const [current] = await tx
+                .select({
+                    basePoints: raceResultEntries.basePoints,
+                    points: raceResultEntries.points,
+                    finishStatus: raceResultEntries.finishStatus,
+                })
+                .from(raceResultEntries)
                 .where(
                     and(
                         eq(raceResultEntries.raceId, raceId),
-                        eq(raceResultEntries.violationId, violationId),
+                        eq(raceResultEntries.entryId, violation.entryId),
                     ),
-                );
+                )
+                .for("update");
+
+            if (!current) {
+                throw new Error("Entry result not found");
+            }
 
             await tx.delete(violations).where(eq(violations.id, violationId));
+
+            const remaining = await tx
+                .select({
+                    severity: violations.severity,
+                    pointsDeducted: violations.pointsDeducted,
+                    previousFinishStatus: violations.previousFinishStatus,
+                })
+                .from(violations)
+                .where(eq(violations.entryId, violation.entryId));
+
+            const hasZeroing = remaining.some(
+                (r) =>
+                    r.severity === "disqualification" ||
+                    r.severity === "result_cancellation",
+            );
+
+            const updateFields: Record<string, unknown> = {};
+
+            if (hasZeroing) {
+                updateFields.points = 0;
+            } else {
+                const deductionSum = remaining
+                    .filter((r) => r.severity === "point_deduction")
+                    .reduce((sum, r) => sum + (r.pointsDeducted ?? 0), 0);
+
+                const base = current.basePoints ?? current.points;
+                updateFields.points = Math.max(0, base - deductionSum);
+            }
+
+            const hasDsq = remaining.some(
+                (r) => r.severity === "disqualification",
+            );
+
+            if (violation.severity === "disqualification" && !hasDsq) {
+                updateFields.finishStatus =
+                    violation.previousFinishStatus ?? "finished";
+            }
+
+            if (Object.keys(updateFields).length > 0) {
+                await tx
+                    .update(raceResultEntries)
+                    .set(updateFields)
+                    .where(
+                        and(
+                            eq(raceResultEntries.raceId, raceId),
+                            eq(raceResultEntries.entryId, violation.entryId),
+                        ),
+                    );
+            }
         });
 
         res.json({ message: "Violation removed" });

@@ -113,6 +113,20 @@
       "when": 1783783686654,
       "tag": "0015_tiny_baron_zemo",
       "breakpoints": true
+    },
+    {
+      "idx": 16,
+      "version": "7",
+      "when": 1783826289691,
+      "tag": "0016_closed_supernaut",
+      "breakpoints": true
+    },
+    {
+      "idx": 17,
+      "version": "7",
+      "when": 1783838183453,
+      "tag": "0017_tricky_fenris",
+      "breakpoints": true
     }
   ]
 }

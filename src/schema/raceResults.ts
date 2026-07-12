@@ -11,6 +11,7 @@ import { users } from "./users.js";
 
 export const resultStatusEnums = pgEnum("result_status", [
     "draft",
+    // @deprecated — no longer used; kept in DB enum to avoid migration
     "referee_confirmed",
     "published",
 ]);

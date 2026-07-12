@@ -173,7 +173,6 @@ const updateRaceStatusSchema = z.object({
         "pre_race",
         "ongoing",
         "under_review",
-        "result_confirmed",
         "completed",
         "postponed",
         "cancelled",
@@ -217,6 +216,23 @@ const assignRefereeSchema = z.object({
     refereeId: z.uuid("refereeId must be a valid UUID"),
 });
 
+const violationTypeConfigQuerySchema = z.object({
+    page: z.coerce.number().int().min(1).default(1).optional(),
+    limit: z.coerce.number().int().min(1).max(100).default(10).optional(),
+});
+
+const createViolationTypeConfigSchema = z.object({
+    violationType: z.string().min(1).max(100),
+    pointsDeducted: z.number().int().min(1),
+    description: z.string().optional().nullable(),
+});
+
+const updateViolationTypeConfigSchema = z.object({
+    violationType: z.string().min(1).max(100).optional(),
+    pointsDeducted: z.number().int().min(1).optional(),
+    description: z.string().optional().nullable(),
+});
+
 export {
     usersQuerySchema,
     updateRoleSchema,
@@ -231,4 +247,7 @@ export {
     registrationsQuerySchema,
     updateRegistrationStatusSchema,
     assignRefereeSchema,
+    createViolationTypeConfigSchema,
+    updateViolationTypeConfigSchema,
+    violationTypeConfigQuerySchema,
 };
