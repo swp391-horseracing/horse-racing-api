@@ -18,8 +18,7 @@ export const updatePlacementsSchema = z.object({
 export const createViolationSchema = z.object({
     entryId: z.uuid(),
     occurredAt: z.iso.datetime(),
-    violationType: z.string().min(1).max(100),
-    description: z.string().min(1),
+    violationTypeConfigId: z.uuid(),
     severity: z.enum([
         "warning",
         "disqualification",
