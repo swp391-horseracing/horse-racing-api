@@ -15,6 +15,7 @@ export const raceStatusEnums = pgEnum("race_status", [
     "pre_race",
     "ongoing",
     "under_review",
+    // @deprecated — no longer used; kept in DB enum to avoid migration
     "result_confirmed",
     "completed",
     "postponed",
