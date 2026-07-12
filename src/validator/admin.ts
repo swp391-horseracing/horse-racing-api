@@ -224,13 +224,13 @@ const violationTypeConfigQuerySchema = z.object({
 const createViolationTypeConfigSchema = z.object({
     violationType: z.string().min(1).max(100),
     pointsDeducted: z.number().int().min(1),
-    description: z.string().optional(),
+    description: z.string().optional().nullable(),
 });
 
 const updateViolationTypeConfigSchema = z.object({
     violationType: z.string().min(1).max(100).optional(),
-    pointsDeducted: z.number().int().min(1),
-    description: z.string().optional(),
+    pointsDeducted: z.number().int().min(1).optional(),
+    description: z.string().optional().nullable(),
 });
 
 export {
