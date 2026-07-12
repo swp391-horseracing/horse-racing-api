@@ -124,29 +124,8 @@
     {
       "idx": 17,
       "version": "7",
-      "when": 1783926000000,
-      "tag": "0017_remove_violation_type_add_config_fk",
-      "breakpoints": true
-    },
-    {
-      "idx": 18,
-      "version": "7",
-      "when": 1783927000000,
-      "tag": "0018_move_undo_state_to_violations",
-      "breakpoints": true
-    },
-    {
-      "idx": 19,
-      "version": "7",
-      "when": 1783928000000,
-      "tag": "0019_rename_previous_points_to_points_deducted",
-      "breakpoints": true
-    },
-    {
-      "idx": 20,
-      "version": "7",
-      "when": 1783929000000,
-      "tag": "0020_add_base_points",
+      "when": 1783838183453,
+      "tag": "0017_tricky_fenris",
       "breakpoints": true
     }
   ]
