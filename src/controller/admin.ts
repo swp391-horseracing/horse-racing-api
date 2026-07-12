@@ -1358,6 +1358,19 @@ export const deleteViolationTypeConfig = async (
             return res.status(400).json({ message: "Invalid uuid" });
         }
 
+        const [refs] = await db
+            .select({ count: sql<number>`count(*)::int` })
+            .from(violations)
+            .where(eq(violations.violationTypeConfigId, id));
+
+        const violationCount = refs?.count ?? 0;
+
+        if (violationCount > 0) {
+            return res.status(409).json({
+                message: `Cannot delete: violation type config is used by ${violationCount} violation(s)`,
+            });
+        }
+
         const [deleted] = await db
             .delete(violationTypeConfig)
             .where(eq(violationTypeConfig.id, id))
