@@ -10,7 +10,6 @@ import {
 } from "drizzle-orm/pg-core";
 import { raceResults } from "./raceResults.js";
 import { raceEntries } from "./raceEntries.js";
-import { violations } from "./violations.js";
 
 export const finishStatusEnum = pgEnum("finish_status", [
     "finished",
@@ -32,8 +31,7 @@ export const raceResultEntries = pgTable(
             .default("finished")
             .notNull(),
         points: integer().notNull().default(0),
-        previousFinishStatus: finishStatusEnum("previous_finish_status"),
-        violationId: uuid("violation_id").references(() => violations.id),
+        basePoints: integer("base_points"),
         createdAt: timestamp("created_at").defaultNow().notNull(),
         updatedAt: timestamp("updated_at")
             .defaultNow()
