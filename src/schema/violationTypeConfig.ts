@@ -9,7 +9,9 @@ import {
 
 export const violationTypeConfig = pgTable("violation_type_config", {
     id: uuid("id").defaultRandom().primaryKey(),
-    violationType: varchar("violation_type", { length: 100 }).unique().notNull(),
+    violationType: varchar("violation_type", { length: 100 })
+        .unique()
+        .notNull(),
     pointsDeducted: integer("points_deducted").notNull(),
     description: text("description"),
     createdAt: timestamp("created_at").defaultNow().notNull(),

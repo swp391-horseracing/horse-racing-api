@@ -790,10 +790,7 @@ export const getReports = async (
                           })
                           .from(refereeAssignments)
                           .where(
-                              eq(
-                                  refereeAssignments.refereeId,
-                                  req.user!.id,
-                              ),
+                              eq(refereeAssignments.refereeId, req.user!.id),
                           ),
                   )
                 : undefined;
@@ -1084,15 +1081,9 @@ export const getRaceReport = async (
             .from(violations)
             .innerJoin(
                 violationTypeConfig,
-                eq(
-                    violations.violationTypeConfigId,
-                    violationTypeConfig.id,
-                ),
+                eq(violations.violationTypeConfigId, violationTypeConfig.id),
             )
-            .innerJoin(
-                raceEntries,
-                eq(violations.entryId, raceEntries.id),
-            )
+            .innerJoin(raceEntries, eq(violations.entryId, raceEntries.id))
             .where(eq(raceEntries.raceId, raceId));
 
         type ViolationRow = (typeof violationRows)[0];
@@ -1288,7 +1279,11 @@ export const createViolationTypeConfig = async (
 
         const [config] = await db
             .insert(violationTypeConfig)
-            .values({ violationType, pointsDeducted, description: description ?? null })
+            .values({
+                violationType,
+                pointsDeducted,
+                description: description ?? null,
+            })
             .returning();
 
         res.status(201).json(config);

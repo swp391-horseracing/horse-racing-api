@@ -159,8 +159,7 @@ export const getRefereeRaceReport = async (
                             id: users.id,
                             fullName: users.fullName,
                         },
-                        finishedPosition:
-                            raceResultEntries.finishedPosition,
+                        finishedPosition: raceResultEntries.finishedPosition,
                         finishTime: raceResultEntries.finishTime,
                         finishStatus: raceResultEntries.finishStatus,
                         points: raceResultEntries.points,
@@ -178,8 +177,7 @@ export const getRefereeRaceReport = async (
                     .select({
                         entryId: violations.entryId,
                         id: violations.id,
-                        violationTypeConfigId:
-                            violations.violationTypeConfigId,
+                        violationTypeConfigId: violations.violationTypeConfigId,
                         violationType: violationTypeConfig.violationType,
                         severity: violations.severity,
                         note: violations.note,
@@ -367,13 +365,8 @@ export const createViolation = async (
             });
         }
 
-        const {
-            entryId,
-            occurredAt,
-            violationTypeConfigId,
-            severity,
-            note,
-        } = req.body;
+        const { entryId, occurredAt, violationTypeConfigId, severity, note } =
+            req.body;
 
         const [entry] = await db
             .select({ id: raceEntries.id })
@@ -423,12 +416,7 @@ export const createViolation = async (
                         amount: violationTypeConfig.pointsDeducted,
                     })
                     .from(violationTypeConfig)
-                    .where(
-                        eq(
-                            violationTypeConfig.id,
-                            violationTypeConfigId,
-                        ),
-                    );
+                    .where(eq(violationTypeConfig.id, violationTypeConfigId));
 
                 pointsDeducted = config?.amount ?? 0;
             } else if (isZeroing) {
@@ -472,25 +460,16 @@ export const createViolation = async (
                     .where(
                         and(
                             eq(violations.entryId, entryId),
-                            eq(
-                                violations.severity,
-                                "point_deduction",
-                            ),
+                            eq(violations.severity, "point_deduction"),
                         ),
                     );
 
                 const totalPointsDeducted =
-                    existing.reduce(
-                        (sum, row) => sum + (row.amount ?? 0),
-                        0,
-                    ) + (pointsDeducted ?? 0);
+                    existing.reduce((sum, row) => sum + (row.amount ?? 0), 0) +
+                    (pointsDeducted ?? 0);
 
-                const base =
-                    current.basePoints ?? current.points;
-                updateFields.points = Math.max(
-                    0,
-                    base - totalPointsDeducted,
-                );
+                const base = current.basePoints ?? current.points;
+                updateFields.points = Math.max(0, base - totalPointsDeducted);
             }
 
             if (Object.keys(updateFields).length > 0) {
@@ -500,10 +479,7 @@ export const createViolation = async (
                     .where(
                         and(
                             eq(raceResultEntries.raceId, raceId),
-                            eq(
-                                raceResultEntries.entryId,
-                                entryId,
-                            ),
+                            eq(raceResultEntries.entryId, entryId),
                         ),
                     );
             }
@@ -568,10 +544,7 @@ export const deleteViolation = async (
                 pointsDeducted: violations.pointsDeducted,
             })
             .from(violations)
-            .innerJoin(
-                raceEntries,
-                eq(violations.entryId, raceEntries.id),
-            )
+            .innerJoin(raceEntries, eq(violations.entryId, raceEntries.id))
             .where(
                 and(
                     eq(violations.id, violationId),
@@ -594,10 +567,7 @@ export const deleteViolation = async (
                 .where(
                     and(
                         eq(raceResultEntries.raceId, raceId),
-                        eq(
-                            raceResultEntries.entryId,
-                            violation.entryId,
-                        ),
+                        eq(raceResultEntries.entryId, violation.entryId),
                     ),
                 )
                 .for("update");
@@ -606,21 +576,16 @@ export const deleteViolation = async (
                 throw new Error("Entry result not found");
             }
 
-            await tx
-                .delete(violations)
-                .where(eq(violations.id, violationId));
+            await tx.delete(violations).where(eq(violations.id, violationId));
 
             const remaining = await tx
                 .select({
                     severity: violations.severity,
                     pointsDeducted: violations.pointsDeducted,
-                    previousFinishStatus:
-                        violations.previousFinishStatus,
+                    previousFinishStatus: violations.previousFinishStatus,
                 })
                 .from(violations)
-                .where(
-                    eq(violations.entryId, violation.entryId),
-                );
+                .where(eq(violations.entryId, violation.entryId));
 
             const hasZeroing = remaining.some(
                 (r) =>
@@ -635,26 +600,17 @@ export const deleteViolation = async (
             } else {
                 const deductionSum = remaining
                     .filter((r) => r.severity === "point_deduction")
-                    .reduce(
-                        (sum, r) => sum + (r.pointsDeducted ?? 0),
-                        0,
-                    );
+                    .reduce((sum, r) => sum + (r.pointsDeducted ?? 0), 0);
 
                 const base = current.basePoints ?? current.points;
-                updateFields.points = Math.max(
-                    0,
-                    base - deductionSum,
-                );
+                updateFields.points = Math.max(0, base - deductionSum);
             }
 
             const hasDsq = remaining.some(
                 (r) => r.severity === "disqualification",
             );
 
-            if (
-                violation.severity === "disqualification" &&
-                !hasDsq
-            ) {
+            if (violation.severity === "disqualification" && !hasDsq) {
                 updateFields.finishStatus =
                     violation.previousFinishStatus ?? "finished";
             }
@@ -666,10 +622,7 @@ export const deleteViolation = async (
                     .where(
                         and(
                             eq(raceResultEntries.raceId, raceId),
-                            eq(
-                                raceResultEntries.entryId,
-                                violation.entryId,
-                            ),
+                            eq(raceResultEntries.entryId, violation.entryId),
                         ),
                     );
             }

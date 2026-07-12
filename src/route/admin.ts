@@ -134,7 +134,12 @@ router.delete(
     unassignRaceReferee,
 );
 
-router.get("/reports", authMiddleware, authorize(Role.ADMIN, Role.REFEREE), getReports);
+router.get(
+    "/reports",
+    authMiddleware,
+    authorize(Role.ADMIN, Role.REFEREE),
+    getReports,
+);
 
 router.get(
     "/races/:raceId/report",
