@@ -35,7 +35,7 @@ export interface HorseReplay {
 }
 
 
-const DT = 1; // Δt
+const DT = 0.3; // Δt
 
 const K = 1.4; // base consumption coefficient
 const ALPHA = 0.5; // speed drop-off slope when stamina < 30

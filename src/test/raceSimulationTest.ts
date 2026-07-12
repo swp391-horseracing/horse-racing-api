@@ -49,8 +49,14 @@ const entries: EntryData[] = [
     },
 ];
 
-const TRACK_LENGTH = 600;
+const TRACK_LENGTH = 1600;
 const MAX_RACE_TIME = 100;
+
+// IMPORTANT: This should match the DT used in raceCalculate.js multiplied by 1000
+// If DT = 0.3s, then TIME_STEP_MS = 300.
+// If you change DT in raceCalculate.js, update this value accordingly.
+const TIME_STEP_MS = 300;
+
 const replay = generateReplay(TRACK_LENGTH, MAX_RACE_TIME, entries);
 
 function createRaceTable(replay: HorseReplay[]): string[][] {
@@ -77,17 +83,19 @@ function createRaceTable(replay: HorseReplay[]): string[][] {
             if (frameData) {
                 currentTime = frameData.time;
             } else {
-                currentTime = frame * 1000;
+                // Fallback if data is missing
+                currentTime = frame * TIME_STEP_MS;
             }
         } else {
             const lastFrame =
                 firstHorse.timeline[firstHorse.timeline.length - 1];
             if (lastFrame) {
+                // Extrapolate time for horses that finished earlier
                 currentTime =
                     lastFrame.time +
-                    (frame - firstHorse.timeline.length + 1) * 1000;
+                    (frame - firstHorse.timeline.length + 1) * TIME_STEP_MS;
             } else {
-                currentTime = frame * 1000;
+                currentTime = frame * TIME_STEP_MS;
             }
         }
 
@@ -103,6 +111,7 @@ function createRaceTable(replay: HorseReplay[]): string[][] {
                     row.push(TRACK_LENGTH.toFixed(2));
                 }
             } else {
+                // Horse has finished, show full track length
                 row.push(TRACK_LENGTH.toFixed(2));
             }
         }
@@ -176,12 +185,18 @@ async function playRace() {
             `\n--- ${horse.horseName} (Entry ID: ${horse.entryId}, Lane: ${horse.laneNumber}) ---`,
         );
         console.log(`Finish Status: ${horse.finishStatus}`);
+
+        // Use actual finishTime from data, convert ms to seconds
+        const finishTimeSec =
+            horse.finishTime !== null ? horse.finishTime / 1000 : null;
         console.log(
-            `Finish Time: ${horse.finishTime !== null ? (horse.finishTime / 1000).toFixed(2) + "s" : "N/A"}`,
+            `Finish Time: ${finishTimeSec !== null ? finishTimeSec.toFixed(2) + "s" : "N/A"}`,
         );
+
         console.log(`Timeline Frames: ${horse.timeline.length}\n`);
 
-        console.log("race", JSON.stringify(horse, null, 2));
+        // Optional: Print full JSON if needed, but it can be very long
+        // console.log("race", JSON.stringify(horse, null, 2));
         console.log("\n");
     }
     console.log("==========================================\n");
@@ -207,34 +222,44 @@ function printResults() {
             throw new Error(`Invalid last frame for horse ${horse.horseName}`);
         }
 
-        const finishTime = lastFrame.time;
+        // finishTime is in milliseconds from the simulation
+        const finishTimeMs = lastFrame.time;
+
+        // Convert to seconds for display and calculation
+        const finishTimeSec = finishTimeMs / 1000;
 
         let topSpeed = 0;
         for (const f of frames) {
             topSpeed = Math.max(topSpeed, f.speed);
         }
 
-        const avgSpeed = (TRACK_LENGTH / finishTime) * 1000;
+        // Avg Speed = Distance / Time(seconds)
+        const avgSpeed = TRACK_LENGTH / finishTimeSec;
+
         const finalStamina = lastFrame.stamina;
 
+        // Find when the horse entered the last 25% of the race
         const splitStart = frames.find(
             (f) => f.distance >= TRACK_LENGTH * 0.75,
         );
-        const kickTime = splitStart
-            ? (finishTime - splitStart.time) / 1000
+
+        // Calculate kick time in seconds
+        const kickTimeSec = splitStart
+            ? (finishTimeMs - splitStart.time) / 1000
             : null;
 
         return {
             name: horse.horseName,
-            finishTime,
+            finishTimeMs, // Keep raw ms for sorting
+            finishTimeSec, // For display
             avgSpeed,
             topSpeed,
-            kickTime,
+            kickTimeSec,
             finalStamina,
         };
     });
 
-    stats.sort((a, b) => a.finishTime - b.finishTime);
+    stats.sort((a, b) => a.finishTimeMs - b.finishTimeMs);
 
     if (stats.length === 0) {
         console.log("No statistics to display");
@@ -247,16 +272,16 @@ function printResults() {
         return;
     }
 
-    const winnerTime = firstStat.finishTime;
+    const winnerTimeMs = firstStat.finishTimeMs;
 
     stats.forEach((s, index) => {
-        const gap =
+        const gapSec =
             index === 0
                 ? "-"
-                : `+${((s.finishTime - winnerTime) / 1000).toFixed(2)}s`;
+                : `+${((s.finishTimeMs - winnerTimeMs) / 1000).toFixed(2)}s`;
 
         console.log(
-            `${index + 1}. ${s.name.padEnd(12)} ${(s.finishTime / 1000).toFixed(2)}s  gap ${gap.padEnd(8)} avg ${s.avgSpeed.toFixed(2)}m/s  final stretch(${TRACK_LENGTH * 0.25}m) ${s.kickTime?.toFixed(2) ?? "-"}s  final STA ${s.finalStamina.toFixed(1)}`,
+            `${index + 1}. ${s.name.padEnd(12)} ${s.finishTimeSec.toFixed(2)}s  gap ${gapSec.padEnd(8)} avg ${s.avgSpeed.toFixed(2)}m/s  final stretch(${TRACK_LENGTH * 0.25}m) ${s.kickTimeSec?.toFixed(2) ?? "-"}s  final STA ${s.finalStamina.toFixed(1)}`,
         );
     });
 }
