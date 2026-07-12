@@ -5,12 +5,15 @@ import {
     assignRaceReferee,
     createTournament,
     createTournamentRace,
+    createViolationTypeConfig,
+    deleteViolationTypeConfig,
     getRaceReferee,
     getRaceReport,
     getRegistrations,
     getReports,
     getUser,
     getUsers,
+    listViolationTypeConfigs,
     unassignRaceReferee,
     updateRace,
     updateRaceStatus,
@@ -19,6 +22,7 @@ import {
     updateTournamentStatus,
     updateUserRole,
     updateUserStatus,
+    updateViolationTypeConfig,
 } from "../controller/admin.js";
 import { authorize } from "../middleware/authorize.js";
 import { validate } from "../middleware/validate.js";
@@ -26,6 +30,7 @@ import {
     assignRefereeSchema,
     createRaceSchema,
     createTournamentSchema,
+    createViolationTypeConfigSchema,
     updateRaceSchema,
     updateRaceStatusSchema,
     updateRegistrationStatusSchema,
@@ -33,6 +38,7 @@ import {
     updateStatusSchema,
     updateTournamentSchema,
     updateTournamentStatusSchema,
+    updateViolationTypeConfigSchema,
 } from "../validator/admin.js";
 
 const router = Router();
@@ -135,6 +141,36 @@ router.get(
     authMiddleware,
     authorize(Role.ADMIN),
     getRaceReport,
+);
+
+router.get(
+    "/violation-types",
+    authMiddleware,
+    authorize(Role.ADMIN, Role.REFEREE),
+    listViolationTypeConfigs,
+);
+
+router.post(
+    "/violation-types",
+    authMiddleware,
+    authorize(Role.ADMIN),
+    validate(createViolationTypeConfigSchema),
+    createViolationTypeConfig,
+);
+
+router.patch(
+    "/violation-types/:id",
+    authMiddleware,
+    authorize(Role.ADMIN),
+    validate(updateViolationTypeConfigSchema),
+    updateViolationTypeConfig,
+);
+
+router.delete(
+    "/violation-types/:id",
+    authMiddleware,
+    authorize(Role.ADMIN),
+    deleteViolationTypeConfig,
 );
 
 export default router;
