@@ -780,13 +780,28 @@ export const getReports = async (
             parsed.data;
         const { page: p, limit: l, offset } = getPagination({ page, limit });
 
+        const refereeCondition =
+            req.user!.role === "referee"
+                ? inArray(
+                      raceResults.raceId,
+                      db
+                          .select({
+                              raceId: refereeAssignments.raceId,
+                          })
+                          .from(refereeAssignments)
+                          .where(
+                              eq(
+                                  refereeAssignments.refereeId,
+                                  req.user!.id,
+                              ),
+                          ),
+                  )
+                : undefined;
+
         const conditions = and(
             resultStatus
                 ? eq(raceResults.resultStatus, resultStatus)
-                : inArray(raceResults.resultStatus, [
-                      "referee_confirmed",
-                      "published",
-                  ]),
+                : undefined,
             search
                 ? sql`(${races.name} ILIKE ${`%${search}%`} OR ${tournaments.name} ILIKE ${`%${search}%`} OR ${users.fullName} ILIKE ${`%${search}%`})`
                 : undefined,
@@ -796,6 +811,7 @@ export const getReports = async (
             dateTo
                 ? sql`${raceResults.refereeConfirmedAt} <= ${new Date(dateTo)}`
                 : undefined,
+            refereeCondition,
         );
 
         const [data, count] = await Promise.all([
@@ -1043,15 +1059,6 @@ export const getRaceReport = async (
                 finishTime: raceResultEntries.finishTime,
                 finishStatus: raceResultEntries.finishStatus,
                 points: raceResultEntries.points,
-                violation: {
-                    id: violations.id,
-                    violationType: violations.violationType,
-                    description: violations.description,
-                    severity: violations.severity,
-                    note: violations.note,
-                    occurredAt: violations.occurredAt,
-                    refereeId: violations.refereeId,
-                },
             })
             .from(raceResultEntries)
             .innerJoin(
@@ -1060,18 +1067,55 @@ export const getRaceReport = async (
             )
             .innerJoin(horses, eq(raceEntries.horseId, horses.id))
             .leftJoin(users, eq(raceEntries.jockeyId, users.id))
-            .leftJoin(
-                violations,
-                eq(raceResultEntries.violationId, violations.id),
-            )
             .where(eq(raceResultEntries.raceId, raceId))
             .orderBy(raceResultEntries.finishedPosition);
+
+        const violationRows = await db
+            .select({
+                entryId: violations.entryId,
+                id: violations.id,
+                violationTypeConfigId: violations.violationTypeConfigId,
+                violationType: violationTypeConfig.violationType,
+                severity: violations.severity,
+                note: violations.note,
+                occurredAt: violations.occurredAt,
+                refereeId: violations.refereeId,
+            })
+            .from(violations)
+            .innerJoin(
+                violationTypeConfig,
+                eq(
+                    violations.violationTypeConfigId,
+                    violationTypeConfig.id,
+                ),
+            )
+            .innerJoin(
+                raceEntries,
+                eq(violations.entryId, raceEntries.id),
+            )
+            .where(eq(raceEntries.raceId, raceId));
+
+        type ViolationRow = (typeof violationRows)[0];
+        const violationMap = new Map<string, ViolationRow[]>();
+        for (const v of violationRows) {
+            const list = violationMap.get(v.entryId);
+            if (list) {
+                list.push(v);
+            } else {
+                violationMap.set(v.entryId, [v]);
+            }
+        }
+
+        const placementsWithViolations = placements.map((p) => ({
+            ...p,
+            violations: violationMap.get(p.entryId) ?? [],
+        }));
 
         res.json({
             race,
             referees,
             report,
-            placements,
+            placements: placementsWithViolations,
         });
     } catch (err) {
         next(err);
