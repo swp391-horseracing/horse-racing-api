@@ -1332,7 +1332,17 @@ export const updateViolationTypeConfig = async (
         }
 
         res.json(config);
-    } catch (err) {
+    } catch (err: unknown) {
+        if (
+            err &&
+            typeof err === "object" &&
+            "cause" in err &&
+            (err as { cause?: { code?: string } }).cause?.code === "23505"
+        ) {
+            return res
+                .status(409)
+                .json({ message: "Violation type already exists" });
+        }
         next(err);
     }
 };
