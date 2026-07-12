@@ -452,24 +452,30 @@ export const createViolation = async (
                     updateFields.finishStatus = "dsq";
                 }
             } else if (severity === "point_deduction") {
-                const existing = await tx
+                const allViolations = await tx
                     .select({
-                        amount: violations.pointsDeducted,
+                        severity: violations.severity,
+                        pointsDeducted: violations.pointsDeducted,
                     })
                     .from(violations)
-                    .where(
-                        and(
-                            eq(violations.entryId, entryId),
-                            eq(violations.severity, "point_deduction"),
-                        ),
-                    );
+                    .where(eq(violations.entryId, entryId));
 
-                const totalPointsDeducted =
-                    existing.reduce((sum, row) => sum + (row.amount ?? 0), 0) +
-                    (pointsDeducted ?? 0);
+                const hasZeroing = allViolations.some(
+                    (v) =>
+                        v.severity === "disqualification" ||
+                        v.severity === "result_cancellation",
+                );
 
-                const base = current.basePoints ?? current.points;
-                updateFields.points = Math.max(0, base - totalPointsDeducted);
+                if (hasZeroing) {
+                    updateFields.points = 0;
+                } else {
+                    const totalPointsDeducted = allViolations
+                        .filter((v) => v.severity === "point_deduction")
+                        .reduce((sum, row) => sum + (row.pointsDeducted ?? 0), 0);
+
+                    const base = current.basePoints ?? current.points;
+                    updateFields.points = Math.max(0, base - totalPointsDeducted);
+                }
             }
 
             if (Object.keys(updateFields).length > 0) {
