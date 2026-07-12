@@ -1319,8 +1319,8 @@ export const updateViolationTypeConfig = async (
             .update(violationTypeConfig)
             .set({
                 ...(violationType !== undefined && { violationType }),
-                pointsDeducted,
-                description: description ?? null,
+                ...(pointsDeducted !== undefined && { pointsDeducted }),
+                ...(description !== undefined && { description }),
             })
             .where(eq(violationTypeConfig.id, id))
             .returning();
