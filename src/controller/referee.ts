@@ -471,10 +471,16 @@ export const createViolation = async (
                 } else {
                     const totalPointsDeducted = allViolations
                         .filter((v) => v.severity === "point_deduction")
-                        .reduce((sum, row) => sum + (row.pointsDeducted ?? 0), 0);
+                        .reduce(
+                            (sum, row) => sum + (row.pointsDeducted ?? 0),
+                            0,
+                        );
 
                     const base = current.basePoints ?? current.points;
-                    updateFields.points = Math.max(0, base - totalPointsDeducted);
+                    updateFields.points = Math.max(
+                        0,
+                        base - totalPointsDeducted,
+                    );
                 }
             }
 
