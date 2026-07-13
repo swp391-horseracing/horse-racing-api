@@ -63,34 +63,47 @@ class TickEmitter {
         simulation: FeRaceSimulation,
         startTick: number,
     ): void {
-        const interval = setInterval(async () => {
-            const state = this.streams.get(raceId);
-            if (!state) return;
+        let tickIndex = startTick;
+        let timeout: NodeJS.Timeout;
 
-            if (state.tickIndex >= state.totalTicks) {
-                await this.finishRace(raceId, simulation);
-                return;
+        const tick = async () => {
+            try {
+                if (tickIndex >= simulation.totalTicks) {
+                    await this.finishRace(raceId, simulation);
+                    return;
+                }
+
+                const snapshot = simulation.ticks[tickIndex]!;
+
+                eventBus.emit({
+                    type: "race:tick",
+                    data: { raceId, tick: snapshot },
+                });
+
+                await setCurrentTick(raceId, tickIndex + 1);
+                tickIndex++;
+
+                const state = this.streams.get(raceId);
+                if (state) state.tickIndex = tickIndex;
+
+                const allFinished = snapshot.horses.every((h) => h.finished);
+                if (allFinished || tickIndex >= simulation.totalTicks) {
+                    await this.finishRace(raceId, simulation);
+                    return;
+                }
+
+                timeout = setTimeout(tick, simulation.tickIntervalMs);
+            } catch (err) {
+                console.error(`[tickEmitter] Error in race ${raceId}:`, err);
+                timeout = setTimeout(tick, simulation.tickIntervalMs);
             }
+        };
 
-            const tick = simulation.ticks[state.tickIndex]!;
-
-            eventBus.emit({
-                type: "race:tick",
-                data: { raceId, tick },
-            });
-
-            await setCurrentTick(raceId, state.tickIndex + 1);
-            state.tickIndex++;
-
-            const allFinished = tick.horses.every((h) => h.finished);
-            if (allFinished || state.tickIndex >= state.totalTicks) {
-                await this.finishRace(raceId, simulation);
-            }
-        }, simulation.tickIntervalMs);
+        timeout = setTimeout(tick, simulation.tickIntervalMs);
 
         this.streams.set(raceId, {
-            interval,
-            tickIndex: startTick,
+            interval: timeout,
+            tickIndex,
             totalTicks: simulation.totalTicks,
         });
     }
@@ -130,7 +143,7 @@ class TickEmitter {
     stopRace(raceId: string): void {
         const state = this.streams.get(raceId);
         if (state) {
-            clearInterval(state.interval);
+            clearTimeout(state.interval);
             this.streams.delete(raceId);
         }
     }
