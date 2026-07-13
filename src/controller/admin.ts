@@ -1418,3 +1418,22 @@ export const simulateRace = async (
         next(err);
     }
 };
+
+export const stopSimulateRace = async (
+    req: Request,
+    res: Response,
+    next: NextFunction,
+) => {
+    try {
+        const raceId = req.params.raceId as string;
+        if (!uuidValidate(raceId)) {
+            return res.status(400).json({ message: "Invalid uuid" });
+        }
+
+        tickEmitter.stopRace(raceId);
+
+        res.json({ message: "Race simulation stopped", raceId });
+    } catch (err) {
+        next(err);
+    }
+};

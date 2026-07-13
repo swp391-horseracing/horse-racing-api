@@ -115,7 +115,11 @@ class TickEmitter {
                 tickIndex++;
 
                 const state = this.streams.get(raceId);
-                if (state) state.tickIndex = tickIndex;
+                if (state) {
+                    state.tickIndex = tickIndex;
+                } else {
+                    return; // race was stopped externally
+                }
 
                 const allFinished = snapshot.horses.every((h) => h.finished);
                 if (allFinished || tickIndex >= simulation.totalTicks) {
@@ -126,7 +130,9 @@ class TickEmitter {
                 timeout = setTimeout(tick, simulation.tickIntervalMs);
             } catch (err) {
                 console.error(`[tickEmitter] Error in race ${raceId}:`, err);
-                timeout = setTimeout(tick, simulation.tickIntervalMs);
+                if (this.streams.has(raceId)) {
+                    timeout = setTimeout(tick, simulation.tickIntervalMs);
+                }
             }
         };
 
