@@ -59,7 +59,6 @@ jobs:
 
       PORT: ${{ secrets.PORT }}
       DATABASE_URL: ${{ secrets.DATABASE_URL }}
-      REDIS_URL: ${{ secrets.REDIS_URL }}
 
       CAPTCHA_SECRET_KEY: ${{ secrets.CAPTCHA_SECRET_KEY }}
       NODE_ENV: ${{ secrets.NODE_ENV }}

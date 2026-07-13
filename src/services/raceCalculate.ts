@@ -1,3 +1,4 @@
+
 export interface EntryData {
     entryId: string;
     laneNumber: number;
@@ -32,6 +33,7 @@ export interface HorseReplay {
     finishStatus: "finished" | "dnf";
     timeline: ReplayFrame[];
 }
+
 
 const DT = 0.05; // Δt
 
@@ -133,11 +135,7 @@ function calculateSpeed(
     return { speed, surged };
 }
 
-export function generateReplay(
-    distance: number,
-    raceTime: number,
-    entries: EntryData[],
-): HorseReplay[] {
+export function generateReplay(distance: number,raceTime: number, entries: EntryData[]): HorseReplay[] {
     const RACE_DISTANCE = distance;
     const MAX_RACE_TIME = raceTime;
 

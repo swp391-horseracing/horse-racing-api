@@ -18,7 +18,6 @@ interface Env {
     S3_ACCESS_KEY: string;
     S3_SECRET_KEY: string;
     AWS_REGION: string;
-    REDIS_URL: string;
 }
 if (!process.env.DB_DATABASE) {
     throw new Error("DB_DATABASE is not defined");
@@ -64,10 +63,6 @@ if (!process.env.AWS_REGION) {
     throw new Error("AWS_REGION is not defined");
 }
 
-if (!process.env.REDIS_URL) {
-    throw new Error("REDIS_URL is not defined");
-}
-
 const nodeEnv = process.env.NODE_ENV?.toLowerCase();
 const isDev = nodeEnv === "dev" || nodeEnv === "development";
 
@@ -92,7 +87,6 @@ const config = (): Env => {
         S3_ACCESS_KEY: String(process.env.S3_ACCESS_KEY),
         S3_SECRET_KEY: String(process.env.S3_SECRET_KEY),
         AWS_REGION: String(process.env.AWS_REGION),
-        REDIS_URL: String(process.env.REDIS_URL),
     };
 };
 

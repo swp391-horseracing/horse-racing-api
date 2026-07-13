@@ -49,14 +49,6 @@ export function setupWebSocket(wss: WebSocketServer): void {
         broadcastToTopic(event, `tournament:${event.data.tournamentId}`);
     });
 
-    eventBus.on("race:tick", (event) => {
-        broadcastToTopic(event, `race:${event.data.raceId}`);
-    });
-
-    eventBus.on("race:finish", (event) => {
-        broadcastToTopic(event, `race:${event.data.raceId}`);
-    });
-
     wss.on("connection", (ws: WebSocket, req: IncomingMessage) => {
         const url = new URL(
             req.url ?? "/",

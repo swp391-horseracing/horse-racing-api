@@ -127,13 +127,6 @@
       "when": 1783838183453,
       "tag": "0017_tricky_fenris",
       "breakpoints": true
-    },
-    {
-      "idx": 18,
-      "version": "7",
-      "when": 1783921343788,
-      "tag": "0018_nappy_hellion",
-      "breakpoints": true
     }
   ]
 }
