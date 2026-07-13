@@ -14,6 +14,7 @@ import {
     getUser,
     getUsers,
     listViolationTypeConfigs,
+    simulateRace,
     unassignRaceReferee,
     updateRace,
     updateRaceStatus,
@@ -132,6 +133,13 @@ router.delete(
     authMiddleware,
     authorize(Role.ADMIN),
     unassignRaceReferee,
+);
+
+router.post(
+    "/races/:raceId/simulate",
+    authMiddleware,
+    authorize(Role.ADMIN),
+    simulateRace,
 );
 
 router.get(
