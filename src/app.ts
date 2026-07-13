@@ -14,6 +14,8 @@ import db from "./config/db.js";
 import cors from "cors";
 import { setupWebSocket } from "./websocket/handler.js";
 import { startScheduler } from "./cron/scheduler.js";
+import { connectRedis } from "./cache/redis.js";
+import { tickEmitter } from "./race/tickEmitter.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -27,7 +29,10 @@ setupWebSocket(wss);
 
 await migrate(db, { migrationsFolder: "./drizzle" });
 
+await connectRedis();
 startScheduler();
+
+await tickEmitter.resumeActiveRaces();
 
 app.use(cors());
 app.use(morgan("dev"));
