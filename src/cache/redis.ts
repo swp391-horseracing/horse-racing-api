@@ -22,9 +22,11 @@ function getClient(): Redis {
 
         client.on("end", () => {
             console.warn("[redis] Connection ended — reconnecting...");
-            client!.connect().catch((err) =>
-                console.error("[redis] Reconnect failed:", err),
-            );
+            client!
+                .connect()
+                .catch((err) =>
+                    console.error("[redis] Reconnect failed:", err),
+                );
         });
     }
     return client;
