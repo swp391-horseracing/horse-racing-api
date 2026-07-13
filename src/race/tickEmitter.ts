@@ -24,11 +24,12 @@ class TickEmitter {
     async startTestRace(
         raceId: string,
         simulation: FeRaceSimulation,
-    ): Promise<void> {
-        if (this.streams.has(raceId)) return;
+    ): Promise<boolean> {
+        if (this.streams.has(raceId)) return false;
         this.testRaces.add(raceId);
         await setCurrentTick(raceId, 0);
         this.startStream(raceId, simulation, 0);
+        return true;
     }
 
     async startRace(raceId: string): Promise<void> {
@@ -191,6 +192,7 @@ class TickEmitter {
             clearTimeout(state.interval);
             this.streams.delete(raceId);
         }
+        this.testRaces.delete(raceId);
     }
 
     async cleanUpRace(raceId: string): Promise<void> {

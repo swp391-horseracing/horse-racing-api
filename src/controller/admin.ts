@@ -1403,7 +1403,12 @@ export const simulateRace = async (
 
         const simulation = await precomputeRaceFromDb(raceId);
 
-        await tickEmitter.startTestRace(raceId, simulation);
+        const started = await tickEmitter.startTestRace(raceId, simulation);
+        if (!started) {
+            return res
+                .status(409)
+                .json({ message: "Race is already streaming" });
+        }
 
         res.json({
             message: "Race simulation started",
