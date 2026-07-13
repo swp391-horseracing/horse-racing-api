@@ -11,7 +11,6 @@ function getClient(): Redis {
         client = new Redis(config().REDIS_URL, {
             maxRetriesPerRequest: 3,
             retryStrategy(times: number) {
-                if (times > 3) return null;
                 return Math.min(times * 200, 2000);
             },
             lazyConnect: true,
@@ -19,6 +18,13 @@ function getClient(): Redis {
 
         client.on("error", (err: Error) => {
             console.error("[redis] Connection error:", err);
+        });
+
+        client.on("end", () => {
+            console.warn("[redis] Connection ended — reconnecting...");
+            client!.connect().catch((err) =>
+                console.error("[redis] Reconnect failed:", err),
+            );
         });
     }
     return client;
