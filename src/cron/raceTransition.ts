@@ -3,18 +3,16 @@ import db from "../config/db.js";
 import { races } from "../schema/races.js";
 import { eventBus } from "../websocket/eventBus.js";
 import { PRE_RACE_WINDOW_MINUTES } from "./constants.js";
+import { precomputeRaceFromDb } from "./precompute.js";
+import { tickEmitter } from "../race/tickEmitter.js";
 
 export async function transitionRaces(): Promise<void> {
-    const now = new Date();
-
-    await transitionScheduledToPreRace(now);
-    await transitionPreRaceToOngoing(now);
+    await transitionScheduledToPreRace();
+    await transitionPreRaceToOngoing();
 }
 
-async function transitionScheduledToPreRace(now: Date): Promise<void> {
+async function transitionScheduledToPreRace(): Promise<void> {
     console.log("[cron:race] Checking scheduled → pre_race");
-    const windowMs = PRE_RACE_WINDOW_MINUTES * 60 * 1000;
-    const windowTime = new Date(now.getTime() + windowMs);
 
     const updatedRaces = await db
         .update(races)
@@ -22,7 +20,7 @@ async function transitionScheduledToPreRace(now: Date): Promise<void> {
         .where(
             and(
                 eq(races.status, "scheduled"),
-                sql`${races.scheduleAt} <= ${windowTime}`,
+                sql`${races.scheduleAt} <= NOW() + ${PRE_RACE_WINDOW_MINUTES} * INTERVAL '1 minute'`,
             ),
         )
         .returning();
@@ -30,10 +28,17 @@ async function transitionScheduledToPreRace(now: Date): Promise<void> {
     for (const race of updatedRaces) {
         console.log(`[cron:race] Transitioned ${race.id} scheduled → pre_race`);
         emitRaceEvent(race.id, "pre_race", "scheduled");
+
+        try {
+            await precomputeRaceFromDb(race.id);
+            console.log(`[cron:race] Precomputed simulation for ${race.id}`);
+        } catch (err) {
+            console.error(`[cron:race] Failed to precompute ${race.id}:`, err);
+        }
     }
 }
 
-async function transitionPreRaceToOngoing(now: Date): Promise<void> {
+export async function transitionPreRaceToOngoing(): Promise<void> {
     console.log("[cron:race] Checking pre_race → ongoing");
     const updatedRaces = await db
         .update(races)
@@ -41,7 +46,7 @@ async function transitionPreRaceToOngoing(now: Date): Promise<void> {
         .where(
             and(
                 eq(races.status, "pre_race"),
-                sql`${races.scheduleAt} <= ${now}`,
+                sql`${races.scheduleAt} <= NOW()`,
             ),
         )
         .returning();
@@ -49,6 +54,7 @@ async function transitionPreRaceToOngoing(now: Date): Promise<void> {
     for (const race of updatedRaces) {
         console.log(`[cron:race] Transitioned ${race.id} pre_race → ongoing`);
         emitRaceEvent(race.id, "ongoing", "pre_race");
+        await tickEmitter.startRace(race.id);
     }
 }
 
