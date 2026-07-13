@@ -8,6 +8,7 @@ import {
     numeric,
     boolean,
     timestamp,
+    real,
 } from "drizzle-orm/pg-core";
 import { users } from "./users.js";
 
@@ -31,8 +32,8 @@ export const horses = pgTable("horses", {
     healthStatus: horseHealthStatusEnum("health_status"),
     sex: horseSexEnum("sex"),
     isRetired: boolean("isRetired"),
-    baseSpeed: integer("base_speed").default(0).notNull(),
-    stamina: integer("stamina").default(0).notNull(),
+    baseSpeed: real("base_speed").default(0).notNull(),
+    stamina: real("stamina").default(0).notNull(),
     createdAt: timestamp("created_at").defaultNow().notNull(),
     updatedAt: timestamp("updated_at")
         .defaultNow()
