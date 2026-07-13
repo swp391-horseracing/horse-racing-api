@@ -19,6 +19,17 @@ interface StreamState {
 
 class TickEmitter {
     private streams = new Map<string, StreamState>();
+    private testRaces = new Set<string>();
+
+    async startTestRace(
+        raceId: string,
+        simulation: FeRaceSimulation,
+    ): Promise<void> {
+        if (this.streams.has(raceId)) return;
+        this.testRaces.add(raceId);
+        await setCurrentTick(raceId, 0);
+        this.startStream(raceId, simulation, 0);
+    }
 
     async startRace(raceId: string): Promise<void> {
         if (this.streams.has(raceId)) {
@@ -132,6 +143,21 @@ class TickEmitter {
         simulation: FeRaceSimulation,
     ): Promise<void> {
         this.stopRace(raceId);
+
+        if (this.testRaces.has(raceId)) {
+            this.testRaces.delete(raceId);
+
+            eventBus.emit({
+                type: "race:finish",
+                data: {
+                    raceId,
+                    finalResults: simulation.finalResults,
+                },
+            });
+
+            console.log(`[tickEmitter] Test race ${raceId} finished`);
+            return;
+        }
 
         eventBus.emit({
             type: "race:finish",
