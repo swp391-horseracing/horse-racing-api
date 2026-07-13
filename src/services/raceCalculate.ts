@@ -51,10 +51,7 @@ const MIN_LATE_SURGE_PROBABILITY = 0.15; // even a tired horse keeps a small cha
 const MAX_LATE_SURGE_PROBABILITY = 0.95; // a horse with plenty of stamina almost always surges
 const SURGE_STAMINA_COST = 4; // surging costs extra stamina
 const SURGE_STAMINA_BONUS = 0.8; // max bonus to surge magnitude based on remaining stamina %
-<<<<<<< HEAD
-const VIOLATION_CHANCE = 0.000005; //1.24%
-=======
->>>>>>> parent of 9ee910d (Update raceCalculate.ts)
+const VIOLATION_CHANCE = 0.000005;
 
 function random(min: number, max: number) {
     return Math.random() * (max - min) + min;
@@ -68,8 +65,8 @@ interface SpeedResult {
 function lateRaceFactor(progress: number) {
     return progress >= LATE_RACE_THRESHOLD
         ? 1 +
-              ((progress - LATE_RACE_THRESHOLD) / (1 - LATE_RACE_THRESHOLD)) *
-                  (LATE_RACE_BOOST - 1)
+        ((progress - LATE_RACE_THRESHOLD) / (1 - LATE_RACE_THRESHOLD)) *
+        (LATE_RACE_BOOST - 1)
         : 1;
 }
 
@@ -82,10 +79,17 @@ function calculateSpeed(
     progress: number,
     volatility: number,
     forceSurge: boolean,
+    isDnf: boolean,
 ): SpeedResult {
     const spread = random(0, volatility);
 
     let speed: number;
+
+    if (isDnf)
+        return {
+            speed: 0,
+            surged: false,
+        };
 
     if (elapsed < 10) {
         // first 10s: v_i(t) = vMax(i) x Ran(a,b)
@@ -120,6 +124,13 @@ function calculateSpeed(
     } else if (Math.random() < SLUMP_CHANCE * lateFactor) {
         speed *= random(0.6, 0.85);
     }
+    const hasViolation = Math.random() < VIOLATION_CHANCE;
+    if (hasViolation) {
+        return {
+            speed: -1,
+            surged: false,
+        };
+    }
 
     return { speed, surged };
 }
@@ -127,6 +138,7 @@ function calculateSpeed(
 export function generateReplay(distance: number,raceTime: number, entries: EntryData[]): HorseReplay[] {
     const RACE_DISTANCE = distance;
     const MAX_RACE_TIME = raceTime;
+
 
     const result: HorseReplay[] = entries.map((entry) => {
         const vMax = entry.horse.baseSpeed; // vMax(i)
@@ -136,11 +148,12 @@ export function generateReplay(distance: number,raceTime: number, entries: Entry
         const weightFactor =
             1 +
             (entry.horse.weightKg / REFERENCE_WEIGHT_KG - 1) *
-                WEIGHT_STAMINA_INFLUENCE;
+            WEIGHT_STAMINA_INFLUENCE;
 
         let e = E; // e_i(t), initialize e_i(0) = E_i
         let distance = 0; // S_i(t)
         let elapsed = 0;
+        let isDnf = false;
 
         const volatility = random(0.03, 0.12);
 
@@ -165,7 +178,7 @@ export function generateReplay(distance: number,raceTime: number, entries: Entry
                 const surgeProbability =
                     MIN_LATE_SURGE_PROBABILITY +
                     (MAX_LATE_SURGE_PROBABILITY - MIN_LATE_SURGE_PROBABILITY) *
-                        staminaRatio;
+                    staminaRatio;
 
                 willSurgeLate = Math.random() < surgeProbability;
                 surgeAtProgress = willSurgeLate ? random(progress, 1) : null;
@@ -187,7 +200,13 @@ export function generateReplay(distance: number,raceTime: number, entries: Entry
                 progress,
                 volatility,
                 forceSurge,
+                isDnf,
             );
+
+            if (speed < 0) {
+                isDnf = true;
+            }
+
 
             // k_i(t) = K x (E_i / e_i(t-Δt)) x weight
             const k =
@@ -211,7 +230,7 @@ export function generateReplay(distance: number,raceTime: number, entries: Entry
             });
         }
 
-        const finished = distance >= RACE_DISTANCE;
+        const finished = !isDnf && distance >= RACE_DISTANCE;
 
         return {
             entryId: entry.entryId,
