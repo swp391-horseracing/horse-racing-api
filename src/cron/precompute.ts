@@ -70,6 +70,19 @@ export async function precomputeRaceFromDb(
         entryStatus: e.entryStatus,
     }));
 
+    for (const h of horseAttrs) {
+        if (h.baseSpeed <= 0) {
+            throw new Error(
+                `Horse ${h.horseId} "${h.name}" has invalid baseSpeed: ${h.baseSpeed}`,
+            );
+        }
+        if (h.stamina <= 0) {
+            throw new Error(
+                `Horse ${h.horseId} "${h.name}" has invalid stamina: ${h.stamina}`,
+            );
+        }
+    }
+
     const simulation = precomputeRace(horseAttrs, Number(race.distanceMeters));
 
     await setSimulation(raceId, simulation);
