@@ -8,6 +8,7 @@ import {
     delRaceKeys,
 } from "../cache/redis.js";
 import { eventBus } from "../websocket/eventBus.js";
+import { precomputeRaceFromDb } from "../cron/precompute.js";
 import type { FeRaceSimulation } from "./simulator.js";
 
 interface StreamState {
@@ -25,10 +26,20 @@ class TickEmitter {
             return;
         }
 
-        const simulation = await getSimulation(raceId);
+        let simulation = await getSimulation(raceId);
         if (!simulation) {
-            console.error(`[tickEmitter] No simulation for race ${raceId}`);
-            return;
+            console.warn(
+                `[tickEmitter] Missing simulation for ${raceId} — recomputing...`,
+            );
+            try {
+                simulation = await precomputeRaceFromDb(raceId);
+            } catch (err) {
+                console.error(
+                    `[tickEmitter] Failed to recompute simulation for ${raceId}:`,
+                    err,
+                );
+                return;
+            }
         }
 
         await setCurrentTick(raceId, 0);
@@ -38,12 +49,20 @@ class TickEmitter {
     async resumeRace(raceId: string): Promise<void> {
         if (this.streams.has(raceId)) return;
 
-        const simulation = await getSimulation(raceId);
+        let simulation = await getSimulation(raceId);
         if (!simulation) {
-            console.error(
-                `[tickEmitter] No simulation to resume race ${raceId}`,
+            console.warn(
+                `[tickEmitter] Missing simulation to resume ${raceId} — recomputing...`,
             );
-            return;
+            try {
+                simulation = await precomputeRaceFromDb(raceId);
+            } catch (err) {
+                console.error(
+                    `[tickEmitter] Failed to recompute simulation for ${raceId}:`,
+                    err,
+                );
+                return;
+            }
         }
 
         const tickIndex = await getCurrentTick(raceId);
