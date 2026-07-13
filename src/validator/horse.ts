@@ -21,8 +21,8 @@ const addHorseSchema = z.object({
     birthDate: birthDateField,
     weightKg: weightKgField,
     healthStatus: healthStatusSchema.optional(),
-    baseSpeed: z.number().int().min(0).max(100).optional(),
-    stamina: z.number().int().min(0).max(100).optional(),
+    baseSpeed: z.number().min(0).max(30).optional(),
+    stamina: z.number().min(0).max(300).optional(),
 });
 
 const updateHorseSchema = z.object({
@@ -31,8 +31,8 @@ const updateHorseSchema = z.object({
     birthDate: birthDateField,
     weightKg: weightKgField,
     healthStatus: healthStatusSchema.optional(),
-    baseSpeed: z.number().int().min(0).max(100).optional(),
-    stamina: z.number().int().min(0).max(100).optional(),
+    baseSpeed: z.number().min(0).max(30).optional(),
+    stamina: z.number().min(0).max(300).optional(),
 });
 
 const horsesQuerySchema = z.object({
