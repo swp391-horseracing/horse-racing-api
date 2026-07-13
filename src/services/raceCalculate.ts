@@ -1,4 +1,3 @@
-
 export interface EntryData {
     entryId: string;
     laneNumber: number;
@@ -34,7 +33,6 @@ export interface HorseReplay {
     timeline: ReplayFrame[];
 }
 
-
 const DT = 0.05; // Δt
 
 const K = 1.4; // base consumption coefficient
@@ -65,8 +63,8 @@ interface SpeedResult {
 function lateRaceFactor(progress: number) {
     return progress >= LATE_RACE_THRESHOLD
         ? 1 +
-        ((progress - LATE_RACE_THRESHOLD) / (1 - LATE_RACE_THRESHOLD)) *
-        (LATE_RACE_BOOST - 1)
+              ((progress - LATE_RACE_THRESHOLD) / (1 - LATE_RACE_THRESHOLD)) *
+                  (LATE_RACE_BOOST - 1)
         : 1;
 }
 
@@ -135,10 +133,13 @@ function calculateSpeed(
     return { speed, surged };
 }
 
-export function generateReplay(distance: number,raceTime: number, entries: EntryData[]): HorseReplay[] {
+export function generateReplay(
+    distance: number,
+    raceTime: number,
+    entries: EntryData[],
+): HorseReplay[] {
     const RACE_DISTANCE = distance;
     const MAX_RACE_TIME = raceTime;
-
 
     const result: HorseReplay[] = entries.map((entry) => {
         const vMax = entry.horse.baseSpeed; // vMax(i)
@@ -148,7 +149,7 @@ export function generateReplay(distance: number,raceTime: number, entries: Entry
         const weightFactor =
             1 +
             (entry.horse.weightKg / REFERENCE_WEIGHT_KG - 1) *
-            WEIGHT_STAMINA_INFLUENCE;
+                WEIGHT_STAMINA_INFLUENCE;
 
         let e = E; // e_i(t), initialize e_i(0) = E_i
         let distance = 0; // S_i(t)
@@ -178,7 +179,7 @@ export function generateReplay(distance: number,raceTime: number, entries: Entry
                 const surgeProbability =
                     MIN_LATE_SURGE_PROBABILITY +
                     (MAX_LATE_SURGE_PROBABILITY - MIN_LATE_SURGE_PROBABILITY) *
-                    staminaRatio;
+                        staminaRatio;
 
                 willSurgeLate = Math.random() < surgeProbability;
                 surgeAtProgress = willSurgeLate ? random(progress, 1) : null;
@@ -206,7 +207,6 @@ export function generateReplay(distance: number,raceTime: number, entries: Entry
             if (speed < 0) {
                 isDnf = true;
             }
-
 
             // k_i(t) = K x (E_i / e_i(t-Δt)) x weight
             const k =
