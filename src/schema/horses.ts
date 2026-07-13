@@ -4,7 +4,6 @@ import {
     uuid,
     varchar,
     date,
-    integer,
     numeric,
     boolean,
     timestamp,
