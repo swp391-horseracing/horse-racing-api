@@ -24,6 +24,8 @@ import { raceCourses } from "../schema/raceCourses.js";
 import { reportsQuerySchema } from "../validator/report.js";
 import { eventBus } from "../websocket/eventBus.js";
 import { tournamentRegistrations } from "../schema/tournamentRegistrations.js";
+import { tickEmitter } from "../race/tickEmitter.js";
+import { precomputeRaceFromDb } from "../cron/precompute.js";
 
 export const getUsers = async (
     req: Request,
@@ -1383,6 +1385,54 @@ export const deleteViolationTypeConfig = async (
         }
 
         res.json({ message: "Violation type config deleted" });
+    } catch (err) {
+        next(err);
+    }
+};
+
+export const simulateRace = async (
+    req: Request,
+    res: Response,
+    next: NextFunction,
+) => {
+    try {
+        const raceId = req.params.raceId as string;
+        if (!uuidValidate(raceId)) {
+            return res.status(400).json({ message: "Invalid uuid" });
+        }
+
+        const simulation = await precomputeRaceFromDb(raceId);
+
+        const started = await tickEmitter.startTestRace(raceId, simulation);
+        if (!started) {
+            return res
+                .status(409)
+                .json({ message: "Race is already streaming" });
+        }
+
+        res.json({
+            message: "Race simulation started",
+            raceId,
+        });
+    } catch (err) {
+        next(err);
+    }
+};
+
+export const stopSimulateRace = async (
+    req: Request,
+    res: Response,
+    next: NextFunction,
+) => {
+    try {
+        const raceId = req.params.raceId as string;
+        if (!uuidValidate(raceId)) {
+            return res.status(400).json({ message: "Invalid uuid" });
+        }
+
+        tickEmitter.stopRace(raceId);
+
+        res.json({ message: "Race simulation stopped", raceId });
     } catch (err) {
         next(err);
     }

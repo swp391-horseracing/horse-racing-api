@@ -19,6 +19,18 @@ interface StreamState {
 
 class TickEmitter {
     private streams = new Map<string, StreamState>();
+    private testRaces = new Set<string>();
+
+    async startTestRace(
+        raceId: string,
+        simulation: FeRaceSimulation,
+    ): Promise<boolean> {
+        if (this.streams.has(raceId)) return false;
+        this.testRaces.add(raceId);
+        await setCurrentTick(raceId, 0);
+        this.startStream(raceId, simulation, 0);
+        return true;
+    }
 
     async startRace(raceId: string): Promise<void> {
         if (this.streams.has(raceId)) {
@@ -103,7 +115,11 @@ class TickEmitter {
                 tickIndex++;
 
                 const state = this.streams.get(raceId);
-                if (state) state.tickIndex = tickIndex;
+                if (state) {
+                    state.tickIndex = tickIndex;
+                } else {
+                    return; // race was stopped externally
+                }
 
                 const allFinished = snapshot.horses.every((h) => h.finished);
                 if (allFinished || tickIndex >= simulation.totalTicks) {
@@ -114,7 +130,9 @@ class TickEmitter {
                 timeout = setTimeout(tick, simulation.tickIntervalMs);
             } catch (err) {
                 console.error(`[tickEmitter] Error in race ${raceId}:`, err);
-                timeout = setTimeout(tick, simulation.tickIntervalMs);
+                if (this.streams.has(raceId)) {
+                    timeout = setTimeout(tick, simulation.tickIntervalMs);
+                }
             }
         };
 
@@ -141,6 +159,11 @@ class TickEmitter {
             },
         });
 
+        if (this.testRaces.delete(raceId)) {
+            console.log(`[tickEmitter] Test race ${raceId} finished`);
+            return;
+        }
+
         eventBus.emit({
             type: "race:status_changed",
             data: {
@@ -165,6 +188,7 @@ class TickEmitter {
             clearTimeout(state.interval);
             this.streams.delete(raceId);
         }
+        this.testRaces.delete(raceId);
     }
 
     async cleanUpRace(raceId: string): Promise<void> {
