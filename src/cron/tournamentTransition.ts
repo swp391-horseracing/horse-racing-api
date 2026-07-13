@@ -4,14 +4,12 @@ import { tournaments } from "../schema/tournament.js";
 import { eventBus } from "../websocket/eventBus.js";
 
 export async function transitionTournaments(): Promise<void> {
-    const now = new Date();
-
-    await transitionUpcomingToRegistrationOpen(now);
-    await transitionRegistrationOpenToClosed(now);
-    await transitionRegistrationClosedToOngoing(now);
+    await transitionUpcomingToRegistrationOpen();
+    await transitionRegistrationOpenToClosed();
+    await transitionRegistrationClosedToOngoing();
 }
 
-async function transitionUpcomingToRegistrationOpen(now: Date): Promise<void> {
+async function transitionUpcomingToRegistrationOpen(): Promise<void> {
     console.log("[cron:tournament] Checking upcoming → registration_open");
     const updatedTournaments = await db
         .update(tournaments)
@@ -19,7 +17,7 @@ async function transitionUpcomingToRegistrationOpen(now: Date): Promise<void> {
         .where(
             and(
                 eq(tournaments.status, "upcoming"),
-                sql`${tournaments.registrationOpenDate} <= ${now}`,
+                sql`${tournaments.registrationOpenDate} <= NOW()`,
             ),
         )
         .returning();
@@ -32,7 +30,7 @@ async function transitionUpcomingToRegistrationOpen(now: Date): Promise<void> {
     }
 }
 
-async function transitionRegistrationOpenToClosed(now: Date): Promise<void> {
+async function transitionRegistrationOpenToClosed(): Promise<void> {
     console.log(
         "[cron:tournament] Checking registration_open → registration_closed",
     );
@@ -42,7 +40,7 @@ async function transitionRegistrationOpenToClosed(now: Date): Promise<void> {
         .where(
             and(
                 eq(tournaments.status, "registration_open"),
-                sql`${tournaments.registrationCloseDate} <= ${now}`,
+                sql`${tournaments.registrationCloseDate} <= NOW()`,
             ),
         )
         .returning();
@@ -55,7 +53,7 @@ async function transitionRegistrationOpenToClosed(now: Date): Promise<void> {
     }
 }
 
-async function transitionRegistrationClosedToOngoing(now: Date): Promise<void> {
+async function transitionRegistrationClosedToOngoing(): Promise<void> {
     console.log("[cron:tournament] Checking registration_closed → ongoing");
     const updatedTournaments = await db
         .update(tournaments)
@@ -63,7 +61,7 @@ async function transitionRegistrationClosedToOngoing(now: Date): Promise<void> {
         .where(
             and(
                 eq(tournaments.status, "registration_closed"),
-                sql`${tournaments.startDate} <= ${now}`,
+                sql`${tournaments.startDate} <= NOW()`,
             ),
         )
         .returning();
