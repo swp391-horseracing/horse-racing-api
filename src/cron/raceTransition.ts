@@ -54,7 +54,13 @@ export async function transitionPreRaceToOngoing(): Promise<void> {
     for (const race of updatedRaces) {
         console.log(`[cron:race] Transitioned ${race.id} pre_race → ongoing`);
         emitRaceEvent(race.id, "ongoing", "pre_race");
-        await tickEmitter.startRace(race.id);
+        try {
+            await tickEmitter.startRace(race.id);
+        } catch (err) {
+            console.error(
+                `[cron:race] Failed to start race ${race.id}: ${err}`,
+            );
+        }
     }
 }
 
