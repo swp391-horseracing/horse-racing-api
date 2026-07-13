@@ -51,7 +51,7 @@ const MIN_LATE_SURGE_PROBABILITY = 0.15; // even a tired horse keeps a small cha
 const MAX_LATE_SURGE_PROBABILITY = 0.95; // a horse with plenty of stamina almost always surges
 const SURGE_STAMINA_COST = 4; // surging costs extra stamina
 const SURGE_STAMINA_BONUS = 0.8; // max bonus to surge magnitude based on remaining stamina %
-const VIOLATION_CHANCE = 0.000005;
+const VIOLATION_CHANCE = 0.000005; //1.24%
 
 function random(min: number, max: number) {
     return Math.random() * (max - min) + min;
