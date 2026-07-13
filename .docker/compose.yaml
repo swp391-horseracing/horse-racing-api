@@ -1,4 +1,12 @@
 services:
+  redis:
+    image: redis:7-alpine
+    container_name: horse-racing-redis
+    restart: unless-stopped
+    ports:
+      - 6379:6379
+    networks:
+      - api
   postgres:
     image: postgres:latest
     container_name: horse-racing-database
@@ -8,6 +16,10 @@ services:
       POSTGRES_DB: ${DB_DATABASE}
       POSTGRES_USER: ${DB_USERNAME}
       POSTGRES_PASSWORD: ${DB_PASSWORD}
+    command:
+      - postgres
+      - -c
+      - timezone=Asia/Ho_Chi_Minh
     volumes:
       - horse_racing_psql:/var/lib/postgresql
     networks:
@@ -31,6 +43,7 @@ services:
     restart: on-failure:5
     depends_on:
       - postgres
+      - redis
     environment:
       JWT_SECRET: ${JWT_SECRET}
       JWT_EXPIRES_IN: ${JWT_EXPIRES_IN}
@@ -50,6 +63,7 @@ services:
       PORT: ${PORT}
       CAPTCHA_SECRET_KEY: ${CAPTCHA_SECRET_KEY}
       NODE_ENV: ${NODE_ENV}
+      REDIS_URL: ${REDIS_URL}
     ports:
       - ${PORT}:${PORT}
     networks:
