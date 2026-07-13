@@ -145,21 +145,6 @@ class TickEmitter {
     ): Promise<void> {
         this.stopRace(raceId);
 
-        if (this.testRaces.has(raceId)) {
-            this.testRaces.delete(raceId);
-
-            eventBus.emit({
-                type: "race:finish",
-                data: {
-                    raceId,
-                    finalResults: simulation.finalResults,
-                },
-            });
-
-            console.log(`[tickEmitter] Test race ${raceId} finished`);
-            return;
-        }
-
         eventBus.emit({
             type: "race:finish",
             data: {
@@ -167,6 +152,11 @@ class TickEmitter {
                 finalResults: simulation.finalResults,
             },
         });
+
+        if (this.testRaces.delete(raceId)) {
+            console.log(`[tickEmitter] Test race ${raceId} finished`);
+            return;
+        }
 
         eventBus.emit({
             type: "race:status_changed",
