@@ -33,10 +33,7 @@ async function transitionScheduledToPreRace(): Promise<void> {
             await precomputeRaceFromDb(race.id);
             console.log(`[cron:race] Precomputed simulation for ${race.id}`);
         } catch (err) {
-            console.error(
-                `[cron:race] Failed to precompute ${race.id}:`,
-                err,
-            );
+            console.error(`[cron:race] Failed to precompute ${race.id}:`, err);
         }
     }
 }
