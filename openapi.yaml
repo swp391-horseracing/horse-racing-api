@@ -1600,6 +1600,14 @@ components:
               type: string
             breed:
               type: string
+            baseSpeed:
+              type:
+                - number
+                - "null"
+            stamina:
+              type:
+                - number
+                - "null"
         jockey:
           type: object
           properties:
@@ -1628,10 +1636,11 @@ components:
           type:
             - integer
             - "null"
-        violation:
-          oneOf:
-            - $ref: "#/components/schemas/Violation"
-            - type: "null"
+        violations:
+          type: array
+          items:
+            $ref: "#/components/schemas/Violation"
+          default: []
 
     RaceReport:
       type: object
@@ -1653,18 +1662,30 @@ components:
                 - integer
                 - "null"
             trackCondition:
-              oneOf:
-                - $ref: "#/components/schemas/TrackCondition"
-                - type: "null"
+              type:
+                - string
+                - "null"
+            venue:
+              type:
+                - string
+                - "null"
+            courseName:
+              type:
+                - string
+                - "null"
+            courseCity:
+              type:
+                - string
+                - "null"
+            surfaceType:
+              type:
+                - string
+                - "null"
             scheduledAt:
               type:
                 - string
                 - "null"
               format: date-time
-            venue:
-              type:
-                - string
-                - "null"
             laneCount:
               type:
                 - integer
@@ -2226,6 +2247,46 @@ components:
         pagination:
           $ref: "#/components/schemas/Pagination"
 
+    RaceResultEntry:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        raceId:
+          type: string
+          format: uuid
+        jockeyId:
+          type:
+            - string
+            - "null"
+          format: uuid
+        jockeyName:
+          type:
+            - string
+            - "null"
+        horseId:
+          type: string
+          format: uuid
+        horseName:
+          type: string
+        finishedPosition:
+          type:
+            - integer
+            - "null"
+        finishTime:
+          type:
+            - string
+            - "null"
+        finishStatus:
+          oneOf:
+            - $ref: "#/components/schemas/FinishStatus"
+            - type: "null"
+        points:
+          type:
+            - integer
+            - "null"
+
     PaginatedMeRegistrations:
 
   responses:
@@ -2565,9 +2626,7 @@ paths:
                 properties:
                   message:
                     type: string
-                    example: Report submitted
-                  report:
-                    $ref: "#/components/schemas/RaceResult"
+                    example: Report submitted and race result published
         "400":
           $ref: "#/components/responses/BadRequest"
         "401":
@@ -2973,7 +3032,7 @@ paths:
       tags:
         - Admin
       summary: List race reports
-      description: Requires admin role. Returns reports with referee_confirmed or published status by default.
+      description: Requires admin or referee role. Returns reports filtered by the given criteria.
       security:
         - BearerAuth: []
       parameters:
@@ -2981,7 +3040,7 @@ paths:
           in: query
           schema:
             $ref: "#/components/schemas/ReportStatus"
-          description: Filter by report status. Defaults to referee_confirmed and published.
+          description: Filter by report status. If omitted, all statuses are returned.
         - name: search
           in: query
           schema:
@@ -3042,36 +3101,6 @@ paths:
           $ref: "#/components/responses/Forbidden"
         "404":
           $ref: "#/components/responses/NotFound"
-        "500":
-          $ref: "#/components/responses/ServerError"
-
-  /admin/races/{raceId}/publish:
-    patch:
-      tags:
-        - Admin
-      summary: Publish a race result
-      description: Requires admin role. The report must be in referee_confirmed status. Completes the race and resolves predictions.
-      security:
-        - BearerAuth: []
-      parameters:
-        - $ref: "#/components/parameters/RaceIdParam"
-      responses:
-        "200":
-          description: Race result published.
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/MessageResponse"
-        "400":
-          $ref: "#/components/responses/BadRequest"
-        "401":
-          $ref: "#/components/responses/Unauthorized"
-        "403":
-          $ref: "#/components/responses/Forbidden"
-        "404":
-          $ref: "#/components/responses/NotFound"
-        "409":
-          $ref: "#/components/responses/Conflict"
         "500":
           $ref: "#/components/responses/ServerError"
 
@@ -3732,6 +3761,31 @@ paths:
                 type: array
                 items:
                   $ref: "#/components/schemas/RaceEntry"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "500":
+          $ref: "#/components/responses/ServerError"
+
+  /races/{raceId}/results:
+    get:
+      tags:
+        - Races
+      summary: Get published race results
+      description: Returns published race results with horse and jockey info, ordered by finished position.
+      security: []
+      parameters:
+        - $ref: "#/components/parameters/RaceIdParam"
+      responses:
+        "200":
+          description: Race results.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/RaceResultEntry"
         "400":
           $ref: "#/components/responses/BadRequest"
         "404":
