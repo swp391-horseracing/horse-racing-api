@@ -246,9 +246,7 @@ class TickEmitter {
                 ),
             );
 
-        const entryByHorse = new Map(
-            entries.map((e) => [e.horseId, e.id]),
-        );
+        const entryByHorse = new Map(entries.map((e) => [e.horseId, e.id]));
 
         const values = simulation.finalResults
             .filter((f) => entryByHorse.has(f.horseId))
@@ -260,7 +258,9 @@ class TickEmitter {
                     entryId: entryByHorse.get(f.horseId)!,
                     finishedPosition: f.position,
                     finishTime: f.finishTimeMs?.toString() ?? null,
-                    finishStatus: finished ? "finished" as const : "dnf" as const,
+                    finishStatus: finished
+                        ? ("finished" as const)
+                        : ("dnf" as const),
                     points: finished ? Math.max(10 - f.position, 1) : 0,
                     basePoints: finished ? Math.max(10 - f.position, 1) : 0,
                 };
