@@ -1434,7 +1434,6 @@ export const startRace = async (
             .select({
                 id: races.id,
                 status: races.status,
-                name: races.name,
             })
             .from(races)
             .where(eq(races.id, raceId));
@@ -1449,12 +1448,36 @@ export const startRace = async (
             });
         }
 
+        const previousStatus = race.status;
+
         await precomputeRaceFromDb(raceId);
 
-        await db
+        const [updated] = await db
             .update(races)
             .set({ status: "ongoing" })
-            .where(eq(races.id, raceId));
+            .where(
+                and(
+                    eq(races.id, raceId),
+                    inArray(races.status, ["draft", "scheduled"]),
+                ),
+            )
+            .returning({ id: races.id });
+
+        if (!updated) {
+            return res.status(409).json({
+                message: "Race was already started by another request",
+            });
+        }
+
+        try {
+            await tickEmitter.startRace(raceId);
+        } catch (err) {
+            await db
+                .update(races)
+                .set({ status: previousStatus })
+                .where(eq(races.id, raceId));
+            throw err;
+        }
 
         try {
             eventBus.emit({
@@ -1462,7 +1485,7 @@ export const startRace = async (
                 data: {
                     raceId,
                     status: "ongoing",
-                    previousStatus: race.status,
+                    previousStatus,
                     timestamp: new Date().toISOString(),
                 },
             });
@@ -1472,8 +1495,6 @@ export const startRace = async (
                 emitErr,
             );
         }
-
-        await tickEmitter.startRace(raceId);
 
         res.json({ message: "Race started", raceId });
     } catch (err) {
