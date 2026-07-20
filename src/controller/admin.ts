@@ -1449,7 +1449,7 @@ export const startRace = async (
             });
         }
 
-        const simulation = await precomputeRaceFromDb(raceId);
+        await precomputeRaceFromDb(raceId);
 
         await db
             .update(races)
