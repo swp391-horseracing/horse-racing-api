@@ -1419,6 +1419,89 @@ export const simulateRace = async (
     }
 };
 
+export const startRace = async (
+    req: Request,
+    res: Response,
+    next: NextFunction,
+) => {
+    try {
+        const raceId = req.params.raceId as string;
+        if (!uuidValidate(raceId)) {
+            return res.status(400).json({ message: "Invalid uuid" });
+        }
+
+        const [race] = await db
+            .select({
+                id: races.id,
+                status: races.status,
+            })
+            .from(races)
+            .where(eq(races.id, raceId));
+
+        if (!race) {
+            return res.status(404).json({ message: "Race not found" });
+        }
+
+        if (!["draft", "scheduled"].includes(race.status)) {
+            return res.status(409).json({
+                message: `Cannot start race with status '${race.status}'. Must be 'draft' or 'scheduled'.`,
+            });
+        }
+
+        const previousStatus = race.status;
+
+        await precomputeRaceFromDb(raceId);
+
+        const [updated] = await db
+            .update(races)
+            .set({ status: "ongoing" })
+            .where(
+                and(
+                    eq(races.id, raceId),
+                    inArray(races.status, ["draft", "scheduled"]),
+                ),
+            )
+            .returning({ id: races.id });
+
+        if (!updated) {
+            return res.status(409).json({
+                message: "Race was already started by another request",
+            });
+        }
+
+        try {
+            await tickEmitter.startRace(raceId);
+        } catch (err) {
+            await db
+                .update(races)
+                .set({ status: previousStatus })
+                .where(eq(races.id, raceId));
+            throw err;
+        }
+
+        try {
+            eventBus.emit({
+                type: "race:status_changed",
+                data: {
+                    raceId,
+                    status: "ongoing",
+                    previousStatus,
+                    timestamp: new Date().toISOString(),
+                },
+            });
+        } catch (emitErr) {
+            console.error(
+                `Failed to emit race:status_changed for ${raceId}:`,
+                emitErr,
+            );
+        }
+
+        res.json({ message: "Race started", raceId });
+    } catch (err) {
+        next(err);
+    }
+};
+
 export const stopSimulateRace = async (
     req: Request,
     res: Response,
