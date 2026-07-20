@@ -214,61 +214,65 @@ class TickEmitter {
     ): Promise<void> {
         if (this.testRaces.has(raceId)) return;
 
-        const [inserted] = await db
-            .insert(raceResults)
-            .values({ raceId })
-            .onConflictDoNothing()
-            .returning({ id: raceResults.id });
+        await db.transaction(async (tx) => {
+            const [inserted] = await tx
+                .insert(raceResults)
+                .values({ raceId })
+                .onConflictDoNothing()
+                .returning({ id: raceResults.id });
 
-        let resultId: string;
-        if (inserted) {
-            resultId = inserted.id;
-        } else {
-            const [existing] = await db
-                .select({ id: raceResults.id })
-                .from(raceResults)
-                .where(eq(raceResults.raceId, raceId));
-            if (!existing) return;
-            resultId = existing.id;
-        }
+            let resultId: string;
+            if (inserted) {
+                resultId = inserted.id;
+            } else {
+                const [existing] = await tx
+                    .select({ id: raceResults.id })
+                    .from(raceResults)
+                    .where(eq(raceResults.raceId, raceId));
+                if (!existing) return;
+                resultId = existing.id;
+            }
 
-        await db
-            .delete(raceResultEntries)
-            .where(eq(raceResultEntries.raceId, raceId));
+            await tx
+                .delete(raceResultEntries)
+                .where(eq(raceResultEntries.raceId, raceId));
 
-        const entries = await db
-            .select({ id: raceEntries.id, horseId: raceEntries.horseId })
-            .from(raceEntries)
-            .where(
-                and(
-                    eq(raceEntries.raceId, raceId),
-                    eq(raceEntries.entryStatus, "confirmed"),
-                ),
+            const entries = await tx
+                .select({ id: raceEntries.id, horseId: raceEntries.horseId })
+                .from(raceEntries)
+                .where(
+                    and(
+                        eq(raceEntries.raceId, raceId),
+                        eq(raceEntries.entryStatus, "confirmed"),
+                    ),
+                );
+
+            const entryByHorse = new Map(
+                entries.map((e) => [e.horseId, e.id]),
             );
 
-        const entryByHorse = new Map(entries.map((e) => [e.horseId, e.id]));
+            const values = simulation.finalResults
+                .filter((f) => entryByHorse.has(f.horseId))
+                .map((f) => {
+                    const finished = f.finishStatus === "placed";
+                    return {
+                        raceId,
+                        resultId,
+                        entryId: entryByHorse.get(f.horseId)!,
+                        finishedPosition: f.position,
+                        finishTime: f.finishTimeMs?.toString() ?? null,
+                        finishStatus: finished
+                            ? ("finished" as const)
+                            : ("dnf" as const),
+                        points: finished ? Math.max(10 - f.position, 1) : 0,
+                        basePoints: finished ? Math.max(10 - f.position, 1) : 0,
+                    };
+                });
 
-        const values = simulation.finalResults
-            .filter((f) => entryByHorse.has(f.horseId))
-            .map((f) => {
-                const finished = f.finishStatus === "placed";
-                return {
-                    raceId,
-                    resultId,
-                    entryId: entryByHorse.get(f.horseId)!,
-                    finishedPosition: f.position,
-                    finishTime: f.finishTimeMs?.toString() ?? null,
-                    finishStatus: finished
-                        ? ("finished" as const)
-                        : ("dnf" as const),
-                    points: finished ? Math.max(10 - f.position, 1) : 0,
-                    basePoints: finished ? Math.max(10 - f.position, 1) : 0,
-                };
-            });
+            if (values.length === 0) return;
 
-        if (values.length === 0) return;
-
-        await db.insert(raceResultEntries).values(values);
+            await tx.insert(raceResultEntries).values(values);
+        });
     }
 
     async resumeActiveRaces(): Promise<void> {
