@@ -247,9 +247,7 @@ class TickEmitter {
                     ),
                 );
 
-            const entryByHorse = new Map(
-                entries.map((e) => [e.horseId, e.id]),
-            );
+            const entryByHorse = new Map(entries.map((e) => [e.horseId, e.id]));
 
             const values = simulation.finalResults
                 .filter((f) => entryByHorse.has(f.horseId))
