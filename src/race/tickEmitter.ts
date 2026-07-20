@@ -1,6 +1,9 @@
 import db from "../config/db.js";
 import { races } from "../schema/races.js";
-import { eq } from "drizzle-orm";
+import { raceResults } from "../schema/raceResults.js";
+import { raceResultEntries } from "../schema/raceResultEntries.js";
+import { raceEntries } from "../schema/raceEntries.js";
+import { and, eq } from "drizzle-orm";
 import {
     getSimulation,
     getCurrentTick,
@@ -164,6 +167,15 @@ class TickEmitter {
             return;
         }
 
+        try {
+            await this.fillRaceResultsFromSimulation(raceId, simulation);
+        } catch (err) {
+            console.error(
+                `[tickEmitter] Failed to fill results for race ${raceId}:`,
+                err,
+            );
+        }
+
         eventBus.emit({
             type: "race:status_changed",
             data: {
@@ -194,6 +206,69 @@ class TickEmitter {
     async cleanUpRace(raceId: string): Promise<void> {
         this.stopRace(raceId);
         await delRaceKeys(raceId);
+    }
+
+    private async fillRaceResultsFromSimulation(
+        raceId: string,
+        simulation: FeRaceSimulation,
+    ): Promise<void> {
+        if (this.testRaces.has(raceId)) return;
+
+        const [inserted] = await db
+            .insert(raceResults)
+            .values({ raceId })
+            .onConflictDoNothing()
+            .returning({ id: raceResults.id });
+
+        let resultId: string;
+        if (inserted) {
+            resultId = inserted.id;
+        } else {
+            const [existing] = await db
+                .select({ id: raceResults.id })
+                .from(raceResults)
+                .where(eq(raceResults.raceId, raceId));
+            if (!existing) return;
+            resultId = existing.id;
+        }
+
+        await db
+            .delete(raceResultEntries)
+            .where(eq(raceResultEntries.raceId, raceId));
+
+        const entries = await db
+            .select({ id: raceEntries.id, horseId: raceEntries.horseId })
+            .from(raceEntries)
+            .where(
+                and(
+                    eq(raceEntries.raceId, raceId),
+                    eq(raceEntries.entryStatus, "confirmed"),
+                ),
+            );
+
+        const entryByHorse = new Map(
+            entries.map((e) => [e.horseId, e.id]),
+        );
+
+        const values = simulation.finalResults
+            .filter((f) => entryByHorse.has(f.horseId))
+            .map((f) => {
+                const finished = f.finishStatus === "placed";
+                return {
+                    raceId,
+                    resultId,
+                    entryId: entryByHorse.get(f.horseId)!,
+                    finishedPosition: f.position,
+                    finishTime: f.finishTimeMs?.toString() ?? null,
+                    finishStatus: finished ? "finished" as const : "dnf" as const,
+                    points: finished ? Math.max(10 - f.position, 1) : 0,
+                    basePoints: finished ? Math.max(10 - f.position, 1) : 0,
+                };
+            });
+
+        if (values.length === 0) return;
+
+        await db.insert(raceResultEntries).values(values);
     }
 
     async resumeActiveRaces(): Promise<void> {
