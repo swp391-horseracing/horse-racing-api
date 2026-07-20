@@ -1419,6 +1419,68 @@ export const simulateRace = async (
     }
 };
 
+export const startRace = async (
+    req: Request,
+    res: Response,
+    next: NextFunction,
+) => {
+    try {
+        const raceId = req.params.raceId as string;
+        if (!uuidValidate(raceId)) {
+            return res.status(400).json({ message: "Invalid uuid" });
+        }
+
+        const [race] = await db
+            .select({
+                id: races.id,
+                status: races.status,
+                name: races.name,
+            })
+            .from(races)
+            .where(eq(races.id, raceId));
+
+        if (!race) {
+            return res.status(404).json({ message: "Race not found" });
+        }
+
+        if (!["draft", "scheduled"].includes(race.status)) {
+            return res.status(409).json({
+                message: `Cannot start race with status '${race.status}'. Must be 'draft' or 'scheduled'.`,
+            });
+        }
+
+        const simulation = await precomputeRaceFromDb(raceId);
+
+        await db
+            .update(races)
+            .set({ status: "ongoing" })
+            .where(eq(races.id, raceId));
+
+        try {
+            eventBus.emit({
+                type: "race:status_changed",
+                data: {
+                    raceId,
+                    status: "ongoing",
+                    previousStatus: race.status,
+                    timestamp: new Date().toISOString(),
+                },
+            });
+        } catch (emitErr) {
+            console.error(
+                `Failed to emit race:status_changed for ${raceId}:`,
+                emitErr,
+            );
+        }
+
+        await tickEmitter.startRace(raceId);
+
+        res.json({ message: "Race started", raceId });
+    } catch (err) {
+        next(err);
+    }
+};
+
 export const stopSimulateRace = async (
     req: Request,
     res: Response,
