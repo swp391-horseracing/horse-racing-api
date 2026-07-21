@@ -26,7 +26,7 @@ export const raceResultEntries = pgTable(
         resultId: uuid("result_id").notNull(),
         entryId: uuid("entry_id").notNull(),
         finishedPosition: integer("finished_position"),
-        finishTime: decimal("finish_time", { precision: 8, scale: 3 }),
+        finishTime: decimal("finish_time", { precision: 10, scale: 3 }),
         finishStatus: finishStatusEnum("finish_status")
             .default("finished")
             .notNull(),
