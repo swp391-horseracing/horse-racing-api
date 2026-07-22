@@ -104,9 +104,7 @@ export const getJockeyRaceHistory = async (
         const conditions: ReturnType<typeof and> = and(
             eq(raceEntries.jockeyId, jockeyId),
             eq(raceResults.resultStatus, "published"),
-            status
-                ? eq(races.status, status as typeof races.$inferSelect.status)
-                : undefined,
+            status ? eq(races.status, status) : undefined,
         );
 
         const [data, countArr, statsArr] = await Promise.all([
