@@ -12,10 +12,12 @@ import {
 } from "../validator/tournament.js";
 import { races } from "../schema/races.js";
 import { horses } from "../schema/horses.js";
+import { users } from "../schema/users.js";
 import { tournamentRegistrations } from "../schema/tournamentRegistrations.js";
 import { courseDistances } from "../schema/courseDistances.js";
 import { raceCourses } from "../schema/raceCourses.js";
 import { raceEntries } from "../schema/raceEntries.js";
+import { getSignedUrlByKey } from "../utils/s3.js";
 
 const calculateAge = (birthDate: Date, referenceDate: Date): number => {
     const age = referenceDate.getFullYear() - birthDate.getFullYear();
@@ -125,16 +127,32 @@ export const getTournament = async (
             conditions.push(ne(tournamentsTable.status, "draft"));
         }
 
-        const [tournament] = await db
-            .select()
-            .from(tournamentsTable)
-            .where(and(...conditions));
+        const [tournament, countResult] = await Promise.all([
+            db
+                .select()
+                .from(tournamentsTable)
+                .where(and(...conditions))
+                .then((rows) => rows[0] ?? null),
+
+            db
+                .select({ count: sql<number>`count(*)` })
+                .from(tournamentRegistrations)
+                .where(
+                    and(
+                        eq(tournamentRegistrations.tournamentId, tournamendId),
+                        eq(tournamentRegistrations.status, "approved"),
+                    ),
+                ),
+        ]);
 
         if (!tournament) {
             return res.status(404).json({ message: "Tournament not exists" });
         }
 
-        return res.json(tournament);
+        return res.json({
+            ...tournament,
+            totalRegistered: Number(countResult[0]?.count ?? 0),
+        });
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
     } catch (err: any) {
         next(err);
@@ -292,7 +310,13 @@ export const registerForTournament = async (
                     .select({ count: sql<number>`count(*)` })
                     .from(tournamentRegistrations)
                     .where(
-                        eq(tournamentRegistrations.tournamentId, tournamentId),
+                        and(
+                            eq(
+                                tournamentRegistrations.tournamentId,
+                                tournamentId,
+                            ),
+                            ne(tournamentRegistrations.status, "rejected"),
+                        ),
                     );
 
                 if (result && result.count >= tournament.maximumParticipants) {
@@ -402,6 +426,109 @@ export const registerForTournament = async (
                 message: "Horse is already registered for this tournament",
             });
         }
+        next(err);
+    }
+};
+
+export const getTournamentParticipants = async (
+    req: Request,
+    res: Response,
+    next: NextFunction,
+) => {
+    try {
+        const tournamentId = req.params.id as string;
+        if (!uuidValidate(tournamentId)) {
+            return res.status(400).json({ message: "Invalid uuid" });
+        }
+
+        const { page, limit } = req.query as {
+            page?: string;
+            limit?: string;
+        };
+        const {
+            page: p,
+            limit: l,
+            offset,
+        } = getPagination({
+            page: page ? Number(page) : undefined,
+            limit: limit ? Number(limit) : undefined,
+        });
+
+        const [tournament] = await db
+            .select({ id: tournamentsTable.id })
+            .from(tournamentsTable)
+            .where(eq(tournamentsTable.id, tournamentId));
+
+        if (!tournament) {
+            return res.status(404).json({ message: "Tournament not exists" });
+        }
+
+        const conditions = and(
+            eq(tournamentRegistrations.tournamentId, tournamentId),
+            eq(tournamentRegistrations.status, "approved"),
+        );
+
+        const [data, countArr] = await Promise.all([
+            db
+                .select({
+                    horse: {
+                        id: horses.id,
+                        name: horses.name,
+                        breed: horses.breed,
+                        imageUrl: horses.imageUrl,
+                        baseSpeed: horses.baseSpeed,
+                        stamina: horses.stamina,
+                    },
+                    owner: {
+                        id: users.id,
+                        fullName: users.fullName,
+                        avatarUrl: users.avatar_url,
+                    },
+                })
+                .from(tournamentRegistrations)
+                .innerJoin(
+                    horses,
+                    eq(tournamentRegistrations.horseId, horses.id),
+                )
+                .innerJoin(users, eq(tournamentRegistrations.ownerId, users.id))
+                .where(conditions)
+                .orderBy(tournamentRegistrations.submittedAt)
+                .limit(l)
+                .offset(offset),
+
+            db
+                .select({ count: sql<number>`count(*)` })
+                .from(tournamentRegistrations)
+                .where(conditions),
+        ]);
+
+        const dataWithUrls = await Promise.all(
+            data.map(async (item) => ({
+                ...item,
+                horse: {
+                    ...item.horse,
+                    imageUrl: item.horse.imageUrl
+                        ? await getSignedUrlByKey(item.horse.imageUrl)
+                        : null,
+                },
+                owner: {
+                    ...item.owner,
+                    avatarUrl: item.owner.avatarUrl
+                        ? await getSignedUrlByKey(item.owner.avatarUrl)
+                        : null,
+                },
+            })),
+        );
+
+        return res.json(
+            paginatedResponse(
+                dataWithUrls,
+                Number(countArr[0]?.count ?? 0),
+                p,
+                l,
+            ),
+        );
+    } catch (err) {
         next(err);
     }
 };
