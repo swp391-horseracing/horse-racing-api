@@ -35,3 +35,9 @@ export const listRacesQuerySchema = z
             path: ["status"],
         },
     );
+
+export const raceHistoryQuerySchema = z.object({
+    page: z.coerce.number().int().min(1).default(1).optional(),
+    limit: z.coerce.number().int().min(1).max(100).default(10).optional(),
+    status: z.enum(validRaceStatuses).optional(),
+});

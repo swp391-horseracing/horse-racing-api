@@ -6,6 +6,7 @@ import {
     updateHorse,
     retireHorse,
     getOwnerHorses,
+    getHorseRaceHistory,
 } from "../controller/horse.js";
 import { addHorseSchema, updateHorseSchema } from "../validator/horse.js";
 import { validate } from "../middleware/validate.js";
@@ -24,6 +25,7 @@ const horseImageUpload = createUpload({
 router.get("/", getHorses);
 router.get("/owner/:ownerId", getOwnerHorses);
 router.get("/:id", getHorse);
+router.get("/:id/races", getHorseRaceHistory);
 router.post(
     "/",
     authMiddleware,

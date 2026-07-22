@@ -258,7 +258,9 @@ class TickEmitter {
                         resultId,
                         entryId: entryByHorse.get(f.horseId)!,
                         finishedPosition: finished ? f.position : null,
-                        finishTime: f.finishTimeMs?.toString() ?? null,
+                        finishTime: f.finishTimeMs
+                            ? (f.finishTimeMs / 1000).toString()
+                            : null,
                         finishStatus: finished
                             ? ("finished" as const)
                             : ("dnf" as const),
