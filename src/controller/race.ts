@@ -2,7 +2,7 @@ import { NextFunction, Request, Response } from "express";
 import db from "../config/db.js";
 import { races } from "../schema/races.js";
 import { validate as uuidValidate } from "uuid";
-import { eq, ne, and } from "drizzle-orm";
+import { eq, ne, and, sql, inArray, count, asc, desc } from "drizzle-orm";
 import { raceEntries } from "../schema/raceEntries.js";
 import { horses } from "../schema/horses.js";
 import { users } from "../schema/users.js";
@@ -10,6 +10,96 @@ import { predictions } from "../schema/predictions.js";
 import { courseDistances } from "../schema/courseDistances.js";
 import { raceCourses } from "../schema/raceCourses.js";
 import { createPredictionSchema } from "../validator/prediction.js";
+import { listRacesQuerySchema } from "../validator/race.js";
+import { raceResultEntries } from "../schema/raceResultEntries.js";
+import { raceResults } from "../schema/raceResults.js";
+import { paginatedResponse } from "../utils/paginate.js";
+
+export const listRaces = async (
+    req: Request,
+    res: Response,
+    next: NextFunction,
+) => {
+    try {
+        const parsed = listRacesQuerySchema.safeParse(req.query);
+
+        if (!parsed.success) {
+            return res.status(400).json({
+                message: "Validation Errors",
+                errors: parsed.error.issues.map((issue) => ({
+                    field: issue.path.join("."),
+                    message: issue.message,
+                })),
+            });
+        }
+
+        const { status, sort, order, page, limit } = parsed.data;
+        const offset = (page! - 1) * limit!;
+
+        const conditions: Parameters<typeof and>[number][] = [];
+
+        if (status) {
+            const statuses = status.split(",").filter(Boolean);
+            conditions.push(
+                inArray(
+                    races.status,
+                    statuses as (typeof races.status.enumValues)[number][],
+                ),
+            );
+        } else {
+            conditions.push(ne(races.status, "draft"));
+        }
+
+        const whereClause = and(...conditions);
+
+        const sortColumn =
+            sort === "name"
+                ? races.name
+                : sort === "createdAt"
+                  ? races.createdAt
+                  : sort === "status"
+                    ? races.status
+                    : sort === "raceNumber"
+                      ? races.raceNumber
+                      : races.scheduleAt;
+
+        const orderByClause =
+            order === "desc" ? desc(sortColumn) : asc(sortColumn);
+
+        const [countResult] = await db
+            .select({ count: count() })
+            .from(races)
+            .where(whereClause);
+
+        const total = countResult ? Number(countResult.count) : 0;
+
+        const raceList = await db
+            .select({
+                id: races.id,
+                tournamentId: races.tournamentId,
+                name: races.name,
+                raceNumber: races.raceNumber,
+                scheduledAt: races.scheduleAt,
+                laneCount: races.laneCount,
+                status: races.status,
+                venue: raceCourses.name,
+            })
+            .from(races)
+            .leftJoin(
+                courseDistances,
+                eq(races.courseDistanceId, courseDistances.id),
+            )
+            .leftJoin(raceCourses, eq(courseDistances.courseId, raceCourses.id))
+            .where(whereClause)
+            .orderBy(orderByClause)
+            .limit(limit!)
+            .offset(offset);
+
+        res.json(paginatedResponse(raceList, total, page!, limit!));
+    } catch (err) {
+        next(err);
+    }
+};
 
 export const getRace = async (
     req: Request,
@@ -30,11 +120,12 @@ export const getRace = async (
                 courseDistanceId: races.courseDistanceId,
                 name: races.name,
                 raceNumber: races.raceNumber,
-                scheduleAt: races.scheduleAt,
+                scheduledAt: races.scheduleAt,
                 laneCount: races.laneCount,
                 status: races.status,
                 createdAt: races.createdAt,
                 updatedAt: races.updatedAt,
+                avaiableSlots: sql<number>`${races.laneCount} - (select count(*) from ${raceEntries} where ${raceEntries.raceId} = ${races.id})`,
                 course: {
                     id: raceCourses.id,
                     name: raceCourses.name,
@@ -99,13 +190,15 @@ export const getHorseEntries = async (
                 name: horses.name,
                 breed: horses.breed,
                 weightKg: horses.weightKg,
+                baseSpeed: horses.baseSpeed,
+                stamina: horses.stamina,
                 entryStatus: raceEntries.entryStatus,
                 laneNumber: raceEntries.laneNumber,
             })
             .from(races)
             .where(eq(races.id, raceId))
-            .leftJoin(raceEntries, eq(races.id, raceEntries.raceId))
-            .leftJoin(horses, eq(raceEntries.horseId, horses.id))
+            .innerJoin(raceEntries, eq(races.id, raceEntries.raceId))
+            .innerJoin(horses, eq(raceEntries.horseId, horses.id))
             .leftJoin(users, eq(raceEntries.jockeyId, users.id));
 
         res.json(horseEntries);
@@ -148,6 +241,8 @@ export const getRaceEntries = async (
                     id: horses.id,
                     name: horses.name,
                     breed: horses.breed,
+                    baseSpeed: horses.baseSpeed,
+                    stamina: horses.stamina,
                 },
                 jockey: {
                     id: users.id,
@@ -251,6 +346,60 @@ export const createPrediction = async (
                 .status(409)
                 .json({ message: "You have already predicted this race" });
         }
+        next(err);
+    }
+};
+
+export const getRaceResult = async (
+    req: Request,
+    res: Response,
+    next: NextFunction,
+) => {
+    try {
+        const raceId = req.params.raceId as string;
+        if (!uuidValidate(raceId)) {
+            return res.status(400).json({ message: "Invalid uuid" });
+        }
+
+        const result = await db
+            .select({
+                id: raceResultEntries.id,
+                raceId: raceResultEntries.raceId,
+                jockeyId: users.id,
+                jockeyName: users.fullName,
+                horseId: horses.id,
+                horseName: horses.name,
+                finishedPosition: raceResultEntries.finishedPosition,
+                finishTime: raceResultEntries.finishTime,
+                finishStatus: raceResultEntries.finishStatus,
+                points: raceResultEntries.points,
+            })
+            .from(raceResultEntries)
+            .innerJoin(
+                raceResults,
+                eq(raceResultEntries.resultId, raceResults.id),
+            )
+            .leftJoin(
+                raceEntries,
+                eq(raceEntries.id, raceResultEntries.entryId),
+            )
+            .leftJoin(users, eq(raceEntries.jockeyId, users.id))
+            .leftJoin(horses, eq(raceEntries.horseId, horses.id))
+            .where(
+                and(
+                    eq(raceResultEntries.raceId, raceId),
+                    eq(raceResults.resultStatus, "published"),
+                ),
+            )
+            .orderBy(raceResultEntries.finishedPosition, raceResultEntries.id);
+
+        if (result.length === 0) {
+            return res
+                .status(404)
+                .json({ message: "Results not yet available" });
+        }
+        res.json(result);
+    } catch (err) {
         next(err);
     }
 };

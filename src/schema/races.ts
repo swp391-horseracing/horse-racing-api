@@ -15,6 +15,7 @@ export const raceStatusEnums = pgEnum("race_status", [
     "pre_race",
     "ongoing",
     "under_review",
+    // @deprecated — no longer used; kept in DB enum to avoid migration
     "result_confirmed",
     "completed",
     "postponed",
@@ -31,7 +32,7 @@ export const races = pgTable("races", {
         .notNull(),
     name: varchar("name", { length: 255 }).notNull(),
     raceNumber: integer("race_number"),
-    scheduleAt: timestamp("schedule_at"),
+    scheduleAt: timestamp("schedule_at", { withTimezone: true }),
     laneCount: integer("lane_count"),
     status: raceStatusEnums("status").default("draft").notNull(),
     createdAt: timestamp("created_at").defaultNow().notNull(),

@@ -1,12 +1,20 @@
 import { NextFunction, Request, Response } from "express";
-import { eq, and, ilike, sql, gte, lte } from "drizzle-orm";
+import { eq, and, ilike, sql, gte, lte, desc } from "drizzle-orm";
 import { validate as uuidValidate } from "uuid";
 import db from "../config/db.js";
 import { horses } from "../schema/horses.js";
 import { races } from "../schema/races.js";
 import { raceEntries } from "../schema/raceEntries.js";
+import { raceResultEntries } from "../schema/raceResultEntries.js";
+import { raceResults } from "../schema/raceResults.js";
+import { users } from "../schema/users.js";
+import { courseDistances } from "../schema/courseDistances.js";
+import { raceCourses } from "../schema/raceCourses.js";
 import { horsesQuerySchema } from "../validator/horse.js";
+import { raceHistoryQuerySchema } from "../validator/race.js";
 import { getPagination, paginatedResponse } from "../utils/paginate.js";
+import { uploadFile, deleteFile, getSignedUrlByKey } from "../utils/s3.js";
+import { randomHex } from "../utils/randomHex.js";
 
 const isRacingSubquery = sql<boolean>`EXISTS(
   SELECT 1 FROM ${raceEntries} re
@@ -66,6 +74,8 @@ export const getHorses = async (
                     imageUrl: horses.imageUrl,
                     healthStatus: horses.healthStatus,
                     isRetired: horses.isRetired,
+                    baseSpeed: horses.baseSpeed,
+                    stamina: horses.stamina,
                     createdAt: horses.createdAt,
                     updatedAt: horses.updatedAt,
                     isRacing: isRacingSubquery,
@@ -80,8 +90,22 @@ export const getHorses = async (
                 .where(conditions),
         ]);
 
+        const horsesWithUrls = await Promise.all(
+            data.map(async (horse) => ({
+                ...horse,
+                imageUrl: horse.imageUrl
+                    ? await getSignedUrlByKey(horse.imageUrl)
+                    : null,
+            })),
+        );
+
         return res.json(
-            paginatedResponse(data, Number(count[0]?.count ?? 0), p, l),
+            paginatedResponse(
+                horsesWithUrls,
+                Number(count[0]?.count ?? 0),
+                p,
+                l,
+            ),
         );
     } catch (err) {
         next(err);
@@ -133,6 +157,8 @@ export const getOwnerHorses = async (
                     imageUrl: horses.imageUrl,
                     healthStatus: horses.healthStatus,
                     isRetired: horses.isRetired,
+                    baseSpeed: horses.baseSpeed,
+                    stamina: horses.stamina,
                     createdAt: horses.createdAt,
                     updatedAt: horses.updatedAt,
                     isRacing: isRacingSubquery,
@@ -147,8 +173,22 @@ export const getOwnerHorses = async (
                 .where(conditions),
         ]);
 
+        const horsesWithUrls = await Promise.all(
+            data.map(async (horse) => ({
+                ...horse,
+                imageUrl: horse.imageUrl
+                    ? await getSignedUrlByKey(horse.imageUrl)
+                    : null,
+            })),
+        );
+
         return res.json(
-            paginatedResponse(data, Number(count[0]?.count ?? 0), p, l),
+            paginatedResponse(
+                horsesWithUrls,
+                Number(count[0]?.count ?? 0),
+                p,
+                l,
+            ),
         );
     } catch (err) {
         next(err);
@@ -177,6 +217,8 @@ export const getHorse = async (
                 imageUrl: horses.imageUrl,
                 healthStatus: horses.healthStatus,
                 isRetired: horses.isRetired,
+                baseSpeed: horses.baseSpeed,
+                stamina: horses.stamina,
                 createdAt: horses.createdAt,
                 updatedAt: horses.updatedAt,
                 isRacing: isRacingSubquery,
@@ -186,6 +228,10 @@ export const getHorse = async (
 
         if (!horse) {
             return res.status(404).json({ message: "Horse not found" });
+        }
+
+        if (horse.imageUrl) {
+            horse.imageUrl = await getSignedUrlByKey(horse.imageUrl);
         }
 
         res.json({ horse });
@@ -199,9 +245,35 @@ export const addHorse = async (
     res: Response,
     next: NextFunction,
 ) => {
+    let uploadedKey: string | null = null;
+
     try {
-        const { name, breed, birthDate, weightKg, imageUrl, healthStatus } =
-            req.body;
+        const {
+            name,
+            breed,
+            birthDate,
+            weightKg,
+            healthStatus,
+            baseSpeed,
+            stamina,
+        } = req.body;
+
+        let imageUrl: string | null = null;
+
+        if (req.file) {
+            const ext = req.file.mimetype.split("/")[1];
+            const key = `horses/${crypto.randomUUID()}/${randomHex(16)}.${ext}`;
+            try {
+                await uploadFile(key, req.file);
+            } catch (uploadErr) {
+                console.error("S3 upload failed:", uploadErr);
+                return res
+                    .status(500)
+                    .json({ message: "Failed to upload image" });
+            }
+            uploadedKey = key;
+            imageUrl = key;
+        }
 
         const [horse] = await db
             .insert(horses)
@@ -211,15 +283,28 @@ export const addHorse = async (
                 breed,
                 birthDate: birthDate ?? null,
                 weightKg: weightKg ?? null,
-                imageUrl: imageUrl ?? null,
+                imageUrl,
                 healthStatus: healthStatus ?? null,
                 isRetired: false,
+                baseSpeed: baseSpeed ?? 0,
+                stamina: stamina ?? 0,
             })
             .returning();
+
+        if (horse?.imageUrl) {
+            horse.imageUrl = await getSignedUrlByKey(horse.imageUrl);
+        }
 
         res.status(201).json({ horse });
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
     } catch (err: any) {
+        if (uploadedKey) {
+            try {
+                await deleteFile(uploadedKey);
+            } catch (deleteErr) {
+                console.error("Failed to cleanup uploaded file:", deleteErr);
+            }
+        }
         if (err?.cause?.code === "23505") {
             return res
                 .status(409)
@@ -234,6 +319,8 @@ export const updateHorse = async (
     res: Response,
     next: NextFunction,
 ) => {
+    let uploadedKey: string | null = null;
+
     try {
         const id = req.params.id as string;
         if (!uuidValidate(id)) {
@@ -256,16 +343,25 @@ export const updateHorse = async (
                 .json({ message: "Cannot update a retired horse" });
         }
 
-        const { name, breed, birthDate, weightKg, imageUrl, healthStatus } =
-            req.body;
+        const {
+            name,
+            breed,
+            birthDate,
+            weightKg,
+            healthStatus,
+            baseSpeed,
+            stamina,
+        } = req.body;
 
         if (
             name === undefined &&
             breed === undefined &&
             birthDate === undefined &&
             weightKg === undefined &&
-            imageUrl === undefined &&
-            healthStatus === undefined
+            healthStatus === undefined &&
+            baseSpeed === undefined &&
+            stamina === undefined &&
+            !req.file
         ) {
             return res.status(400).json({ message: "No fields to update" });
         }
@@ -276,8 +372,24 @@ export const updateHorse = async (
         if (breed !== undefined) updates.breed = breed;
         if (birthDate !== undefined) updates.birthDate = birthDate;
         if (weightKg !== undefined) updates.weightKg = weightKg;
-        if (imageUrl !== undefined) updates.imageUrl = imageUrl;
         if (healthStatus !== undefined) updates.healthStatus = healthStatus;
+        if (baseSpeed !== undefined) updates.baseSpeed = baseSpeed;
+        if (stamina !== undefined) updates.stamina = stamina;
+
+        if (req.file) {
+            const ext = req.file.mimetype.split("/")[1];
+            const key = `horses/${id}/${randomHex(16)}.${ext}`;
+            try {
+                await uploadFile(key, req.file);
+            } catch (uploadErr) {
+                console.error("S3 upload failed:", uploadErr);
+                return res
+                    .status(500)
+                    .json({ message: "Failed to upload image" });
+            }
+            uploadedKey = key;
+            updates.imageUrl = key;
+        }
 
         const [updatedHorse] = await db
             .update(horses)
@@ -285,14 +397,174 @@ export const updateHorse = async (
             .where(eq(horses.id, id))
             .returning();
 
+        if (req.file && horse?.imageUrl) {
+            await deleteFile(horse.imageUrl);
+        }
+
+        if (updatedHorse?.imageUrl) {
+            updatedHorse.imageUrl = await getSignedUrlByKey(
+                updatedHorse.imageUrl,
+            );
+        }
+
         res.json({ horse: updatedHorse });
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
     } catch (err: any) {
+        if (uploadedKey) {
+            try {
+                await deleteFile(uploadedKey);
+            } catch (deleteErr) {
+                console.error("Failed to cleanup uploaded file:", deleteErr);
+            }
+        }
         if (err?.cause?.code === "23505") {
             return res
                 .status(409)
                 .json({ message: "Horse name already in use" });
         }
+        next(err);
+    }
+};
+
+export const getHorseRaceHistory = async (
+    req: Request,
+    res: Response,
+    next: NextFunction,
+) => {
+    try {
+        const id = req.params.id as string;
+        if (!uuidValidate(id)) {
+            return res.status(400).json({ message: "Invalid uuid" });
+        }
+
+        const parsed = raceHistoryQuerySchema.safeParse(req.query);
+        if (!parsed.success) {
+            return res.status(400).json({
+                message: "Validation error",
+                errors: parsed.error.issues.map((issue) => ({
+                    field: issue.path.join("."),
+                    message: issue.message,
+                })),
+            });
+        }
+
+        const { page, limit, status } = parsed.data;
+        const { page: p, limit: l, offset } = getPagination({ page, limit });
+
+        const conditions = and(
+            eq(raceEntries.horseId, id),
+            eq(raceResults.resultStatus, "published"),
+            status ? eq(races.status, status) : undefined,
+        );
+
+        const [data, countArr, statsArr] = await Promise.all([
+            db
+                .select({
+                    raceId: races.id,
+                    raceName: races.name,
+                    raceNumber: races.raceNumber,
+                    scheduledAt: races.scheduleAt,
+                    venue: raceCourses.name,
+                    surfaceType: raceCourses.surfaceType,
+                    distanceMeters: courseDistances.distanceMeters,
+                    raceStatus: races.status,
+                    laneNumber: raceEntries.laneNumber,
+                    entryStatus: raceEntries.entryStatus,
+                    finishedPosition: raceResultEntries.finishedPosition,
+                    finishTime: raceResultEntries.finishTime,
+                    finishStatus: raceResultEntries.finishStatus,
+                    points: raceResultEntries.points,
+                    jockey: {
+                        id: users.id,
+                        fullName: users.fullName,
+                    },
+                })
+                .from(raceResultEntries)
+                .innerJoin(
+                    raceEntries,
+                    eq(raceResultEntries.entryId, raceEntries.id),
+                )
+                .innerJoin(horses, eq(raceEntries.horseId, horses.id))
+                .leftJoin(users, eq(raceEntries.jockeyId, users.id))
+                .innerJoin(races, eq(raceResultEntries.raceId, races.id))
+                .innerJoin(
+                    raceResults,
+                    eq(raceResultEntries.resultId, raceResults.id),
+                )
+                .leftJoin(
+                    courseDistances,
+                    eq(races.courseDistanceId, courseDistances.id),
+                )
+                .leftJoin(
+                    raceCourses,
+                    eq(courseDistances.courseId, raceCourses.id),
+                )
+                .where(conditions)
+                .orderBy(desc(races.scheduleAt))
+                .limit(l)
+                .offset(offset),
+
+            db
+                .select({ count: sql<number>`count(*)` })
+                .from(raceResultEntries)
+                .innerJoin(
+                    raceEntries,
+                    eq(raceResultEntries.entryId, raceEntries.id),
+                )
+                .innerJoin(horses, eq(raceEntries.horseId, horses.id))
+                .innerJoin(races, eq(raceResultEntries.raceId, races.id))
+                .innerJoin(
+                    raceResults,
+                    eq(raceResultEntries.resultId, raceResults.id),
+                )
+                .where(conditions),
+
+            db
+                .select({
+                    totalRaces: sql<number>`count(*)`,
+                    wins: sql<number>`count(*) FILTER (WHERE ${raceResultEntries.finishedPosition} = 1)`,
+                    places: sql<number>`count(*) FILTER (WHERE ${raceResultEntries.finishedPosition} IN (2, 3))`,
+                    avgFinishPosition: sql<number>`round(avg(${raceResultEntries.finishedPosition})::numeric, 2)`,
+                    dnfCount: sql<number>`count(*) FILTER (WHERE ${raceResultEntries.finishStatus} = 'dnf')`,
+                    dsqCount: sql<number>`count(*) FILTER (WHERE ${raceResultEntries.finishStatus} = 'dsq')`,
+                })
+                .from(raceResultEntries)
+                .innerJoin(
+                    raceEntries,
+                    eq(raceResultEntries.entryId, raceEntries.id),
+                )
+                .innerJoin(horses, eq(raceEntries.horseId, horses.id))
+                .innerJoin(races, eq(raceResultEntries.raceId, races.id))
+                .innerJoin(
+                    raceResults,
+                    eq(raceResultEntries.resultId, raceResults.id),
+                )
+                .where(conditions),
+        ]);
+
+        const stats = statsArr[0] ?? {
+            totalRaces: 0,
+            wins: 0,
+            places: 0,
+            avgFinishPosition: null,
+            dnfCount: 0,
+            dsqCount: 0,
+        };
+
+        res.json({
+            stats: {
+                totalRaces: Number(stats.totalRaces),
+                wins: Number(stats.wins),
+                places: Number(stats.places),
+                avgFinishPosition: stats.avgFinishPosition
+                    ? Number(stats.avgFinishPosition)
+                    : null,
+                dnfCount: Number(stats.dnfCount),
+                dsqCount: Number(stats.dsqCount),
+            },
+            ...paginatedResponse(data, Number(countArr[0]?.count ?? 0), p, l),
+        });
+    } catch (err) {
         next(err);
     }
 };

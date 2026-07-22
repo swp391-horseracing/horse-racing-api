@@ -1,4 +1,4 @@
-import { pgTable, timestamp, uuid, uniqueIndex } from "drizzle-orm/pg-core";
+import { pgTable, timestamp, uuid, unique } from "drizzle-orm/pg-core";
 import { races } from "./races.js";
 import { users } from "./users.js";
 
@@ -17,7 +17,10 @@ export const refereeAssignments = pgTable(
             .notNull(),
         assignedAt: timestamp("assigned_at").defaultNow().notNull(),
     },
-    (table) => [
-        uniqueIndex("uq_referee_race_idx").on(table.raceId, table.refereeId),
-    ],
+    (table) => ({
+        raceRefereeUnique: unique("referee_assignments_race_referee_unique").on(
+            table.raceId,
+            table.refereeId,
+        ),
+    }),
 );

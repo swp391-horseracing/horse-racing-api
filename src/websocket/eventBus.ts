@@ -1,4 +1,5 @@
 import { EventEmitter } from "events";
+import type { FeTickSnapshot, FeFinalPlacement } from "../race/simulator.js";
 
 type BaseEvent<T extends string, D extends Record<string, unknown>> = {
     type: T;
@@ -33,15 +34,47 @@ export type RaceResultPublishedEvent = BaseEvent<
     }
 >;
 
+export type TournamentStatusChangedEvent = BaseEvent<
+    "tournament:status_changed",
+    {
+        tournamentId: string;
+        status: string;
+        previousStatus: string;
+        timestamp: string;
+    }
+>;
+
+export type RaceTickEvent = BaseEvent<
+    "race:tick",
+    {
+        raceId: string;
+        tick: FeTickSnapshot;
+    }
+>;
+
+export type RaceFinishEvent = BaseEvent<
+    "race:finish",
+    {
+        raceId: string;
+        finalResults: FeFinalPlacement[];
+    }
+>;
+
 export type AppEvent =
     | RaceStatusChangedEvent
     | RaceResultUpdatedEvent
-    | RaceResultPublishedEvent;
+    | RaceResultPublishedEvent
+    | TournamentStatusChangedEvent
+    | RaceTickEvent
+    | RaceFinishEvent;
 
 type EventMap = {
     "race:status_changed": RaceStatusChangedEvent;
     "race:result_updated": RaceResultUpdatedEvent;
     "race:result_published": RaceResultPublishedEvent;
+    "tournament:status_changed": TournamentStatusChangedEvent;
+    "race:tick": RaceTickEvent;
+    "race:finish": RaceFinishEvent;
 };
 
 class EventBus {

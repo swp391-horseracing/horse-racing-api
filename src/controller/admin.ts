@@ -4,37 +4,28 @@ import {
     registrationsQuerySchema,
     tournamentReadinessSchema,
     usersQuerySchema,
+    violationTypeConfigQuerySchema,
 } from "../validator/admin.js";
 import { users } from "../schema/users.js";
-import {
-    and,
-    desc,
-    eq,
-    ExtractTablesWithRelations,
-    ilike,
-    inArray,
-    isNotNull,
-    isNull,
-    sql,
-} from "drizzle-orm";
-import type { PgTransaction } from "drizzle-orm/pg-core";
-import type { NodePgQueryResultHKT } from "drizzle-orm/node-postgres";
+import { and, desc, eq, ilike, inArray, sql } from "drizzle-orm";
 import { getPagination, paginatedResponse } from "../utils/paginate.js";
 import db from "../config/db.js";
 import { tournaments } from "../schema/tournament.js";
 import { races } from "../schema/races.js";
-import { predictions } from "../schema/predictions.js";
 import { raceResultEntries } from "../schema/raceResultEntries.js";
 import { raceEntries } from "../schema/raceEntries.js";
 import { raceResults } from "../schema/raceResults.js";
 import { refereeAssignments } from "../schema/refereeAssignments.js";
 import { violations } from "../schema/violations.js";
+import { violationTypeConfig } from "../schema/violationTypeConfig.js";
 import { horses } from "../schema/horses.js";
 import { courseDistances } from "../schema/courseDistances.js";
 import { raceCourses } from "../schema/raceCourses.js";
 import { reportsQuerySchema } from "../validator/report.js";
 import { eventBus } from "../websocket/eventBus.js";
 import { tournamentRegistrations } from "../schema/tournamentRegistrations.js";
+import { tickEmitter } from "../race/tickEmitter.js";
+import { precomputeRaceFromDb } from "../cron/precompute.js";
 
 export const getUsers = async (
     req: Request,
@@ -583,68 +574,6 @@ export const updateRace = async (
     }
 };
 
-async function resolvePredictions(
-    raceId: string,
-    tx: PgTransaction<
-        NodePgQueryResultHKT,
-        Record<string, never>,
-        ExtractTablesWithRelations<Record<string, never>>
-    >,
-) {
-    const results = await tx
-        .select({
-            entryId: raceResultEntries.entryId,
-            position: raceResultEntries.finishedPosition,
-        })
-        .from(raceResultEntries)
-        .where(
-            and(
-                eq(raceResultEntries.raceId, raceId),
-                isNotNull(raceResultEntries.finishedPosition),
-            ),
-        );
-
-    const resultMap = new Map(results.map((r) => [r.entryId, r.position]));
-
-    const pendingPredictions = await tx
-        .select({
-            id: predictions.id,
-            predictedEntryId: predictions.predictedEntryId,
-            predictedPosition: predictions.predictedPosition,
-        })
-        .from(predictions)
-        .where(
-            and(eq(predictions.raceId, raceId), isNull(predictions.isCorrect)),
-        );
-
-    const correctIds: string[] = [];
-    const incorrectIds: string[] = [];
-
-    for (const p of pendingPredictions) {
-        const actualPosition = resultMap.get(p.predictedEntryId);
-        if (actualPosition === p.predictedPosition) {
-            correctIds.push(p.id);
-        } else {
-            incorrectIds.push(p.id);
-        }
-    }
-
-    await Promise.all([
-        correctIds.length > 0
-            ? tx
-                  .update(predictions)
-                  .set({ isCorrect: true, rewardAmount: "100.00" })
-                  .where(inArray(predictions.id, correctIds))
-            : Promise.resolve(),
-        incorrectIds.length > 0
-            ? tx
-                  .update(predictions)
-                  .set({ isCorrect: false })
-                  .where(inArray(predictions.id, incorrectIds))
-            : Promise.resolve(),
-    ]);
-}
-
 export const updateRaceStatus = async (
     req: Request,
     res: Response,
@@ -656,13 +585,7 @@ export const updateRaceStatus = async (
             scheduled: ["pre_race", "postponed", "cancelled"],
             pre_race: ["ongoing", "postponed", "cancelled"],
             ongoing: ["under_review", "postponed", "cancelled"],
-            under_review: [
-                "result_confirmed",
-                "ongoing",
-                "postponed",
-                "cancelled",
-            ],
-            result_confirmed: ["completed", "cancelled"],
+            under_review: ["ongoing", "postponed", "cancelled"],
             completed: [],
             postponed: ["scheduled", "ongoing", "under_review", "cancelled"],
         };
@@ -796,6 +719,8 @@ export const getRegistrations = async (
                         id: horses.id,
                         name: horses.name,
                         breed: horses.breed,
+                        baseSpeed: horses.baseSpeed,
+                        stamina: horses.stamina,
                     },
                     owner: {
                         id: users.id,
@@ -857,13 +782,25 @@ export const getReports = async (
             parsed.data;
         const { page: p, limit: l, offset } = getPagination({ page, limit });
 
+        const refereeCondition =
+            req.user!.role === "referee"
+                ? inArray(
+                      raceResults.raceId,
+                      db
+                          .select({
+                              raceId: refereeAssignments.raceId,
+                          })
+                          .from(refereeAssignments)
+                          .where(
+                              eq(refereeAssignments.refereeId, req.user!.id),
+                          ),
+                  )
+                : undefined;
+
         const conditions = and(
             resultStatus
                 ? eq(raceResults.resultStatus, resultStatus)
-                : inArray(raceResults.resultStatus, [
-                      "referee_confirmed",
-                      "published",
-                  ]),
+                : undefined,
             search
                 ? sql`(${races.name} ILIKE ${`%${search}%`} OR ${tournaments.name} ILIKE ${`%${search}%`} OR ${users.fullName} ILIKE ${`%${search}%`})`
                 : undefined,
@@ -873,6 +810,7 @@ export const getReports = async (
             dateTo
                 ? sql`${raceResults.refereeConfirmedAt} <= ${new Date(dateTo)}`
                 : undefined,
+            refereeCondition,
         );
 
         const [data, count] = await Promise.all([
@@ -1109,6 +1047,8 @@ export const getRaceReport = async (
                     id: horses.id,
                     name: horses.name,
                     breed: horses.breed,
+                    baseSpeed: horses.baseSpeed,
+                    stamina: horses.stamina,
                 },
                 jockey: {
                     id: users.id,
@@ -1118,15 +1058,6 @@ export const getRaceReport = async (
                 finishTime: raceResultEntries.finishTime,
                 finishStatus: raceResultEntries.finishStatus,
                 points: raceResultEntries.points,
-                violation: {
-                    id: violations.id,
-                    violationType: violations.violationType,
-                    description: violations.description,
-                    severity: violations.severity,
-                    note: violations.note,
-                    occurredAt: violations.occurredAt,
-                    refereeId: violations.refereeId,
-                },
             })
             .from(raceResultEntries)
             .innerJoin(
@@ -1135,18 +1066,49 @@ export const getRaceReport = async (
             )
             .innerJoin(horses, eq(raceEntries.horseId, horses.id))
             .leftJoin(users, eq(raceEntries.jockeyId, users.id))
-            .leftJoin(
-                violations,
-                eq(raceResultEntries.violationId, violations.id),
-            )
             .where(eq(raceResultEntries.raceId, raceId))
             .orderBy(raceResultEntries.finishedPosition);
+
+        const violationRows = await db
+            .select({
+                entryId: violations.entryId,
+                id: violations.id,
+                violationTypeConfigId: violations.violationTypeConfigId,
+                violationType: violationTypeConfig.violationType,
+                severity: violations.severity,
+                note: violations.note,
+                occurredAt: violations.occurredAt,
+                refereeId: violations.refereeId,
+            })
+            .from(violations)
+            .innerJoin(
+                violationTypeConfig,
+                eq(violations.violationTypeConfigId, violationTypeConfig.id),
+            )
+            .innerJoin(raceEntries, eq(violations.entryId, raceEntries.id))
+            .where(eq(raceEntries.raceId, raceId));
+
+        type ViolationRow = (typeof violationRows)[0];
+        const violationMap = new Map<string, ViolationRow[]>();
+        for (const v of violationRows) {
+            const list = violationMap.get(v.entryId);
+            if (list) {
+                list.push(v);
+            } else {
+                violationMap.set(v.entryId, [v]);
+            }
+        }
+
+        const placementsWithViolations = placements.map((p) => ({
+            ...p,
+            violations: violationMap.get(p.entryId) ?? [],
+        }));
 
         res.json({
             race,
             referees,
             report,
-            placements,
+            placements: placementsWithViolations,
         });
     } catch (err) {
         next(err);
@@ -1204,16 +1166,6 @@ export const assignRaceReferee = async (
             const [assignment] = await tx
                 .insert(refereeAssignments)
                 .values({ raceId, refereeId, assignedBy: admin.id })
-                .onConflictDoUpdate({
-                    target: [
-                        refereeAssignments.raceId,
-                        refereeAssignments.refereeId,
-                    ],
-                    set: {
-                        assignedBy: admin.id,
-                        assignedAt: new Date(),
-                    },
-                })
                 .returning();
 
             return { ok: true as const, assignment };
@@ -1224,12 +1176,221 @@ export const assignRaceReferee = async (
         }
 
         res.json({ assignment: result.assignment });
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    } catch (err: any) {
+        if (err?.cause?.code === "23505") {
+            return res
+                .status(409)
+                .json({ message: "Referee is already assigned to this race" });
+        }
+        next(err);
+    }
+};
+
+export const unassignRaceReferee = async (
+    req: Request,
+    res: Response,
+    next: NextFunction,
+) => {
+    try {
+        const raceId = req.params.raceId as string;
+        const refereeId = req.params.refereeId as string;
+
+        if (!uuidValidate(raceId) || !uuidValidate(refereeId)) {
+            return res.status(400).json({ message: "Invalid uuid" });
+        }
+
+        const [race] = await db
+            .select({ id: races.id })
+            .from(races)
+            .where(eq(races.id, raceId));
+
+        if (!race) {
+            return res.status(404).json({ message: "Race not found" });
+        }
+
+        const [deleted] = await db
+            .delete(refereeAssignments)
+            .where(
+                and(
+                    eq(refereeAssignments.raceId, raceId),
+                    eq(refereeAssignments.refereeId, refereeId),
+                ),
+            )
+            .returning({ id: refereeAssignments.id });
+
+        if (!deleted) {
+            return res
+                .status(404)
+                .json({ message: "Referee assignment not found" });
+        }
+
+        res.json({ message: "Referee unassigned successfully" });
     } catch (err) {
         next(err);
     }
 };
 
-export const publishRaceResult = async (
+export const listViolationTypeConfigs = async (
+    req: Request,
+    res: Response,
+    next: NextFunction,
+) => {
+    try {
+        const parsed = violationTypeConfigQuerySchema.safeParse(req.query);
+        if (!parsed.success) {
+            return res.status(400).json({
+                message: "Validation Errors",
+                errors: parsed.error.issues.map((issue) => ({
+                    field: issue.path.join("."),
+                    message: issue.message,
+                })),
+            });
+        }
+
+        const { page, limit } = parsed.data;
+        const { page: p, limit: l, offset } = getPagination({ page, limit });
+
+        const [configs, count] = await Promise.all([
+            db
+                .select()
+                .from(violationTypeConfig)
+                .orderBy(violationTypeConfig.violationType)
+                .limit(l)
+                .offset(offset),
+            db
+                .select({ count: sql<number>`count(*)` })
+                .from(violationTypeConfig),
+        ]);
+
+        res.json(
+            paginatedResponse(configs, Number(count[0]?.count ?? 0), p, l),
+        );
+    } catch (err) {
+        next(err);
+    }
+};
+
+export const createViolationTypeConfig = async (
+    req: Request,
+    res: Response,
+    next: NextFunction,
+) => {
+    try {
+        const { violationType, pointsDeducted, description } = req.body;
+
+        const [config] = await db
+            .insert(violationTypeConfig)
+            .values({
+                violationType,
+                pointsDeducted,
+                description: description ?? null,
+            })
+            .returning();
+
+        res.status(201).json(config);
+    } catch (err: unknown) {
+        if (
+            err &&
+            typeof err === "object" &&
+            "cause" in err &&
+            (err as { cause?: { code?: string } }).cause?.code === "23505"
+        ) {
+            return res
+                .status(409)
+                .json({ message: "Violation type already exists" });
+        }
+        next(err);
+    }
+};
+
+export const updateViolationTypeConfig = async (
+    req: Request,
+    res: Response,
+    next: NextFunction,
+) => {
+    try {
+        const id = req.params.id as string;
+        if (!uuidValidate(id)) {
+            return res.status(400).json({ message: "Invalid uuid" });
+        }
+
+        const { violationType, pointsDeducted, description } = req.body;
+
+        const [config] = await db
+            .update(violationTypeConfig)
+            .set({
+                ...(violationType !== undefined && { violationType }),
+                ...(pointsDeducted !== undefined && { pointsDeducted }),
+                ...(description !== undefined && { description }),
+            })
+            .where(eq(violationTypeConfig.id, id))
+            .returning();
+
+        if (!config) {
+            return res
+                .status(404)
+                .json({ message: "Violation type config not found" });
+        }
+
+        res.json(config);
+    } catch (err: unknown) {
+        if (
+            err &&
+            typeof err === "object" &&
+            "cause" in err &&
+            (err as { cause?: { code?: string } }).cause?.code === "23505"
+        ) {
+            return res
+                .status(409)
+                .json({ message: "Violation type already exists" });
+        }
+        next(err);
+    }
+};
+
+export const deleteViolationTypeConfig = async (
+    req: Request,
+    res: Response,
+    next: NextFunction,
+) => {
+    try {
+        const id = req.params.id as string;
+        if (!uuidValidate(id)) {
+            return res.status(400).json({ message: "Invalid uuid" });
+        }
+
+        const [refs] = await db
+            .select({ count: sql<number>`count(*)::int` })
+            .from(violations)
+            .where(eq(violations.violationTypeConfigId, id));
+
+        const violationCount = refs?.count ?? 0;
+
+        if (violationCount > 0) {
+            return res.status(409).json({
+                message: `Cannot delete: violation type config is used by ${violationCount} violation(s)`,
+            });
+        }
+
+        const [deleted] = await db
+            .delete(violationTypeConfig)
+            .where(eq(violationTypeConfig.id, id))
+            .returning({ id: violationTypeConfig.id });
+
+        if (!deleted) {
+            return res
+                .status(404)
+                .json({ message: "Violation type config not found" });
+        }
+
+        res.json({ message: "Violation type config deleted" });
+    } catch (err) {
+        next(err);
+    }
+};
+
+export const simulateRace = async (
     req: Request,
     res: Response,
     next: NextFunction,
@@ -1240,71 +1401,121 @@ export const publishRaceResult = async (
             return res.status(400).json({ message: "Invalid uuid" });
         }
 
-        const [report] = await db
-            .select({ id: raceResults.id, status: raceResults.resultStatus })
-            .from(raceResults)
-            .where(eq(raceResults.raceId, raceId));
+        const simulation = await precomputeRaceFromDb(raceId);
 
-        if (!report) {
-            return res.status(404).json({
-                message: "No report found. Referee must submit first.",
-            });
+        const started = await tickEmitter.startTestRace(raceId, simulation);
+        if (!started) {
+            return res
+                .status(409)
+                .json({ message: "Race is already streaming" });
         }
 
-        if (report.status !== "referee_confirmed") {
-            return res.status(409).json({
-                message: "Report must be referee_confirmed before publishing",
-            });
+        res.json({
+            message: "Race simulation started",
+            raceId,
+        });
+    } catch (err) {
+        next(err);
+    }
+};
+
+export const startRace = async (
+    req: Request,
+    res: Response,
+    next: NextFunction,
+) => {
+    try {
+        const raceId = req.params.raceId as string;
+        if (!uuidValidate(raceId)) {
+            return res.status(400).json({ message: "Invalid uuid" });
         }
 
         const [race] = await db
-            .select({ status: races.status })
+            .select({
+                id: races.id,
+                status: races.status,
+            })
             .from(races)
             .where(eq(races.id, raceId));
 
-        await db.transaction(async (tx) => {
-            const [updated] = await tx
-                .update(raceResults)
-                .set({
-                    resultStatus: "published",
-                    publishedBy: req.user!.id,
-                    publishedAt: new Date(),
-                })
-                .where(eq(raceResults.id, report.id))
-                .returning();
+        if (!race) {
+            return res.status(404).json({ message: "Race not found" });
+        }
 
-            if (!updated) {
-                throw new Error("Failed to publish report");
-            }
+        if (!["draft", "scheduled"].includes(race.status)) {
+            return res.status(409).json({
+                message: `Cannot start race with status '${race.status}'. Must be 'draft' or 'scheduled'.`,
+            });
+        }
 
-            const [updatedRace] = await tx
+        const previousStatus = race.status;
+
+        await precomputeRaceFromDb(raceId);
+
+        const [updated] = await db
+            .update(races)
+            .set({ status: "ongoing" })
+            .where(
+                and(
+                    eq(races.id, raceId),
+                    inArray(races.status, ["draft", "scheduled"]),
+                ),
+            )
+            .returning({ id: races.id });
+
+        if (!updated) {
+            return res.status(409).json({
+                message: "Race was already started by another request",
+            });
+        }
+
+        try {
+            await tickEmitter.startRace(raceId);
+        } catch (err) {
+            await db
                 .update(races)
-                .set({ status: "completed" })
-                .where(eq(races.id, raceId))
-                .returning();
-
-            if (!updatedRace) {
-                throw new Error("Failed to complete race");
-            }
-
-            await resolvePredictions(raceId, tx);
-        });
+                .set({ status: previousStatus })
+                .where(eq(races.id, raceId));
+            throw err;
+        }
 
         try {
             eventBus.emit({
                 type: "race:status_changed",
                 data: {
                     raceId,
-                    status: "completed",
-                    previousStatus: race?.status ?? "",
+                    status: "ongoing",
+                    previousStatus,
                     timestamp: new Date().toISOString(),
                 },
             });
         } catch (emitErr) {
-            console.error(`Failed to emit race:status_changed ${emitErr}`);
+            console.error(
+                `Failed to emit race:status_changed for ${raceId}:`,
+                emitErr,
+            );
         }
 
-        res.json({ message: "Race result published and race completed" });
+        res.json({ message: "Race started", raceId });
+    } catch (err) {
+        next(err);
+    }
+};
+
+export const stopSimulateRace = async (
+    req: Request,
+    res: Response,
+    next: NextFunction,
+) => {
+    try {
+        const raceId = req.params.raceId as string;
+        if (!uuidValidate(raceId)) {
+            return res.status(400).json({ message: "Invalid uuid" });
+        }
+
+        tickEmitter.stopRace(raceId);
+
+        res.json({ message: "Race simulation stopped", raceId });
     } catch (err) {
         next(err);
     }

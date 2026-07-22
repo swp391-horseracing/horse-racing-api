@@ -1,0 +1,1 @@
+ALTER TABLE "race_result_entries" ALTER COLUMN "finish_time" SET DATA TYPE numeric(10, 3);

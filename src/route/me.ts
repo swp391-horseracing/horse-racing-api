@@ -1,5 +1,6 @@
 import { Router } from "express";
 import { getMeProfile } from "../controller/me/profile.js";
+import { uploadAvatar } from "../controller/me/avatar.js";
 import { getMeRaces, getMeRaceDetail } from "../controller/me/races.js";
 import { getMyRegistrations } from "../controller/me/registrations.js";
 import {
@@ -13,14 +14,32 @@ import {
     declineInvitation,
 } from "../controller/me/invitations.js";
 import { getMyPredictions } from "../controller/me/predictions.js";
+import { getMyResults, getMyResultDetail } from "../controller/me/result.js";
+import { getMyEntries } from "../controller/me/entries.js";
+import {
+    createRaceEntry,
+    withdrawRaceEntry,
+} from "../controller/me/raceEntries.js";
 import { authMiddleware } from "../middleware/auth.js";
 import { authorize } from "../middleware/authorize.js";
+import { createUpload } from "../middleware/upload.js";
 import { Role } from "../types/roles.js";
+
+const avatarUpload = createUpload({
+    maxSizeMB: 2,
+    allowedTypes: ["image/jpeg", "image/png", "image/webp"],
+});
 
 const router = Router();
 
 // profile route
 router.get("/profile", authMiddleware, getMeProfile);
+router.patch(
+    "/avatar",
+    authMiddleware,
+    avatarUpload.single("avatar"),
+    uploadAvatar,
+);
 router.get("/races", authMiddleware, getMeRaces);
 router.get("/races/:raceId", authMiddleware, getMeRaceDetail);
 
@@ -40,7 +59,7 @@ router.get(
     getRaceInvitations,
 );
 router.post(
-    "/races/:raceId/invitations",
+    "/invitations",
     authMiddleware,
     authorize(Role.HORSE_OWNER),
     inviteJockey,
@@ -93,5 +112,31 @@ router.get(
     authorize(Role.SPECTATOR),
     getMyPredictions,
 );
+
+// entries for horse owner
+router.get(
+    "/entries",
+    authMiddleware,
+    authorize(Role.HORSE_OWNER),
+    getMyEntries,
+);
+
+// owner race entries (enter/withdraw horse from race)
+router.post(
+    "/races/:raceId/entries",
+    authMiddleware,
+    authorize(Role.HORSE_OWNER),
+    createRaceEntry,
+);
+router.delete(
+    "/races/:raceId/entries/:entryId",
+    authMiddleware,
+    authorize(Role.HORSE_OWNER),
+    withdrawRaceEntry,
+);
+
+// results for jockey and horse owner
+router.get("/results", authMiddleware, getMyResults);
+router.get("/results/:raceId", authMiddleware, getMyResultDetail);
 
 export default router;

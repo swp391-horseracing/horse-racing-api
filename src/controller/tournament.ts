@@ -15,6 +15,19 @@ import { horses } from "../schema/horses.js";
 import { tournamentRegistrations } from "../schema/tournamentRegistrations.js";
 import { courseDistances } from "../schema/courseDistances.js";
 import { raceCourses } from "../schema/raceCourses.js";
+import { raceEntries } from "../schema/raceEntries.js";
+
+const calculateAge = (birthDate: Date, referenceDate: Date): number => {
+    const age = referenceDate.getFullYear() - birthDate.getFullYear();
+    const monthDiff = referenceDate.getMonth() - birthDate.getMonth();
+    if (
+        monthDiff < 0 ||
+        (monthDiff === 0 && referenceDate.getDate() < birthDate.getDate())
+    ) {
+        return age - 1;
+    }
+    return age;
+};
 
 export const getTournaments = async (
     req: Request,
@@ -172,6 +185,7 @@ export const getTournamentRaces = async (
                     venue: raceCourses.name,
                     laneCount: races.laneCount,
                     status: races.status,
+                    avaiableSlots: sql<number>`${races.laneCount} - (select count(*) from ${raceEntries} where ${raceEntries.raceId} = ${races.id})`,
                 })
                 .from(races)
                 .leftJoin(
@@ -237,6 +251,12 @@ export const registerForTournament = async (
                 .select({
                     id: tournamentsTable.id,
                     status: tournamentsTable.status,
+                    registrationCloseDate:
+                        tournamentsTable.registrationCloseDate,
+                    maximumParticipants: tournamentsTable.maximumParticipants,
+                    minAge: tournamentsTable.minAge,
+                    maxAge: tournamentsTable.maxAge,
+                    sex: tournamentsTable.sex,
                 })
                 .from(tournamentsTable)
                 .where(eq(tournamentsTable.id, tournamentId));
@@ -256,11 +276,41 @@ export const registerForTournament = async (
                 };
             }
 
+            if (
+                tournament.registrationCloseDate &&
+                new Date() >= tournament.registrationCloseDate
+            ) {
+                return {
+                    ok: false as const,
+                    status: 409,
+                    message: "Registration period has ended",
+                };
+            }
+
+            if (tournament.maximumParticipants) {
+                const [result] = await tx
+                    .select({ count: sql<number>`count(*)` })
+                    .from(tournamentRegistrations)
+                    .where(
+                        eq(tournamentRegistrations.tournamentId, tournamentId),
+                    );
+
+                if (result && result.count >= tournament.maximumParticipants) {
+                    return {
+                        ok: false as const,
+                        status: 409,
+                        message: "Tournament is full",
+                    };
+                }
+            }
+
             const [horse] = await tx
                 .select({
                     id: horses.id,
                     ownerId: horses.ownerId,
                     isRetired: horses.isRetired,
+                    birthDate: horses.birthDate,
+                    sex: horses.sex,
                 })
                 .from(horses)
                 .where(eq(horses.id, horseId));
@@ -285,6 +335,47 @@ export const registerForTournament = async (
                     status: 409,
                     message: "Horse is retired",
                 };
+            }
+
+            if (tournament.sex && horse.sex !== tournament.sex) {
+                return {
+                    ok: false as const,
+                    status: 409,
+                    message: "Horse does not meet sex requirement",
+                };
+            }
+
+            if (tournament.minAge !== null || tournament.maxAge !== null) {
+                if (!horse.birthDate) {
+                    return {
+                        ok: false as const,
+                        status: 409,
+                        message:
+                            "Horse birth date is required for this tournament",
+                    };
+                }
+            }
+
+            if (horse.birthDate) {
+                const birthDate = new Date(horse.birthDate);
+                const referenceDate =
+                    tournament.registrationCloseDate ?? new Date();
+                const age = calculateAge(birthDate, referenceDate);
+
+                if (tournament.minAge !== null && age < tournament.minAge) {
+                    return {
+                        ok: false as const,
+                        status: 409,
+                        message: "Horse does not meet minimum age requirement",
+                    };
+                }
+                if (tournament.maxAge !== null && age > tournament.maxAge) {
+                    return {
+                        ok: false as const,
+                        status: 409,
+                        message: "Horse does not meet maximum age requirement",
+                    };
+                }
             }
 
             const [registration] = await tx

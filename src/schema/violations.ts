@@ -1,13 +1,15 @@
 import {
     pgTable,
-    varchar,
     text,
     timestamp,
     uuid,
     pgEnum,
+    integer,
 } from "drizzle-orm/pg-core";
 import { raceEntries } from "./raceEntries.js";
 import { users } from "./users.js";
+import { violationTypeConfig } from "./violationTypeConfig.js";
+import { finishStatusEnum } from "./raceResultEntries.js";
 
 export const violationSeverityEnum = pgEnum("violation_severity", [
     "warning",
@@ -25,10 +27,13 @@ export const violations = pgTable("violations", {
         .references(() => users.id)
         .notNull(),
     occurredAt: timestamp("occurred_at").notNull(),
-    violationType: varchar("violation_type", { length: 100 }).notNull(),
-    description: text("description").notNull(),
+    violationTypeConfigId: uuid("violation_type_config_id")
+        .references(() => violationTypeConfig.id)
+        .notNull(),
     severity: violationSeverityEnum("severity").notNull(),
     note: text("note"),
+    pointsDeducted: integer("points_deducted"),
+    previousFinishStatus: finishStatusEnum("previous_finish_status"),
     recordedAt: timestamp("recorded_at").defaultNow().notNull(),
     updatedAt: timestamp("updated_at")
         .defaultNow()

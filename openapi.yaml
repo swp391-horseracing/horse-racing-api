@@ -1052,14 +1052,20 @@ components:
       type: object
       required:
         - jockeyId
-        - horseId
+        - entryId
+        - title
       properties:
         jockeyId:
           type: string
           format: uuid
-        horseId:
+        entryId:
           type: string
           format: uuid
+        title:
+          type: string
+          minLength: 5
+        message:
+          type: string
 
     JockeyInvitation:
       type: object
@@ -1369,6 +1375,16 @@ components:
           type:
             - string
             - "null"
+        weightKg:
+          type:
+            - string
+            - "null"
+        experienceYear:
+          type:
+            - integer
+            - "null"
+        isRacing:
+          type: boolean
 
     PaginatedJockeys:
       type: object
@@ -1584,6 +1600,14 @@ components:
               type: string
             breed:
               type: string
+            baseSpeed:
+              type:
+                - number
+                - "null"
+            stamina:
+              type:
+                - number
+                - "null"
         jockey:
           type: object
           properties:
@@ -1612,10 +1636,11 @@ components:
           type:
             - integer
             - "null"
-        violation:
-          oneOf:
-            - $ref: "#/components/schemas/Violation"
-            - type: "null"
+        violations:
+          type: array
+          items:
+            $ref: "#/components/schemas/Violation"
+          default: []
 
     RaceReport:
       type: object
@@ -1637,18 +1662,30 @@ components:
                 - integer
                 - "null"
             trackCondition:
-              oneOf:
-                - $ref: "#/components/schemas/TrackCondition"
-                - type: "null"
+              type:
+                - string
+                - "null"
+            venue:
+              type:
+                - string
+                - "null"
+            courseName:
+              type:
+                - string
+                - "null"
+            courseCity:
+              type:
+                - string
+                - "null"
+            surfaceType:
+              type:
+                - string
+                - "null"
             scheduledAt:
               type:
                 - string
                 - "null"
               format: date-time
-            venue:
-              type:
-                - string
-                - "null"
             laneCount:
               type:
                 - integer
@@ -2065,15 +2102,192 @@ components:
         entry:
           $ref: "#/components/schemas/RaceEntry"
 
-    PaginatedMeRegistrations:
+    MyEntryListItem:
+      type: object
+      properties:
+        entryId:
+          type: string
+          format: uuid
+        raceId:
+          type: string
+          format: uuid
+        raceName:
+          type: string
+        scheduleAt:
+          type:
+            - string
+            - "null"
+          format: date-time
+        raceStatus:
+          $ref: "#/components/schemas/RaceStatus"
+        horseId:
+          type: string
+          format: uuid
+        horseName:
+          type: string
+        weightKg:
+          type:
+            - string
+            - "null"
+        jockeyId:
+          type:
+            - string
+            - "null"
+          format: uuid
+        jockeyName:
+          type:
+            - string
+            - "null"
+        laneNumber:
+          type:
+            - integer
+            - "null"
+        entryStatus:
+          oneOf:
+            - $ref: "#/components/schemas/EntryStatus"
+            - type: "null"
+        confirmedAt:
+          type:
+            - string
+            - "null"
+          format: date-time
+        venue:
+          type:
+            - string
+            - "null"
+        distanceMeters:
+          type:
+            - integer
+            - "null"
+        pendingCount:
+          type: integer
+        responsesCount:
+          type: integer
+
+    PaginatedMyEntries:
       type: object
       properties:
         data:
           type: array
           items:
-            $ref: "#/components/schemas/MeRegistrationItem"
+            $ref: "#/components/schemas/MyEntryListItem"
         pagination:
           $ref: "#/components/schemas/Pagination"
+
+    MyResultItem:
+      type: object
+      properties:
+        entryId:
+          type: string
+          format: uuid
+        raceId:
+          type: string
+          format: uuid
+        raceName:
+          type: string
+        scheduledAt:
+          type:
+            - string
+            - "null"
+          format: date-time
+        venue:
+          type:
+            - string
+            - "null"
+        distanceMeters:
+          type:
+            - integer
+            - "null"
+        raceStatus:
+          $ref: "#/components/schemas/RaceStatus"
+        resultStatus:
+          $ref: "#/components/schemas/ReportStatus"
+        laneNumber:
+          type:
+            - integer
+            - "null"
+        horseId:
+          type: string
+          format: uuid
+        horseName:
+          type: string
+        jockeyId:
+          type:
+            - string
+            - "null"
+          format: uuid
+        jockeyName:
+          type:
+            - string
+            - "null"
+        finishedPosition:
+          type:
+            - integer
+            - "null"
+        finishTime:
+          type:
+            - string
+            - "null"
+        finishStatus:
+          oneOf:
+            - $ref: "#/components/schemas/FinishStatus"
+            - type: "null"
+        points:
+          type:
+            - integer
+            - "null"
+
+    PaginatedMyResults:
+      type: object
+      properties:
+        data:
+          type: array
+          items:
+            $ref: "#/components/schemas/MyResultItem"
+        pagination:
+          $ref: "#/components/schemas/Pagination"
+
+    RaceResultEntry:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        raceId:
+          type: string
+          format: uuid
+        jockeyId:
+          type:
+            - string
+            - "null"
+          format: uuid
+        jockeyName:
+          type:
+            - string
+            - "null"
+        horseId:
+          type: string
+          format: uuid
+        horseName:
+          type: string
+        finishedPosition:
+          type:
+            - integer
+            - "null"
+        finishTime:
+          type:
+            - string
+            - "null"
+        finishStatus:
+          oneOf:
+            - $ref: "#/components/schemas/FinishStatus"
+            - type: "null"
+        points:
+          type:
+            - integer
+            - "null"
+
+    PaginatedMeRegistrations:
 
   responses:
     BadRequest:
@@ -2412,9 +2626,7 @@ paths:
                 properties:
                   message:
                     type: string
-                    example: Report submitted
-                  report:
-                    $ref: "#/components/schemas/RaceResult"
+                    example: Report submitted and race result published
         "400":
           $ref: "#/components/responses/BadRequest"
         "401":
@@ -2820,7 +3032,7 @@ paths:
       tags:
         - Admin
       summary: List race reports
-      description: Requires admin role. Returns reports with referee_confirmed or published status by default.
+      description: Requires admin or referee role. Returns reports filtered by the given criteria.
       security:
         - BearerAuth: []
       parameters:
@@ -2828,7 +3040,7 @@ paths:
           in: query
           schema:
             $ref: "#/components/schemas/ReportStatus"
-          description: Filter by report status. Defaults to referee_confirmed and published.
+          description: Filter by report status. If omitted, all statuses are returned.
         - name: search
           in: query
           schema:
@@ -2889,36 +3101,6 @@ paths:
           $ref: "#/components/responses/Forbidden"
         "404":
           $ref: "#/components/responses/NotFound"
-        "500":
-          $ref: "#/components/responses/ServerError"
-
-  /admin/races/{raceId}/publish:
-    patch:
-      tags:
-        - Admin
-      summary: Publish a race result
-      description: Requires admin role. The report must be in referee_confirmed status. Completes the race and resolves predictions.
-      security:
-        - BearerAuth: []
-      parameters:
-        - $ref: "#/components/parameters/RaceIdParam"
-      responses:
-        "200":
-          description: Race result published.
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/MessageResponse"
-        "400":
-          $ref: "#/components/responses/BadRequest"
-        "401":
-          $ref: "#/components/responses/Unauthorized"
-        "403":
-          $ref: "#/components/responses/Forbidden"
-        "404":
-          $ref: "#/components/responses/NotFound"
-        "409":
-          $ref: "#/components/responses/Conflict"
         "500":
           $ref: "#/components/responses/ServerError"
 
@@ -3032,6 +3214,38 @@ paths:
         "500":
           $ref: "#/components/responses/ServerError"
 
+  /me/entries:
+    get:
+      tags:
+        - Me
+      summary: List my race entries
+      description: Requires horse_owner role. Returns paginated flat list of all race entries for the owner's horses with invitation counts.
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: status
+          in: query
+          schema:
+            $ref: "#/components/schemas/RaceStatus"
+          description: Filter by race status.
+        - $ref: "#/components/parameters/PageParam"
+        - $ref: "#/components/parameters/LimitParam"
+      responses:
+        "200":
+          description: Paginated entry list.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PaginatedMyEntries"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "500":
+          $ref: "#/components/responses/ServerError"
+
   /me/races/{raceId}/invitations:
     get:
       tags:
@@ -3061,44 +3275,6 @@ paths:
           $ref: "#/components/responses/Unauthorized"
         "403":
           $ref: "#/components/responses/Forbidden"
-        "500":
-          $ref: "#/components/responses/ServerError"
-
-    post:
-      tags:
-        - Me
-      summary: Invite a jockey for a horse in a race
-      description: Requires horse_owner role.
-      security:
-        - BearerAuth: []
-      parameters:
-        - $ref: "#/components/parameters/RaceIdParam"
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: "#/components/schemas/InviteJockeyRequest"
-      responses:
-        "201":
-          description: Invitation created.
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  invitation:
-                    $ref: "#/components/schemas/JockeyInvitation"
-        "400":
-          $ref: "#/components/responses/BadRequest"
-        "401":
-          $ref: "#/components/responses/Unauthorized"
-        "403":
-          $ref: "#/components/responses/Forbidden"
-        "404":
-          $ref: "#/components/responses/NotFound"
-        "409":
-          $ref: "#/components/responses/Conflict"
         "500":
           $ref: "#/components/responses/ServerError"
 
@@ -3198,6 +3374,42 @@ paths:
         "500":
           $ref: "#/components/responses/ServerError"
 
+    post:
+      tags:
+        - Me
+      summary: Invite a jockey for a race entry
+      description: Requires horse_owner role. Uses entryId from the body instead of raceId in the URL.
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/InviteJockeyRequest"
+      responses:
+        "201":
+          description: Invitation created.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  invitation:
+                    $ref: "#/components/schemas/JockeyInvitation"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+        "500":
+          $ref: "#/components/responses/ServerError"
+
   /me/invitations/{id}:
     get:
       tags:
@@ -3259,6 +3471,39 @@ paths:
         "500":
           $ref: "#/components/responses/ServerError"
 
+  /me/invitations/{id}/decline:
+    patch:
+      tags:
+        - Me
+      summary: Decline a jockey invitation
+      description: Requires jockey role. Only pending invitations can be declined.
+      security:
+        - BearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/InvitationIdParam"
+      responses:
+        "200":
+          description: Invitation declined.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  invitation:
+                    $ref: "#/components/schemas/JockeyInvitation"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+        "500":
+          $ref: "#/components/responses/ServerError"
+
   /me/predictions:
     get:
       tags:
@@ -3292,6 +3537,71 @@ paths:
           $ref: "#/components/responses/Unauthorized"
         "403":
           $ref: "#/components/responses/Forbidden"
+        "500":
+          $ref: "#/components/responses/ServerError"
+
+  /me/results:
+    get:
+      tags:
+        - Me
+      summary: Get my race results
+      description: Requires jockey or horse_owner role. Returns paginated published results for the authenticated user's involvement.
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: status
+          in: query
+          schema:
+            $ref: "#/components/schemas/RaceStatus"
+          description: Filter by race status.
+        - $ref: "#/components/parameters/PageParam"
+        - $ref: "#/components/parameters/LimitParam"
+      responses:
+        "200":
+          description: Paginated result list.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PaginatedMyResults"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "500":
+          $ref: "#/components/responses/ServerError"
+
+  /me/results/{raceId}:
+    get:
+      tags:
+        - Me
+      summary: Get my race result detail by race
+      description: Requires jockey or horse_owner role. Returns entries for a specific race if the user was involved and the result is published.
+      security:
+        - BearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/RaceIdParam"
+      responses:
+        "200":
+          description: Result entries for the race.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  entries:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/MyResultItem"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
         "500":
           $ref: "#/components/responses/ServerError"
 
@@ -3451,6 +3761,31 @@ paths:
                 type: array
                 items:
                   $ref: "#/components/schemas/RaceEntry"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "500":
+          $ref: "#/components/responses/ServerError"
+
+  /races/{raceId}/results:
+    get:
+      tags:
+        - Races
+      summary: Get published race results
+      description: Returns published race results with horse and jockey info, ordered by finished position.
+      security: []
+      parameters:
+        - $ref: "#/components/parameters/RaceIdParam"
+      responses:
+        "200":
+          description: Race results.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/RaceResultEntry"
         "400":
           $ref: "#/components/responses/BadRequest"
         "404":

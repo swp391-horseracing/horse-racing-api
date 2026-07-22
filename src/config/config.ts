@@ -13,6 +13,12 @@ interface Env {
     DB_PORT: string;
     CAPTCHA_SECRET_KEY: string;
     NODE_ENV: string;
+    S3_BUCKET_NAME: string;
+    S3_ENDPOINT_URL: string;
+    S3_ACCESS_KEY: string;
+    S3_SECRET_KEY: string;
+    AWS_REGION: string;
+    REDIS_URL: string;
 }
 if (!process.env.DB_DATABASE) {
     throw new Error("DB_DATABASE is not defined");
@@ -38,6 +44,30 @@ if (!process.env.JWT_EXPIRES_IN) {
     throw new Error("JWT_EXPIRES_IN is not defined");
 }
 
+if (!process.env.S3_BUCKET_NAME) {
+    throw new Error("S3_BUCKET_NAME is not defined");
+}
+
+if (!process.env.S3_ENDPOINT_URL) {
+    throw new Error("S3_ENDPOINT_URL is not defined");
+}
+
+if (!process.env.S3_ACCESS_KEY) {
+    throw new Error("S3_ACCESS_KEY is not defined");
+}
+
+if (!process.env.S3_SECRET_KEY) {
+    throw new Error("S3_SECRET_KEY is not defined");
+}
+
+if (!process.env.AWS_REGION) {
+    throw new Error("AWS_REGION is not defined");
+}
+
+if (!process.env.REDIS_URL) {
+    throw new Error("REDIS_URL is not defined");
+}
+
 const nodeEnv = process.env.NODE_ENV?.toLowerCase();
 const isDev = nodeEnv === "dev" || nodeEnv === "development";
 
@@ -57,6 +87,12 @@ const config = (): Env => {
         JWT_EXPIRES_IN: String(process.env.JWT_EXPIRES_IN),
         CAPTCHA_SECRET_KEY: String(process.env.CAPTCHA_SECRET_KEY),
         NODE_ENV: String(nodeEnv),
+        S3_BUCKET_NAME: String(process.env.S3_BUCKET_NAME),
+        S3_ENDPOINT_URL: String(process.env.S3_ENDPOINT_URL),
+        S3_ACCESS_KEY: String(process.env.S3_ACCESS_KEY),
+        S3_SECRET_KEY: String(process.env.S3_SECRET_KEY),
+        AWS_REGION: String(process.env.AWS_REGION),
+        REDIS_URL: String(process.env.REDIS_URL),
     };
 };
 

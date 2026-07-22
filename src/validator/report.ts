@@ -1,9 +1,7 @@
 import { z } from "zod/v4";
 
 export const reportsQuerySchema = z.object({
-    resultStatus: z
-        .enum(["draft", "referee_confirmed", "published"])
-        .optional(),
+    resultStatus: z.enum(["draft", "published"]).optional(),
     search: z.string().optional(),
     dateFrom: z.string().datetime().optional(),
     dateTo: z.string().datetime().optional(),

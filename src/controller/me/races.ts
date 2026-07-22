@@ -74,6 +74,7 @@ const getOwnerRaces = async (userId: string, limit: number, offset: number) => {
                 venue: raceCourses.name,
                 laneCount: races.laneCount,
                 status: races.status,
+                avaiableSlots: sql<number>`${races.laneCount} - (select count(*) from ${raceEntries} where ${raceEntries.raceId} = ${races.id})`,
             })
             .from(races)
             .innerJoin(raceEntries, eq(raceEntries.raceId, races.id))
@@ -214,6 +215,8 @@ const getJockeyRaceDetail = async (userId: string, raceId: string) => {
             horseName: horses.name,
             horseBreed: horses.breed,
             horseWeight: horses.weightKg,
+            horseBaseSpeed: horses.baseSpeed,
+            horseStamina: horses.stamina,
             ownerId: users.id,
             ownerName: users.fullName,
             name: races.name,
@@ -258,10 +261,13 @@ const getOwnerRaceDetail = async (userId: string, raceId: string) => {
             venue: raceCourses.name,
             laneCount: races.laneCount,
             status: races.status,
+            availableSlots: sql<number>`${races.laneCount} - (select count(*) from ${raceEntries} where ${raceEntries.raceId} = ${races.id})`,
             // eslint-disable-next-line @typescript-eslint/no-explicit-any
             horses: sql<any[]>`json_agg(json_build_object(
                     'id', ${horses.id},
                     'name', ${horses.name},
+                    'baseSpeed', ${horses.baseSpeed},
+                    'stamina', ${horses.stamina},
                     'laneNumber', ${raceEntries.laneNumber},
                     'entryStatus', ${raceEntries.entryStatus},
                     'confirmedAt', ${raceEntries.confirmedAt}

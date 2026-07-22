@@ -1,13 +1,24 @@
 import {
     pgTable,
+    pgEnum,
     uuid,
     varchar,
     date,
     numeric,
     boolean,
     timestamp,
+    real,
 } from "drizzle-orm/pg-core";
 import { users } from "./users.js";
+
+export const horseSexEnum = pgEnum("horse_sex", ["male", "female", "gelding"]);
+
+export const horseHealthStatusEnum = pgEnum("horse_health_status", [
+    "healthy",
+    "injured",
+    "sick",
+    "rest",
+]);
 
 export const horses = pgTable("horses", {
     id: uuid("id").defaultRandom().primaryKey(),
@@ -21,8 +32,11 @@ export const horses = pgTable("horses", {
         mode: "number",
     }),
     imageUrl: varchar("image_url", { length: 255 }),
-    healthStatus: varchar("health_status", { length: 255 }),
+    healthStatus: horseHealthStatusEnum("health_status"),
+    sex: horseSexEnum("sex"),
     isRetired: boolean("isRetired"),
+    baseSpeed: real("base_speed").default(12).notNull(),
+    stamina: real("stamina").default(150).notNull(),
     createdAt: timestamp("created_at").defaultNow().notNull(),
     updatedAt: timestamp("updated_at")
         .defaultNow()

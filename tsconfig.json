@@ -5,7 +5,7 @@
     "moduleResolution": "nodenext",
     "outDir": "./dist",
     "rootDir": "./src",
-    "types": ["node", "passport"],
+    "types": ["node", "passport", "node-cron"],
     "strict": true,
     "noUncheckedIndexedAccess": true,
     "skipLibCheck": true,

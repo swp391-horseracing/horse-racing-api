@@ -1,7 +1,7 @@
 import { NextFunction, Request, Response } from "express";
 import { validate as uuidValidate } from "uuid";
 import db from "../../config/db.js";
-import { and, eq, inArray, isNull, ne, sql } from "drizzle-orm";
+import { and, desc, eq, inArray, isNull, ne, sql } from "drizzle-orm";
 import { jockeyInvitations } from "../../schema/jockeyInvitations.js";
 import { raceEntries } from "../../schema/raceEntries.js";
 import { races } from "../../schema/races.js";
@@ -57,6 +57,8 @@ export const getRaceInvitations = async (
                         id: horses.id,
                         name: horses.name,
                         breed: horses.breed,
+                        baseSpeed: horses.baseSpeed,
+                        stamina: horses.stamina,
                     },
                     jockey: {
                         id: users.id,
@@ -69,7 +71,7 @@ export const getRaceInvitations = async (
                 .where(condition)
                 .limit(l)
                 .offset(offset)
-                .orderBy(jockeyInvitations.invitedAt),
+                .orderBy(desc(jockeyInvitations.invitedAt)),
             db
                 .select({ count: sql<number>`count(*)` })
                 .from(jockeyInvitations)
@@ -91,10 +93,6 @@ export const inviteJockey = async (
 ) => {
     try {
         const user = req.user!;
-        const raceId = req.params.raceId as string;
-        if (!uuidValidate(raceId)) {
-            return res.status(400).json({ message: "Invalid uuid" });
-        }
 
         const parsed = inviteJockeySchema.safeParse(req.body);
         if (!parsed.success) {
@@ -106,13 +104,14 @@ export const inviteJockey = async (
                 })),
             });
         }
-        const { jockeyId, entryId } = parsed.data;
+        const { jockeyId, entryId, title } = parsed.data;
 
         const result = await db.transaction(async (tx) => {
             // Verify this owner has this horse entered in this race
             const [entry] = await tx
                 .select({
                     id: raceEntries.id,
+                    raceId: raceEntries.raceId,
                     horseId: raceEntries.horseId,
                     jockeyId: raceEntries.jockeyId,
                 })
@@ -120,7 +119,6 @@ export const inviteJockey = async (
                 .innerJoin(horses, eq(raceEntries.horseId, horses.id))
                 .where(
                     and(
-                        eq(raceEntries.raceId, raceId),
                         eq(raceEntries.id, entryId),
                         eq(horses.ownerId, user.id),
                     ),
@@ -163,13 +161,37 @@ export const inviteJockey = async (
                 };
             }
 
+            // Check if jockey is already active in another non-completed, non-cancelled race
+            const [activeEntry] = await tx
+                .select({ id: raceEntries.id })
+                .from(raceEntries)
+                .innerJoin(races, eq(raceEntries.raceId, races.id))
+                .where(
+                    and(
+                        eq(raceEntries.jockeyId, jockeyId),
+                        eq(raceEntries.entryStatus, "confirmed"),
+                        ne(races.status, "completed"),
+                        ne(races.status, "cancelled"),
+                    ),
+                )
+                .limit(1);
+
+            if (activeEntry) {
+                return {
+                    ok: false as const,
+                    status: 409,
+                    message:
+                        "This jockey is already actively racing in another race",
+                };
+            }
+
             // Check this owner doesn't already have a pending invitation to this jockey for this race
             const [existing] = await tx
                 .select({ id: jockeyInvitations.invitationId })
                 .from(jockeyInvitations)
                 .where(
                     and(
-                        eq(jockeyInvitations.raceId, raceId),
+                        eq(jockeyInvitations.raceId, entry.raceId),
                         eq(jockeyInvitations.jockeyId, jockeyId),
                         eq(jockeyInvitations.ownerId, user.id),
                         eq(jockeyInvitations.status, "pending"),
@@ -185,12 +207,34 @@ export const inviteJockey = async (
                 };
             }
 
+            // Check if jockey is already assigned to another entry in this same race
+            const [sameRaceEntry] = await tx
+                .select({ id: raceEntries.id })
+                .from(raceEntries)
+                .where(
+                    and(
+                        eq(raceEntries.jockeyId, jockeyId),
+                        eq(raceEntries.raceId, entry.raceId),
+                    ),
+                )
+                .limit(1);
+
+            if (sameRaceEntry) {
+                return {
+                    ok: false as const,
+                    status: 409,
+                    message:
+                        "This jockey is already assigned to another horse in this race",
+                };
+            }
+
             const [invitation] = await tx
                 .insert(jockeyInvitations)
                 .values({
-                    raceId,
+                    raceId: entry.raceId,
                     horseId: entry.horseId,
                     ownerId: user.id,
+                    title: title,
                     jockeyId,
                 })
                 .returning();
@@ -313,7 +357,7 @@ export const confirmJockey = async (
                 };
             }
 
-            // Ensure the race entry exists before confirming
+            // Ensure the race entry exists before assigning
             const [existingEntry] = await tx
                 .select({ id: raceEntries.id })
                 .from(raceEntries)
@@ -332,15 +376,11 @@ export const confirmJockey = async (
                 };
             }
 
-            // Assign the chosen jockey and confirm the race entry, unless
+            // Assign the chosen jockey to the race entry, unless
             // another jockey has already been confirmed for this horse
             const [entry] = await tx
                 .update(raceEntries)
-                .set({
-                    jockeyId: invitation.jockeyId,
-                    entryStatus: "confirmed",
-                    confirmedAt: new Date(),
-                })
+                .set({ jockeyId: invitation.jockeyId })
                 .where(
                     and(
                         eq(raceEntries.raceId, raceId),
@@ -359,10 +399,10 @@ export const confirmJockey = async (
                 };
             }
 
-            // Decline the other invitations (pending or accepted) for this horse entry
+            // Cancel the other invitations (pending or accepted) for this horse entry
             await tx
                 .update(jockeyInvitations)
-                .set({ status: "declined", respondedAt: new Date() })
+                .set({ status: "cancelled", respondedAt: new Date() })
                 .where(
                     and(
                         eq(jockeyInvitations.raceId, raceId),
@@ -411,6 +451,8 @@ const getJockeyInvitations = async (
             .select({
                 id: jockeyInvitations.invitationId,
                 status: jockeyInvitations.status,
+                title: jockeyInvitations.title,
+                message: jockeyInvitations.message,
                 invitedAt: jockeyInvitations.invitedAt,
                 respondedAt: jockeyInvitations.respondedAt,
                 race: {
@@ -424,6 +466,8 @@ const getJockeyInvitations = async (
                     id: horses.id,
                     name: horses.name,
                     breed: horses.breed,
+                    baseSpeed: horses.baseSpeed,
+                    stamina: horses.stamina,
                 },
                 owner: {
                     id: users.id,
@@ -442,7 +486,7 @@ const getJockeyInvitations = async (
             .where(condition)
             .limit(limit)
             .offset(offset)
-            .orderBy(jockeyInvitations.invitedAt),
+            .orderBy(desc(jockeyInvitations.invitedAt)),
         db
             .select({ count: sql<number>`count(*)` })
             .from(jockeyInvitations)
@@ -503,6 +547,8 @@ export const getInvitationDetail = async (
             .select({
                 id: jockeyInvitations.invitationId,
                 status: jockeyInvitations.status,
+                title: jockeyInvitations.title,
+                message: jockeyInvitations.message,
                 invitedAt: jockeyInvitations.invitedAt,
                 respondedAt: jockeyInvitations.respondedAt,
                 race: {
@@ -520,6 +566,8 @@ export const getInvitationDetail = async (
                     name: horses.name,
                     breed: horses.breed,
                     weightKg: horses.weightKg,
+                    baseSpeed: horses.baseSpeed,
+                    stamina: horses.stamina,
                 },
                 owner: {
                     id: users.id,

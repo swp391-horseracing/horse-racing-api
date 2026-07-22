@@ -15,3 +15,4 @@ export * from "./predictions.js";
 export * from "./raceCourses.js";
 export * from "./courseDistances.js";
 export * from "./trackShapes.js";
+export * from "./violationTypeConfig.js";

@@ -10,6 +10,7 @@ import {
     numeric,
 } from "drizzle-orm/pg-core";
 import { users } from "./users.js";
+import { horseSexEnum } from "./horses.js";
 import { sql } from "drizzle-orm";
 
 export const tournamentStatusEnums = pgEnum("tournament_status", [
@@ -37,6 +38,10 @@ export const tournaments = pgTable(
         maximumParticipants: integer("maximum_participants"),
         minimumParticipants: integer("minimum_participants"),
         prizePool: numeric("prize_pool", { precision: 12, scale: 2 }),
+        minAge: integer("min_age"),
+        maxAge: integer("max_age"),
+        sex: horseSexEnum("sex"),
+        carryWeight: numeric("carry_weight", { precision: 6, scale: 2 }),
         status: tournamentStatusEnums().default("draft").notNull(),
         createdBy: uuid("created_by")
             .references(() => users.id)

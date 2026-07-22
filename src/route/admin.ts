@@ -5,13 +5,19 @@ import {
     assignRaceReferee,
     createTournament,
     createTournamentRace,
+    createViolationTypeConfig,
+    deleteViolationTypeConfig,
     getRaceReferee,
     getRaceReport,
     getRegistrations,
     getReports,
     getUser,
     getUsers,
-    publishRaceResult,
+    listViolationTypeConfigs,
+    simulateRace,
+    startRace,
+    stopSimulateRace,
+    unassignRaceReferee,
     updateRace,
     updateRaceStatus,
     updateRegistrationStatus,
@@ -19,6 +25,7 @@ import {
     updateTournamentStatus,
     updateUserRole,
     updateUserStatus,
+    updateViolationTypeConfig,
 } from "../controller/admin.js";
 import { authorize } from "../middleware/authorize.js";
 import { validate } from "../middleware/validate.js";
@@ -26,6 +33,7 @@ import {
     assignRefereeSchema,
     createRaceSchema,
     createTournamentSchema,
+    createViolationTypeConfigSchema,
     updateRaceSchema,
     updateRaceStatusSchema,
     updateRegistrationStatusSchema,
@@ -33,6 +41,7 @@ import {
     updateStatusSchema,
     updateTournamentSchema,
     updateTournamentStatusSchema,
+    updateViolationTypeConfigSchema,
 } from "../validator/admin.js";
 
 const router = Router();
@@ -91,7 +100,7 @@ router.patch(
 router.patch(
     "/races/:raceId/status",
     authMiddleware,
-    authorize(Role.ADMIN),
+    authorize(Role.ADMIN, Role.REFEREE),
     validate(updateRaceStatusSchema),
     updateRaceStatus,
 );
@@ -121,8 +130,40 @@ router.put(
     validate(assignRefereeSchema),
     assignRaceReferee,
 );
+router.delete(
+    "/races/:raceId/referee/:refereeId",
+    authMiddleware,
+    authorize(Role.ADMIN),
+    unassignRaceReferee,
+);
 
-router.get("/reports", authMiddleware, authorize(Role.ADMIN), getReports);
+router.post(
+    "/races/:raceId/simulate",
+    authMiddleware,
+    authorize(Role.ADMIN),
+    simulateRace,
+);
+
+router.post(
+    "/races/:raceId/start",
+    authMiddleware,
+    authorize(Role.ADMIN),
+    startRace,
+);
+
+router.delete(
+    "/races/:raceId/simulate",
+    authMiddleware,
+    authorize(Role.ADMIN),
+    stopSimulateRace,
+);
+
+router.get(
+    "/reports",
+    authMiddleware,
+    authorize(Role.ADMIN, Role.REFEREE),
+    getReports,
+);
 
 router.get(
     "/races/:raceId/report",
@@ -131,11 +172,34 @@ router.get(
     getRaceReport,
 );
 
-router.patch(
-    "/races/:raceId/publish",
+router.get(
+    "/violation-types",
+    authMiddleware,
+    authorize(Role.ADMIN, Role.REFEREE),
+    listViolationTypeConfigs,
+);
+
+router.post(
+    "/violation-types",
     authMiddleware,
     authorize(Role.ADMIN),
-    publishRaceResult,
+    validate(createViolationTypeConfigSchema),
+    createViolationTypeConfig,
+);
+
+router.patch(
+    "/violation-types/:id",
+    authMiddleware,
+    authorize(Role.ADMIN),
+    validate(updateViolationTypeConfigSchema),
+    updateViolationTypeConfig,
+);
+
+router.delete(
+    "/violation-types/:id",
+    authMiddleware,
+    authorize(Role.ADMIN),
+    deleteViolationTypeConfig,
 );
 
 export default router;
