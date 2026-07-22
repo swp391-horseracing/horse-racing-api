@@ -1,7 +1,8 @@
 import { Router } from "express";
-import { getJockeys } from "../controller/jockey.js";
+import { getJockeys, getJockeyRaceHistory } from "../controller/jockey.js";
 const router = Router();
 
 router.get("/", getJockeys);
+router.get("/:jockeyId/races", getJockeyRaceHistory);
 
 export default router;
