@@ -104,7 +104,9 @@ export const getJockeyRaceHistory = async (
         const conditions: ReturnType<typeof and> = and(
             eq(raceEntries.jockeyId, jockeyId),
             eq(raceResults.resultStatus, "published"),
-            status ? eq(races.status, status as typeof races.$inferSelect.status) : undefined,
+            status
+                ? eq(races.status, status as typeof races.$inferSelect.status)
+                : undefined,
         );
 
         const [data, countArr, statsArr] = await Promise.all([
@@ -145,7 +147,10 @@ export const getJockeyRaceHistory = async (
                     courseDistances,
                     eq(races.courseDistanceId, courseDistances.id),
                 )
-                .leftJoin(raceCourses, eq(courseDistances.courseId, raceCourses.id))
+                .leftJoin(
+                    raceCourses,
+                    eq(courseDistances.courseId, raceCourses.id),
+                )
                 .where(conditions)
                 .orderBy(desc(races.scheduleAt))
                 .limit(l)
@@ -209,12 +214,7 @@ export const getJockeyRaceHistory = async (
                 dnfCount: Number(stats.dnfCount),
                 dsqCount: Number(stats.dsqCount),
             },
-            ...paginatedResponse(
-                data,
-                Number(countArr[0]?.count ?? 0),
-                p,
-                l,
-            ),
+            ...paginatedResponse(data, Number(countArr[0]?.count ?? 0), p, l),
         });
     } catch (err) {
         next(err);
