@@ -454,10 +454,15 @@ export const getTournamentParticipants = async (
             limit: limit ? Number(limit) : undefined,
         });
 
+        const tournamentConditions = [eq(tournamentsTable.id, tournamentId)];
+        if (req.user?.role !== "admin") {
+            tournamentConditions.push(ne(tournamentsTable.status, "draft"));
+        }
+
         const [tournament] = await db
             .select({ id: tournamentsTable.id })
             .from(tournamentsTable)
-            .where(eq(tournamentsTable.id, tournamentId));
+            .where(and(...tournamentConditions));
 
         if (!tournament) {
             return res.status(404).json({ message: "Tournament not exists" });
