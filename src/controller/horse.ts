@@ -485,7 +485,7 @@ export const getHorseRaceHistory = async (
                     eq(raceResultEntries.entryId, raceEntries.id),
                 )
                 .innerJoin(horses, eq(raceEntries.horseId, horses.id))
-                .innerJoin(users, eq(raceEntries.jockeyId, users.id))
+                .leftJoin(users, eq(raceEntries.jockeyId, users.id))
                 .innerJoin(races, eq(raceResultEntries.raceId, races.id))
                 .innerJoin(
                     raceResults,
