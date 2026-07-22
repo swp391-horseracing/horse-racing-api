@@ -64,6 +64,7 @@ services:
       CAPTCHA_SECRET_KEY: ${CAPTCHA_SECRET_KEY}
       NODE_ENV: ${NODE_ENV}
       REDIS_URL: ${REDIS_URL}
+      DAILY_REWARD_POINTS: ${DAILY_REWARD_POINTS}
     ports:
       - ${PORT}:${PORT}
     networks:

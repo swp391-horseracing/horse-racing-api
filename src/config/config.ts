@@ -19,6 +19,7 @@ interface Env {
     S3_SECRET_KEY: string;
     AWS_REGION: string;
     REDIS_URL: string;
+    DAILY_REWARD_POINTS: string;
 }
 if (!process.env.DB_DATABASE) {
     throw new Error("DB_DATABASE is not defined");
@@ -93,6 +94,7 @@ const config = (): Env => {
         S3_SECRET_KEY: String(process.env.S3_SECRET_KEY),
         AWS_REGION: String(process.env.AWS_REGION),
         REDIS_URL: String(process.env.REDIS_URL),
+        DAILY_REWARD_POINTS: process.env.DAILY_REWARD_POINTS ?? "10",
     };
 };
 

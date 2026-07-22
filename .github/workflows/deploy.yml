@@ -63,6 +63,7 @@ jobs:
 
       CAPTCHA_SECRET_KEY: ${{ secrets.CAPTCHA_SECRET_KEY }}
       NODE_ENV: ${{ secrets.NODE_ENV }}
+      DAILY_REWARD_POINTS: ${{ secrets.DAILY_REWARD_POINTS }}
     steps:
       - name: Checkout code
         uses: actions/checkout@v3
