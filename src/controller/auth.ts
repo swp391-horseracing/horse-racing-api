@@ -89,12 +89,9 @@ export const login = async (
         if (lastDate !== today) {
             pointsAwarded = Number(config().DAILY_REWARD_POINTS ?? 10);
 
-            await db.transaction(async (tx) => {
-                await tx
-                    .update(users)
-                    .set({ lastLoginDate: new Date() })
-                    .where(eq(users.id, user.id));
+            let walletCredited = false;
 
+            await db.transaction(async (tx) => {
                 const [wallet] = await tx
                     .select({ id: wallets.id, balance: wallets.balance })
                     .from(wallets)
@@ -102,6 +99,11 @@ export const login = async (
                     .for("update");
 
                 if (wallet) {
+                    await tx
+                        .update(users)
+                        .set({ lastLoginDate: new Date() })
+                        .where(eq(users.id, user.id));
+
                     await tx
                         .update(wallets)
                         .set({
@@ -119,35 +121,39 @@ export const login = async (
                         balanceAfter: wallet.balance + pointsAwarded,
                         description: "Daily login reward",
                     });
+
+                    walletCredited = true;
                 }
             });
 
-            const [notification] = await db
-                .insert(notifications)
-                .values({
-                    userId: user.id,
-                    title: "Daily Reward",
-                    body: `You earned ${pointsAwarded} points for logging in today!`,
-                    type: "price",
-                    referenceId: user.id,
-                    referenceType: "reward",
-                })
-                .returning({ id: notifications.id });
-
-            if (notification) {
-                eventBus.emit({
-                    type: "notification:created",
-                    data: {
+            if (walletCredited) {
+                const [notification] = await db
+                    .insert(notifications)
+                    .values({
                         userId: user.id,
-                        notificationId: notification.id,
                         title: "Daily Reward",
                         body: `You earned ${pointsAwarded} points for logging in today!`,
                         type: "price",
-                    },
-                });
-            }
+                        referenceId: user.id,
+                        referenceType: "reward",
+                    })
+                    .returning({ id: notifications.id });
 
-            rewardGranted = true;
+                if (notification) {
+                    eventBus.emit({
+                        type: "notification:created",
+                        data: {
+                            userId: user.id,
+                            notificationId: notification.id,
+                            title: "Daily Reward",
+                            body: `You earned ${pointsAwarded} points for logging in today!`,
+                            type: "price",
+                        },
+                    });
+                }
+
+                rewardGranted = true;
+            }
         }
 
         const token = jwt.sign(
