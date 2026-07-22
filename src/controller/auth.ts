@@ -27,7 +27,9 @@ export const register = async (
             .returning({ id: users.id });
 
         if (!user) {
-            return res.status(500).json({ message: "Failed to create account" });
+            return res
+                .status(500)
+                .json({ message: "Failed to create account" });
         }
 
         const [wallet] = await db
@@ -79,7 +81,8 @@ export const login = async (
         }
 
         const today = new Date().toISOString().split("T")[0];
-        const lastDate = user.lastLoginDate?.toISOString().split("T")[0] ?? null;
+        const lastDate =
+            user.lastLoginDate?.toISOString().split("T")[0] ?? null;
         let rewardGranted = false;
         let pointsAwarded = 0;
 
