@@ -11,6 +11,7 @@ import { violationTypeConfig } from "../schema/violationTypeConfig.js";
 import { refereeAssignments } from "../schema/refereeAssignments.js";
 import { horses } from "../schema/horses.js";
 import { users } from "../schema/users.js";
+import { jockeyProfile } from "../schema/jockeyProfile.js";
 import { courseDistances } from "../schema/courseDistances.js";
 import { raceCourses } from "../schema/raceCourses.js";
 import { tournaments as tournamentsTable } from "../schema/tournament.js";
@@ -952,17 +953,20 @@ export const inspectEntry = async (
                     id: horses.id,
                     name: horses.name,
                     breed: horses.breed,
+                    weightKg: horses.weightKg,
                     baseSpeed: horses.baseSpeed,
                     stamina: horses.stamina,
                 },
                 jockey: {
                     id: users.id,
                     fullName: users.fullName,
+                    weightKg: jockeyProfile.weightKg,
                 },
             })
             .from(raceEntries)
             .innerJoin(horses, eq(raceEntries.horseId, horses.id))
             .leftJoin(users, eq(raceEntries.jockeyId, users.id))
+            .leftJoin(jockeyProfile, eq(jockeyProfile.userId, users.id))
             .where(eq(raceEntries.id, entryId));
 
         res.json({ entry: updated });
