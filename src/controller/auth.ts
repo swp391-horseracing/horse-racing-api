@@ -4,6 +4,10 @@ import { eq, sql } from "drizzle-orm";
 import config from "../config/config.js";
 import db from "../config/db.js";
 import { users } from "../schema/users.js";
+import { wallets } from "../schema/wallets.js";
+import { walletTransactions } from "../schema/walletTransaction.js";
+import { notifications } from "../schema/notifications.js";
+import { eventBus } from "../websocket/eventBus.js";
 import { NextFunction, Request, Response } from "express";
 
 export const register = async (
@@ -21,6 +25,29 @@ export const register = async (
             .insert(users)
             .values({ fullName, email, password: hashPassword, role })
             .returning({ id: users.id });
+
+        if (!user) {
+            return res
+                .status(500)
+                .json({ message: "Failed to create account" });
+        }
+
+        const [wallet] = await db
+            .insert(wallets)
+            .values({ userId: user.id, balance: 10000 })
+            .returning();
+
+        if (wallet) {
+            await db.insert(walletTransactions).values({
+                walletId: wallet.id,
+                type: "genesis",
+                status: "completed",
+                amount: wallet.balance,
+                balanceBefore: 0,
+                balanceAfter: wallet.balance,
+                description: "Welcome bonus",
+            });
+        }
 
         res.status(201).json({ message: "Account created", user });
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -53,6 +80,82 @@ export const login = async (
             return res.status(403).json({ message: "Account is locked" });
         }
 
+        const today = new Date().toISOString().split("T")[0];
+        const lastDate =
+            user.lastLoginDate?.toISOString().split("T")[0] ?? null;
+        let rewardGranted = false;
+        let pointsAwarded = 0;
+
+        if (lastDate !== today) {
+            pointsAwarded = Number(config().DAILY_REWARD_POINTS ?? 10);
+
+            let walletCredited = false;
+
+            await db.transaction(async (tx) => {
+                const [wallet] = await tx
+                    .select({ id: wallets.id, balance: wallets.balance })
+                    .from(wallets)
+                    .where(eq(wallets.userId, user.id))
+                    .for("update");
+
+                if (wallet) {
+                    await tx
+                        .update(users)
+                        .set({ lastLoginDate: new Date() })
+                        .where(eq(users.id, user.id));
+
+                    await tx
+                        .update(wallets)
+                        .set({
+                            balance: sql`${wallets.balance} + ${pointsAwarded}`,
+                            updatedAt: new Date(),
+                        })
+                        .where(eq(wallets.id, wallet.id));
+
+                    await tx.insert(walletTransactions).values({
+                        walletId: wallet.id,
+                        type: "reward",
+                        status: "completed",
+                        amount: pointsAwarded,
+                        balanceBefore: wallet.balance,
+                        balanceAfter: wallet.balance + pointsAwarded,
+                        description: "Daily login reward",
+                    });
+
+                    walletCredited = true;
+                }
+            });
+
+            if (walletCredited) {
+                const [notification] = await db
+                    .insert(notifications)
+                    .values({
+                        userId: user.id,
+                        title: "Daily Reward",
+                        body: `You earned ${pointsAwarded} points for logging in today!`,
+                        type: "price",
+                        referenceId: user.id,
+                        referenceType: "reward",
+                    })
+                    .returning({ id: notifications.id });
+
+                if (notification) {
+                    eventBus.emit({
+                        type: "notification:created",
+                        data: {
+                            userId: user.id,
+                            notificationId: notification.id,
+                            title: "Daily Reward",
+                            body: `You earned ${pointsAwarded} points for logging in today!`,
+                            type: "price",
+                        },
+                    });
+                }
+
+                rewardGranted = true;
+            }
+        }
+
         const token = jwt.sign(
             {
                 id: user.id,
@@ -63,6 +166,11 @@ export const login = async (
             { expiresIn: config().JWT_EXPIRES_IN } as jwt.SignOptions,
         );
 
+        const [wallet] = await db
+            .select({ balance: wallets.balance })
+            .from(wallets)
+            .where(eq(wallets.userId, user.id));
+
         res.json({
             token,
             user: {
@@ -71,6 +179,11 @@ export const login = async (
                 email: user.email,
                 role: user.role,
                 status: user.status,
+                balance: wallet?.balance ?? 0,
+                dailyReward: {
+                    granted: rewardGranted,
+                    points: pointsAwarded,
+                },
             },
         });
         // eslint-disable-next-line @typescript-eslint/no-explicit-any

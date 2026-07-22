@@ -60,13 +60,25 @@ export type RaceFinishEvent = BaseEvent<
     }
 >;
 
+export type NotificationCreatedEvent = BaseEvent<
+    "notification:created",
+    {
+        userId: string;
+        notificationId: string;
+        title: string;
+        body: string;
+        type: string;
+    }
+>;
+
 export type AppEvent =
     | RaceStatusChangedEvent
     | RaceResultUpdatedEvent
     | RaceResultPublishedEvent
     | TournamentStatusChangedEvent
     | RaceTickEvent
-    | RaceFinishEvent;
+    | RaceFinishEvent
+    | NotificationCreatedEvent;
 
 type EventMap = {
     "race:status_changed": RaceStatusChangedEvent;
@@ -75,6 +87,7 @@ type EventMap = {
     "tournament:status_changed": TournamentStatusChangedEvent;
     "race:tick": RaceTickEvent;
     "race:finish": RaceFinishEvent;
+    "notification:created": NotificationCreatedEvent;
 };
 
 class EventBus {

@@ -29,6 +29,7 @@ export const users = pgTable("users", {
     role: rolesEnum().notNull(),
     status: statusEnums().default("pending").notNull(),
     token_version: integer("token_version").default(1).notNull(),
+    lastLoginDate: timestamp("last_login_date"),
     createdAt: timestamp("created_at").defaultNow(),
     updatedAt: timestamp("updated_at"),
 });

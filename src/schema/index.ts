@@ -16,3 +16,5 @@ export * from "./raceCourses.js";
 export * from "./courseDistances.js";
 export * from "./trackShapes.js";
 export * from "./violationTypeConfig.js";
+export * from "./wallets.js";
+export * from "./walletTransaction.js";
