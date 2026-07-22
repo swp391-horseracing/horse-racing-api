@@ -11,7 +11,6 @@ import { violationTypeConfig } from "../schema/violationTypeConfig.js";
 import { refereeAssignments } from "../schema/refereeAssignments.js";
 import { horses } from "../schema/horses.js";
 import { users } from "../schema/users.js";
-import { jockeyProfile } from "../schema/jockeyProfile.js";
 import { courseDistances } from "../schema/courseDistances.js";
 import { raceCourses } from "../schema/raceCourses.js";
 import { tournaments as tournamentsTable } from "../schema/tournament.js";
