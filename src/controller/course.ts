@@ -294,7 +294,10 @@ export const addCourseDistance = async (
         }
 
         const [course] = await db
-            .select({ id: raceCourses.id })
+            .select({
+                id: raceCourses.id,
+                distanceMeters: raceCourses.distanceMeters,
+            })
             .from(raceCourses)
             .where(eq(raceCourses.id, courseId));
 
@@ -303,7 +306,11 @@ export const addCourseDistance = async (
         }
 
         const { distanceMeters } = req.body;
-
+        if (distanceMeters > course.distanceMeters) {
+            return res.status(409).json({
+                message: "This distance is higher than maximum course distance",
+            });
+        }
         const [newDistance] = await db
             .insert(courseDistances)
             .values({ courseId, distanceMeters })
@@ -333,7 +340,9 @@ export const getCourseDistances = async (
         }
 
         const [course] = await db
-            .select({ id: raceCourses.id })
+            .select({
+                id: raceCourses.id,
+            })
             .from(raceCourses)
             .where(eq(raceCourses.id, courseId));
 
