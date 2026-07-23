@@ -3,9 +3,12 @@ import db from "../../config/db.js";
 import { users } from "../../schema/users.js";
 import { eq } from "drizzle-orm";
 import { jockeyProfile } from "../../schema/jockeyProfile.js";
+import { wallets } from "../../schema/wallets.js";
 import { getSignedUrlByKey } from "../../utils/s3.js";
+import { ensureWallet } from "./wallet.js";
 
 const getJockeyUser = async (userId: string) => {
+    await ensureWallet(userId);
     const [result] = await db
         .select({
             id: users.id,
@@ -18,9 +21,11 @@ const getJockeyUser = async (userId: string) => {
             status: users.status,
             weightKg: jockeyProfile.weightKg,
             experienceYear: jockeyProfile.experienceYear,
+            balance: wallets.balance,
         })
         .from(users)
         .leftJoin(jockeyProfile, eq(jockeyProfile.userId, userId))
+        .leftJoin(wallets, eq(wallets.userId, userId))
         .where(eq(users.id, userId));
 
     if (!result) {
@@ -35,6 +40,8 @@ const getJockeyUser = async (userId: string) => {
 };
 
 const getRegularUser = async (userId: string) => {
+    await ensureWallet(userId);
+
     const [result] = await db
         .select({
             id: users.id,
@@ -45,8 +52,10 @@ const getRegularUser = async (userId: string) => {
             avatarUrl: users.avatar_url,
             role: users.role,
             status: users.status,
+            balance: wallets.balance,
         })
         .from(users)
+        .leftJoin(wallets, eq(wallets.userId, userId))
         .where(eq(users.id, userId));
 
     if (!result) {
