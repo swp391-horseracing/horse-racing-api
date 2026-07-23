@@ -169,6 +169,13 @@
       "when": 1784812814336,
       "tag": "0023_safe_synch",
       "breakpoints": true
+    },
+    {
+      "idx": 24,
+      "version": "7",
+      "when": 1784815752800,
+      "tag": "0024_remarkable_darkstar",
+      "breakpoints": true
     }
   ]
 }
