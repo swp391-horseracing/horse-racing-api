@@ -712,7 +712,7 @@ export const submitReport = async (
                 .set({ status: "completed" })
                 .where(eq(races.id, raceId));
 
-            await resolvePredictions(raceId, tx);
+            await resolvePredictions(raceId, report.id, tx);
         });
 
         try {

@@ -13,6 +13,10 @@ import { createPredictionSchema } from "../validator/prediction.js";
 import { listRacesQuerySchema } from "../validator/race.js";
 import { raceResultEntries } from "../schema/raceResultEntries.js";
 import { raceResults } from "../schema/raceResults.js";
+import { raceConfigs } from "../schema/raceConfig.js";
+import { wallets } from "../schema/wallets.js";
+import { walletTransactions } from "../schema/walletTransaction.js";
+import { ensureWallet } from "./me/wallet.js";
 import { paginatedResponse } from "../utils/paginate.js";
 
 export const listRaces = async (
@@ -285,7 +289,8 @@ export const createPrediction = async (
             });
         }
 
-        const { predictedEntryId, predictedPosition } = parsed.data;
+        const { predictedEntryId, predictedPosition, stakeAmount } =
+            parsed.data;
 
         const [race] = await db
             .select({
@@ -306,6 +311,27 @@ export const createPrediction = async (
             });
         }
 
+        const [config] = await db
+            .select({
+                enabled: raceConfigs.predictionsEnabled,
+                minStake: raceConfigs.predictionMinStake,
+            })
+            .from(raceConfigs)
+            .where(eq(raceConfigs.raceId, raceId));
+
+        if (config && !config.enabled) {
+            return res.status(400).json({
+                message: "Predictions are disabled for this race",
+            });
+        }
+
+        const minStake = config?.minStake ?? 50;
+        if (stakeAmount < minStake) {
+            return res.status(400).json({
+                message: `Minimum stake for this race is ${minStake} points`,
+            });
+        }
+
         const [entry] = await db
             .select({ id: raceEntries.id })
             .from(raceEntries)
@@ -322,18 +348,58 @@ export const createPrediction = async (
             });
         }
 
-        const [prediction] = await db
-            .insert(predictions)
-            .values({
-                spectatorId: user.id,
-                raceId,
-                predictedEntryId,
-                predictedPosition,
-            })
-            .returning();
+        const wallet = await ensureWallet(user.id);
+
+        const [prediction] = await db.transaction(async (tx) => {
+            const [locked] = await tx
+                .select({ id: wallets.id, balance: wallets.balance })
+                .from(wallets)
+                .where(eq(wallets.id, wallet.id))
+                .for("update");
+
+            if (!locked || locked.balance < stakeAmount) {
+                throw new InsufficientBalanceError();
+            }
+
+            const [updatedWallet] = await tx
+                .update(wallets)
+                .set({
+                    balance: sql`${wallets.balance} - ${stakeAmount}`,
+                    updatedAt: new Date(),
+                })
+                .where(eq(wallets.id, wallet.id))
+                .returning({ balance: wallets.balance });
+
+            await tx.insert(walletTransactions).values({
+                walletId: wallet.id,
+                type: "prediction",
+                status: "completed",
+                amount: -stakeAmount,
+                balanceBefore: locked.balance,
+                balanceAfter: updatedWallet!.balance,
+                referenceId: raceId,
+                description: `Prediction stake for race ${raceId}`,
+            });
+
+            return tx
+                .insert(predictions)
+                .values({
+                    spectatorId: user.id,
+                    raceId,
+                    predictedEntryId,
+                    predictedPosition,
+                    stakeAmount,
+                })
+                .returning();
+        });
 
         return res.status(201).json({ prediction });
     } catch (err: unknown) {
+        if (err instanceof InsufficientBalanceError) {
+            return res
+                .status(400)
+                .json({ message: "Insufficient wallet balance" });
+        }
         if (
             err &&
             typeof err === "object" &&
@@ -349,6 +415,13 @@ export const createPrediction = async (
         next(err);
     }
 };
+
+class InsufficientBalanceError extends Error {
+    constructor() {
+        super("Insufficient balance");
+        this.name = "InsufficientBalanceError";
+    }
+}
 
 export const getRaceResult = async (
     req: Request,

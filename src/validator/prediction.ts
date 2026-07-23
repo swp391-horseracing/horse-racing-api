@@ -3,6 +3,7 @@ import { z } from "zod";
 export const createPredictionSchema = z.object({
     predictedEntryId: z.uuid(),
     predictedPosition: z.number().int().min(1).max(3),
+    stakeAmount: z.number().int().min(1),
 });
 
 export const predictionsQuerySchema = z.object({

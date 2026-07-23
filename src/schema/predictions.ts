@@ -29,6 +29,7 @@ export const predictions = pgTable(
         placedAt: timestamp("placed_at").defaultNow().notNull(),
         isCorrect: boolean("is_correct"),
         rewardAmount: decimal("reward_amount", { precision: 15, scale: 2 }),
+        stakeAmount: integer("stake_amount"),
     },
     (table) => [
         foreignKey({
