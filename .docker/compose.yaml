@@ -65,6 +65,7 @@ services:
       NODE_ENV: ${NODE_ENV}
       REDIS_URL: ${REDIS_URL}
       DAILY_REWARD_POINTS: ${DAILY_REWARD_POINTS}
+      RACE_SPEED_MULTIPLIER: ${RACE_SPEED_MULTIPLIER}
     ports:
       - ${PORT}:${PORT}
     networks:
