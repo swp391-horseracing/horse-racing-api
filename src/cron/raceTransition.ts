@@ -26,27 +26,28 @@ export async function refundCancelledPredictions(): Promise<void> {
         .where(and(sql`${races.status} IN ('cancelled', 'postponed')`));
 
     for (const race of cancelledRaces) {
-        const pendingPredictions = await db
-            .select({
-                id: predictions.id,
-                spectatorId: predictions.spectatorId,
-                stakeAmount: predictions.stakeAmount,
-            })
-            .from(predictions)
-            .where(
-                and(
-                    eq(predictions.raceId, race.id),
-                    isNull(predictions.isCorrect),
-                ),
+        await db.transaction(async (tx) => {
+            const pendingPredictions = await tx
+                .select({
+                    id: predictions.id,
+                    spectatorId: predictions.spectatorId,
+                    stakeAmount: predictions.stakeAmount,
+                })
+                .from(predictions)
+                .where(
+                    and(
+                        eq(predictions.raceId, race.id),
+                        isNull(predictions.isCorrect),
+                    ),
+                )
+                .for("update", { skipLocked: true });
+
+            if (pendingPredictions.length === 0) return;
+
+            console.log(
+                `[cron:refund] Race ${race.id} — refunding ${pendingPredictions.length} predictions`,
             );
 
-        if (pendingPredictions.length === 0) continue;
-
-        console.log(
-            `[cron:refund] Race ${race.id} — refunding ${pendingPredictions.length} predictions`,
-        );
-
-        await db.transaction(async (tx) => {
             for (const p of pendingPredictions) {
                 const [wallet] = await tx
                     .select({ id: wallets.id, balance: wallets.balance })
@@ -82,7 +83,12 @@ export async function refundCancelledPredictions(): Promise<void> {
                 await tx
                     .update(predictions)
                     .set({ isCorrect: false })
-                    .where(eq(predictions.id, p.id));
+                    .where(
+                        and(
+                            eq(predictions.id, p.id),
+                            isNull(predictions.isCorrect),
+                        ),
+                    );
             }
         });
     }
