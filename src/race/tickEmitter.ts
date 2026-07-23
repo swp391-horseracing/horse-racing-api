@@ -13,6 +13,7 @@ import {
 import { eventBus } from "../websocket/eventBus.js";
 import { precomputeRaceFromDb } from "../cron/precompute.js";
 import type { FeRaceSimulation } from "./simulator.js";
+import config from "../config/config.js";
 
 interface StreamState {
     interval: NodeJS.Timeout;
@@ -97,7 +98,8 @@ class TickEmitter {
         simulation: FeRaceSimulation,
         startTick: number,
     ): void {
-        let tickIndex = startTick;
+        let         const multiplier = config().RACE_SPEED_MULTIPLIER;
+        tickIndex = startTick;
         let timeout: NodeJS.Timeout;
 
         const tick = async () => {
@@ -130,16 +132,16 @@ class TickEmitter {
                     return;
                 }
 
-                timeout = setTimeout(tick, simulation.tickIntervalMs);
+                timeout = setTimeout(tick, simulation.tickIntervalMs / multiplier);
             } catch (err) {
                 console.error(`[tickEmitter] Error in race ${raceId}:`, err);
                 if (this.streams.has(raceId)) {
-                    timeout = setTimeout(tick, simulation.tickIntervalMs);
+                    timeout = setTimeout(tick, simulation.tickIntervalMs / multiplier);
                 }
             }
         };
 
-        timeout = setTimeout(tick, simulation.tickIntervalMs);
+        timeout = setTimeout(tick, simulation.tickIntervalMs / multiplier);
 
         this.streams.set(raceId, {
             interval: timeout,
