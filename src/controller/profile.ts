@@ -43,9 +43,19 @@ export const getProfile = async (
             user.avatar_url = await getSignedUrlByKey(user.avatar_url);
         }
 
-        const { balance, ...publicUser } = user;
-
-        res.json(isOwnProfile ? user : publicUser);
+        res.json({
+            id: user.id,
+            full_name: user.full_name,
+            email: user.email,
+            phone: user.phone,
+            address: user.address,
+            avatar_url: user.avatar_url,
+            role: user.role,
+            status: user.status,
+            createdAt: user.createdAt,
+            updatedAt: user.updatedAt,
+            ...(isOwnProfile ? { balance: user.balance } : {}),
+        });
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
     } catch (err: any) {
         next(err);
