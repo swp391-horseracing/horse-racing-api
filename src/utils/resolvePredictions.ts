@@ -66,8 +66,6 @@ export async function resolvePredictions(
         }
     }
 
-    const correctIds = correctList.map((c) => c.id);
-
     if (incorrectIds.length > 0) {
         await tx
             .update(predictions)
@@ -77,7 +75,7 @@ export async function resolvePredictions(
 
     if (correctList.length > 0 && totalPool > 0) {
         let distributed = 0;
-        const rewards: { spectatorId: string; rewardAmount: number }[] = [];
+        const rewards: { predictionId: string; spectatorId: string; rewardAmount: number }[] = [];
 
         for (let i = 0; i < correctList.length; i++) {
             const p = correctList[i]!;
@@ -90,18 +88,17 @@ export async function resolvePredictions(
                 );
                 distributed += share;
             }
-            rewards.push({ spectatorId: p.spectatorId, rewardAmount: share });
+            rewards.push({ predictionId: p.id, spectatorId: p.spectatorId, rewardAmount: share });
         }
 
-        await tx
-            .update(predictions)
-            .set({
-                isCorrect: true,
-                rewardAmount: sql`CAST(${totalPool} AS text)`,
-            })
-            .where(inArray(predictions.id, correctIds));
-
         for (const r of rewards) {
+            await tx
+                .update(predictions)
+                .set({
+                    isCorrect: true,
+                    rewardAmount: `${r.rewardAmount}.00`,
+                })
+                .where(eq(predictions.id, r.predictionId));
             const [wallet] = await tx
                 .select({ id: wallets.id, balance: wallets.balance })
                 .from(wallets)
