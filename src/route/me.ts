@@ -15,6 +15,7 @@ import {
 } from "../controller/me/invitations.js";
 import { getMyPredictions } from "../controller/me/predictions.js";
 import { getMyResults, getMyResultDetail } from "../controller/me/result.js";
+import { getMyWallet } from "../controller/me/wallet.js";
 import { getMyEntries } from "../controller/me/entries.js";
 import {
     createRaceEntry,
@@ -134,6 +135,9 @@ router.delete(
     authorize(Role.HORSE_OWNER),
     withdrawRaceEntry,
 );
+
+// wallet
+router.get("/wallet", authMiddleware, getMyWallet);
 
 // results for jockey and horse owner
 router.get("/results", authMiddleware, getMyResults);
