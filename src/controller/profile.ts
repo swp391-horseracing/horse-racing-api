@@ -5,6 +5,7 @@ import jwt from "jsonwebtoken";
 import config from "../config/config.js";
 import db from "../config/db.js";
 import { users } from "../schema/users.js";
+import { wallets } from "../schema/wallets.js";
 import { getSignedUrlByKey } from "../utils/s3.js";
 
 export const getProfile = async (
@@ -14,6 +15,7 @@ export const getProfile = async (
 ) => {
     try {
         const id = req.params.id as string;
+        const isOwnProfile = req.user?.id === id;
 
         const [user] = await db
             .select({
@@ -27,8 +29,10 @@ export const getProfile = async (
                 status: users.status,
                 createdAt: users.createdAt,
                 updatedAt: users.updatedAt,
+                balance: wallets.balance,
             })
             .from(users)
+            .leftJoin(wallets, eq(wallets.userId, users.id))
             .where(eq(users.id, id));
 
         if (!user) {
@@ -39,7 +43,9 @@ export const getProfile = async (
             user.avatar_url = await getSignedUrlByKey(user.avatar_url);
         }
 
-        res.json(user);
+        const { balance, ...publicUser } = user;
+
+        res.json(isOwnProfile ? user : publicUser);
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
     } catch (err: any) {
         next(err);
