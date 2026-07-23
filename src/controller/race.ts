@@ -13,6 +13,7 @@ import { createPredictionSchema } from "../validator/prediction.js";
 import { listRacesQuerySchema } from "../validator/race.js";
 import { raceResultEntries } from "../schema/raceResultEntries.js";
 import { raceResults } from "../schema/raceResults.js";
+import { raceConfigs } from "../schema/raceConfig.js";
 import { paginatedResponse } from "../utils/paginate.js";
 
 export const listRaces = async (
@@ -303,6 +304,17 @@ export const createPrediction = async (
             return res.status(400).json({
                 message:
                     "Predictions can only be placed on scheduled or pre-race races",
+            });
+        }
+
+        const [config] = await db
+            .select({ enabled: raceConfigs.predictionsEnabled })
+            .from(raceConfigs)
+            .where(eq(raceConfigs.raceId, raceId));
+
+        if (config && !config.enabled) {
+            return res.status(400).json({
+                message: "Predictions are disabled for this race",
             });
         }
 
