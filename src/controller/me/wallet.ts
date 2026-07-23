@@ -17,17 +17,17 @@ export async function ensureWallet(
     const result = await db.transaction(async (tx) => {
         const [wallet] = await tx
             .insert(wallets)
-            .values({ userId, balance: 0 })
+            .values({ userId, balance: 10000 })
             .returning();
 
         await tx.insert(walletTransactions).values({
             walletId: wallet!.id,
             type: "genesis",
             status: "completed",
-            amount: 0,
+            amount: 10000,
             balanceBefore: 0,
-            balanceAfter: 0,
-            description: "Wallet created",
+            balanceAfter: 10000,
+            description: "Welcome bonus",
         });
 
         return { id: wallet!.id, balance: wallet!.balance };
