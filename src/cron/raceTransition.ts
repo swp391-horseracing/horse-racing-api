@@ -55,6 +55,16 @@ export async function refundCancelledPredictions(): Promise<void> {
                     .where(eq(wallets.userId, p.spectatorId))
                     .for("update");
 
+                await tx
+                    .update(predictions)
+                    .set({ isCorrect: false })
+                    .where(
+                        and(
+                            eq(predictions.id, p.id),
+                            isNull(predictions.isCorrect),
+                        ),
+                    );
+
                 if (wallet) {
                     const refundAmount = p.stakeAmount ?? 0;
 
@@ -79,16 +89,6 @@ export async function refundCancelledPredictions(): Promise<void> {
                         description: "Refund for cancelled/postponed race",
                     });
                 }
-
-                await tx
-                    .update(predictions)
-                    .set({ isCorrect: false })
-                    .where(
-                        and(
-                            eq(predictions.id, p.id),
-                            isNull(predictions.isCorrect),
-                        ),
-                    );
             }
         });
     }
