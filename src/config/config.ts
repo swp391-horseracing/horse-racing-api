@@ -20,6 +20,7 @@ interface Env {
     AWS_REGION: string;
     REDIS_URL: string;
     DAILY_REWARD_POINTS: string;
+    RACE_SPEED_MULTIPLIER: number;
 }
 if (!process.env.DB_DATABASE) {
     throw new Error("DB_DATABASE is not defined");
@@ -95,6 +96,9 @@ const config = (): Env => {
         AWS_REGION: String(process.env.AWS_REGION),
         REDIS_URL: String(process.env.REDIS_URL),
         DAILY_REWARD_POINTS: process.env.DAILY_REWARD_POINTS ?? "10",
+        RACE_SPEED_MULTIPLIER: process.env.RACE_SPEED_MULTIPLIER
+            ? Number(process.env.RACE_SPEED_MULTIPLIER)
+            : 1,
     };
 };
 
