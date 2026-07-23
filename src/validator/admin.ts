@@ -142,7 +142,7 @@ const createRaceSchema = z.object({
         .optional(),
     laneCount: z.coerce.number().int().positive().optional(),
     predictionsEnabled: z.boolean().default(true),
-    predictionRewardPoints: z.coerce.number().int().min(0).default(100),
+    predictionMinStake: z.coerce.number().int().min(1).default(50),
 });
 
 const updateRaceSchema = z
@@ -159,7 +159,7 @@ const updateRaceSchema = z
             .optional(),
         laneCount: z.coerce.number().int().positive().optional(),
         predictionsEnabled: z.boolean().optional(),
-        predictionRewardPoints: z.coerce.number().int().min(0).optional(),
+        predictionMinStake: z.coerce.number().int().min(1).optional(),
     })
     .superRefine((data, ctx) => {
         if (Object.keys(data).length === 0) {
