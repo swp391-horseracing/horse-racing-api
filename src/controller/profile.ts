@@ -5,7 +5,9 @@ import jwt from "jsonwebtoken";
 import config from "../config/config.js";
 import db from "../config/db.js";
 import { users } from "../schema/users.js";
+import { wallets } from "../schema/wallets.js";
 import { getSignedUrlByKey } from "../utils/s3.js";
+import { ensureWallet } from "./me/wallet.js";
 
 export const getProfile = async (
     req: Request,
@@ -14,6 +16,11 @@ export const getProfile = async (
 ) => {
     try {
         const id = req.params.id as string;
+        const isOwnProfile = req.user?.id === id;
+
+        if (isOwnProfile) {
+            await ensureWallet(id);
+        }
 
         const [user] = await db
             .select({
@@ -27,8 +34,10 @@ export const getProfile = async (
                 status: users.status,
                 createdAt: users.createdAt,
                 updatedAt: users.updatedAt,
+                balance: wallets.balance,
             })
             .from(users)
+            .leftJoin(wallets, eq(wallets.userId, users.id))
             .where(eq(users.id, id));
 
         if (!user) {
@@ -39,7 +48,19 @@ export const getProfile = async (
             user.avatar_url = await getSignedUrlByKey(user.avatar_url);
         }
 
-        res.json(user);
+        res.json({
+            id: user.id,
+            full_name: user.full_name,
+            email: user.email,
+            phone: user.phone,
+            address: user.address,
+            avatar_url: user.avatar_url,
+            role: user.role,
+            status: user.status,
+            createdAt: user.createdAt,
+            updatedAt: user.updatedAt,
+            ...(isOwnProfile ? { balance: user.balance } : {}),
+        });
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
     } catch (err: any) {
         next(err);
