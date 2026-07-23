@@ -98,8 +98,8 @@ class TickEmitter {
         simulation: FeRaceSimulation,
         startTick: number,
     ): void {
-        let         const multiplier = config().RACE_SPEED_MULTIPLIER;
-        tickIndex = startTick;
+        const multiplier = config().RACE_SPEED_MULTIPLIER;
+        let tickIndex = startTick;
         let timeout: NodeJS.Timeout;
 
         const tick = async () => {
@@ -132,11 +132,17 @@ class TickEmitter {
                     return;
                 }
 
-                timeout = setTimeout(tick, simulation.tickIntervalMs / multiplier);
+                timeout = setTimeout(
+                    tick,
+                    simulation.tickIntervalMs / multiplier,
+                );
             } catch (err) {
                 console.error(`[tickEmitter] Error in race ${raceId}:`, err);
                 if (this.streams.has(raceId)) {
-                    timeout = setTimeout(tick, simulation.tickIntervalMs / multiplier);
+                    timeout = setTimeout(
+                        tick,
+                        simulation.tickIntervalMs / multiplier,
+                    );
                 }
             }
         };
