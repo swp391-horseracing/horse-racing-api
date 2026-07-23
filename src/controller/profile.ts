@@ -7,6 +7,7 @@ import db from "../config/db.js";
 import { users } from "../schema/users.js";
 import { wallets } from "../schema/wallets.js";
 import { getSignedUrlByKey } from "../utils/s3.js";
+import { ensureWallet } from "./me/wallet.js";
 
 export const getProfile = async (
     req: Request,
@@ -16,6 +17,10 @@ export const getProfile = async (
     try {
         const id = req.params.id as string;
         const isOwnProfile = req.user?.id === id;
+
+        if (isOwnProfile) {
+            await ensureWallet(id);
+        }
 
         const [user] = await db
             .select({
