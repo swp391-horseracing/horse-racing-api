@@ -463,11 +463,11 @@ export const createTournamentRace = async (
             return res.status(500).json({ message: "Failed to create race" });
         }
 
-        const { predictionsEnabled, predictionRewardPoints } = req.body;
+        const { predictionsEnabled, predictionMinStake } = req.body;
         await db.insert(raceConfigs).values({
             raceId: newRace.id,
             predictionsEnabled: predictionsEnabled ?? true,
-            predictionRewardPoints: predictionRewardPoints ?? 100,
+            predictionMinStake: predictionMinStake ?? 50,
         });
 
         res.status(201).json(newRace);
@@ -569,7 +569,7 @@ export const updateRace = async (
 
             const {
                 predictionsEnabled,
-                predictionRewardPoints,
+                predictionMinStake,
                 ...raceFields
             } = req.body;
 
@@ -581,14 +581,14 @@ export const updateRace = async (
 
             if (
                 predictionsEnabled !== undefined ||
-                predictionRewardPoints !== undefined
+                predictionMinStake !== undefined
             ) {
                 await tx
                     .insert(raceConfigs)
                     .values({
                         raceId,
                         predictionsEnabled: predictionsEnabled ?? true,
-                        predictionRewardPoints: predictionRewardPoints ?? 100,
+                        predictionMinStake: predictionMinStake ?? 50,
                     })
                     .onConflictDoUpdate({
                         target: raceConfigs.raceId,
@@ -596,9 +596,9 @@ export const updateRace = async (
                             predictionsEnabled:
                                 predictionsEnabled ??
                                 sql`${raceConfigs.predictionsEnabled}`,
-                            predictionRewardPoints:
-                                predictionRewardPoints ??
-                                sql`${raceConfigs.predictionRewardPoints}`,
+                            predictionMinStake:
+                                predictionMinStake ??
+                                sql`${raceConfigs.predictionMinStake}`,
                         },
                     });
             }

@@ -6,7 +6,5 @@ export const raceConfigs = pgTable("race_configs", {
         .primaryKey()
         .references(() => races.id, { onDelete: "cascade" }),
     predictionsEnabled: boolean("predictions_enabled").notNull().default(true),
-    predictionRewardPoints: integer("prediction_reward_points")
-        .notNull()
-        .default(100),
+    predictionMinStake: integer("prediction_min_stake").notNull().default(50),
 });
