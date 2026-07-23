@@ -289,7 +289,8 @@ export const createPrediction = async (
             });
         }
 
-        const { predictedEntryId, predictedPosition, stakeAmount } = parsed.data;
+        const { predictedEntryId, predictedPosition, stakeAmount } =
+            parsed.data;
 
         const [race] = await db
             .select({
@@ -395,7 +396,9 @@ export const createPrediction = async (
         return res.status(201).json({ prediction });
     } catch (err: unknown) {
         if (err instanceof InsufficientBalanceError) {
-            return res.status(400).json({ message: "Insufficient wallet balance" });
+            return res
+                .status(400)
+                .json({ message: "Insufficient wallet balance" });
         }
         if (
             err &&

@@ -567,11 +567,8 @@ export const updateRace = async (
                 }
             }
 
-            const {
-                predictionsEnabled,
-                predictionMinStake,
-                ...raceFields
-            } = req.body;
+            const { predictionsEnabled, predictionMinStake, ...raceFields } =
+                req.body;
 
             const [updatedRace] = await tx
                 .update(races)

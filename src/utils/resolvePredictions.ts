@@ -46,7 +46,11 @@ export async function resolvePredictions(
             and(eq(predictions.raceId, raceId), isNull(predictions.isCorrect)),
         );
 
-    const correctList: { id: string; spectatorId: string; stakeAmount: number }[] = [];
+    const correctList: {
+        id: string;
+        spectatorId: string;
+        stakeAmount: number;
+    }[] = [];
     const incorrectIds: string[] = [];
     let totalPool = 0;
     let totalCorrectStake = 0;
@@ -81,7 +85,9 @@ export async function resolvePredictions(
             if (i === correctList.length - 1) {
                 share = totalPool - distributed;
             } else {
-                share = Math.floor((totalPool * p.stakeAmount) / totalCorrectStake);
+                share = Math.floor(
+                    (totalPool * p.stakeAmount) / totalCorrectStake,
+                );
                 distributed += share;
             }
             rewards.push({ spectatorId: p.spectatorId, rewardAmount: share });
