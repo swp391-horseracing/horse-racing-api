@@ -75,7 +75,11 @@ export async function resolvePredictions(
 
     if (correctList.length > 0 && totalPool > 0) {
         let distributed = 0;
-        const rewards: { predictionId: string; spectatorId: string; rewardAmount: number }[] = [];
+        const rewards: {
+            predictionId: string;
+            spectatorId: string;
+            rewardAmount: number;
+        }[] = [];
 
         for (let i = 0; i < correctList.length; i++) {
             const p = correctList[i]!;
@@ -88,7 +92,11 @@ export async function resolvePredictions(
                 );
                 distributed += share;
             }
-            rewards.push({ predictionId: p.id, spectatorId: p.spectatorId, rewardAmount: share });
+            rewards.push({
+                predictionId: p.id,
+                spectatorId: p.spectatorId,
+                rewardAmount: share,
+            });
         }
 
         for (const r of rewards) {
