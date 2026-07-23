@@ -21,6 +21,7 @@ import { violationTypeConfig } from "../schema/violationTypeConfig.js";
 import { horses } from "../schema/horses.js";
 import { courseDistances } from "../schema/courseDistances.js";
 import { raceCourses } from "../schema/raceCourses.js";
+import { raceConfigs } from "../schema/raceConfig.js";
 import { reportsQuerySchema } from "../validator/report.js";
 import { eventBus } from "../websocket/eventBus.js";
 import { tournamentRegistrations } from "../schema/tournamentRegistrations.js";
@@ -458,6 +459,17 @@ export const createTournamentRace = async (
             .values({ ...req.body, tournamentId })
             .returning();
 
+        if (!newRace) {
+            return res.status(500).json({ message: "Failed to create race" });
+        }
+
+        const { predictionsEnabled, predictionRewardPoints } = req.body;
+        await db.insert(raceConfigs).values({
+            raceId: newRace.id,
+            predictionsEnabled: predictionsEnabled ?? true,
+            predictionRewardPoints: predictionRewardPoints ?? 100,
+        });
+
         res.status(201).json(newRace);
     } catch (err) {
         next(err);
@@ -555,11 +567,41 @@ export const updateRace = async (
                 }
             }
 
+            const {
+                predictionsEnabled,
+                predictionRewardPoints,
+                ...raceFields
+            } = req.body;
+
             const [updatedRace] = await tx
                 .update(races)
-                .set({ ...req.body, updatedAt: new Date() })
+                .set({ ...raceFields, updatedAt: new Date() })
                 .where(eq(races.id, raceId))
                 .returning();
+
+            if (
+                predictionsEnabled !== undefined ||
+                predictionRewardPoints !== undefined
+            ) {
+                await tx
+                    .insert(raceConfigs)
+                    .values({
+                        raceId,
+                        predictionsEnabled: predictionsEnabled ?? true,
+                        predictionRewardPoints: predictionRewardPoints ?? 100,
+                    })
+                    .onConflictDoUpdate({
+                        target: raceConfigs.raceId,
+                        set: {
+                            predictionsEnabled:
+                                predictionsEnabled ??
+                                sql`${raceConfigs.predictionsEnabled}`,
+                            predictionRewardPoints:
+                                predictionRewardPoints ??
+                                sql`${raceConfigs.predictionRewardPoints}`,
+                        },
+                    });
+            }
 
             return { ok: true as const, race: updatedRace };
         });
