@@ -4,7 +4,9 @@ import db from "../../config/db.js";
 import { wallets } from "../../schema/wallets.js";
 import { walletTransactions } from "../../schema/walletTransaction.js";
 
-export async function ensureWallet(userId: string): Promise<{ id: string; balance: number }> {
+export async function ensureWallet(
+    userId: string,
+): Promise<{ id: string; balance: number }> {
     const [existing] = await db
         .select({ id: wallets.id, balance: wallets.balance })
         .from(wallets)
