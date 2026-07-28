@@ -183,6 +183,13 @@
       "when": 1785250752338,
       "tag": "0025_chunky_puck",
       "breakpoints": true
+    },
+    {
+      "idx": 26,
+      "version": "7",
+      "when": 1785256885217,
+      "tag": "0026_quick_domino",
+      "breakpoints": true
     }
   ]
 }

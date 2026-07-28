@@ -237,6 +237,12 @@ const updateViolationTypeConfigSchema = z.object({
     description: z.string().optional().nullable(),
 });
 
+export const updateRacePointsConfigSchema = z.object({
+    firstPlacePoints: z.coerce.number().int().min(0).max(100).optional(),
+    secondPlacePoints: z.coerce.number().int().min(0).max(100).optional(),
+    thirdPlacePoints: z.coerce.number().int().min(0).max(100).optional(),
+});
+
 export {
     usersQuerySchema,
     updateRoleSchema,
