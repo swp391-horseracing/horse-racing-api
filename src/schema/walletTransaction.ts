@@ -14,6 +14,7 @@ export const walletTransactionTypeEnum = pgEnum("wallet_transaction_type", [
     "reward",
     "refund",
     "admin_adjustment",
+    "purchase",
 ]);
 
 export const walletTransactionStatusEnum = pgEnum("wallet_transaction_status", [

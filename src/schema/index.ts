@@ -18,3 +18,5 @@ export * from "./trackShapes.js";
 export * from "./violationTypeConfig.js";
 export * from "./wallets.js";
 export * from "./walletTransaction.js";
+export * from "./shopItems.js";
+export * from "./userInventory.js";

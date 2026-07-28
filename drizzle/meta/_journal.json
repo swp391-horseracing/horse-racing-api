@@ -176,6 +176,13 @@
       "when": 1784815752800,
       "tag": "0024_remarkable_darkstar",
       "breakpoints": true
+    },
+    {
+      "idx": 25,
+      "version": "7",
+      "when": 1785250752338,
+      "tag": "0025_chunky_puck",
+      "breakpoints": true
     }
   ]
 }

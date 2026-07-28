@@ -3,9 +3,11 @@ import { Role } from "../types/roles.js";
 import { authMiddleware } from "../middleware/auth.js";
 import {
     assignRaceReferee,
+    createShopItem,
     createTournament,
     createTournamentRace,
     createViolationTypeConfig,
+    deleteShopItem,
     deleteViolationTypeConfig,
     getRaceReferee,
     getRaceReport,
@@ -21,6 +23,7 @@ import {
     updateRace,
     updateRaceStatus,
     updateRegistrationStatus,
+    updateShopItem,
     updateTournament,
     updateTournamentStatus,
     updateUserRole,
@@ -43,6 +46,13 @@ import {
     updateTournamentStatusSchema,
     updateViolationTypeConfigSchema,
 } from "../validator/admin.js";
+import {
+    createShopItemSchema,
+    updateShopItemSchema,
+} from "../validator/shop.js";
+import { createUpload } from "../middleware/upload.js";
+
+const shopItemImageUpload = createUpload({ maxSizeMB: 5 });
 
 const router = Router();
 
@@ -200,6 +210,31 @@ router.delete(
     authMiddleware,
     authorize(Role.ADMIN),
     deleteViolationTypeConfig,
+);
+
+router.post(
+    "/shop/items",
+    authMiddleware,
+    authorize(Role.ADMIN),
+    shopItemImageUpload.single("image"),
+    validate(createShopItemSchema),
+    createShopItem,
+);
+
+router.patch(
+    "/shop/items/:itemId",
+    authMiddleware,
+    authorize(Role.ADMIN),
+    shopItemImageUpload.single("image"),
+    validate(updateShopItemSchema),
+    updateShopItem,
+);
+
+router.delete(
+    "/shop/items/:itemId",
+    authMiddleware,
+    authorize(Role.ADMIN),
+    deleteShopItem,
 );
 
 export default router;
