@@ -1695,3 +1695,30 @@ export const deleteShopItem = async (
         next(err);
     }
 };
+
+export const updateRacePointsConfig = async (
+    req: Request,
+    res: Response,
+    next: NextFunction,
+) => {
+    try {
+        const raceId = req.params.raceId as string;
+
+        const [updated] = await db
+            .insert(raceConfigs)
+            .values({ raceId, ...req.body })
+            .onConflictDoUpdate({
+                target: raceConfigs.raceId,
+                set: req.body,
+            })
+            .returning();
+
+        if (!updated) {
+            return res.status(404).json({ message: "Race not found" });
+        }
+
+        res.json({ raceConfig: updated });
+    } catch (err) {
+        next(err);
+    }
+};
