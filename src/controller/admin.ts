@@ -1578,7 +1578,9 @@ export const createShopItem = async (
             .where(eq(shopItems.name, req.body.name));
 
         if (existing) {
-            return res.status(409).json({ message: "An item with this name already exists" });
+            return res
+                .status(409)
+                .json({ message: "An item with this name already exists" });
         }
 
         if (req.file) {
@@ -1618,10 +1620,17 @@ export const updateShopItem = async (
             const [duplicate] = await db
                 .select()
                 .from(shopItems)
-                .where(and(eq(shopItems.name, req.body.name), ne(shopItems.id, itemId)));
+                .where(
+                    and(
+                        eq(shopItems.name, req.body.name),
+                        ne(shopItems.id, itemId),
+                    ),
+                );
 
             if (duplicate) {
-                return res.status(409).json({ message: "An item with this name already exists" });
+                return res
+                    .status(409)
+                    .json({ message: "An item with this name already exists" });
             }
         }
 

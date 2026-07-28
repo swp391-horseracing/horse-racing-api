@@ -47,7 +47,9 @@ export const listShopItems = async (
             .limit(l)
             .offset(offset);
 
-        res.json(paginatedResponse(items, Number(totalResult[0]?.count ?? 0), p, l));
+        res.json(
+            paginatedResponse(items, Number(totalResult[0]?.count ?? 0), p, l),
+        );
     } catch (err) {
         next(err);
     }
@@ -202,7 +204,9 @@ export const getInventory = async (
             .limit(l)
             .offset(offset);
 
-        res.json(paginatedResponse(items, Number(totalResult?.count ?? 0), p, l));
+        res.json(
+            paginatedResponse(items, Number(totalResult?.count ?? 0), p, l),
+        );
     } catch (err) {
         next(err);
     }
