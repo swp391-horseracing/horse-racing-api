@@ -9,6 +9,8 @@ import { walletTransactions } from "../schema/walletTransaction.js";
 import { notifications } from "../schema/notifications.js";
 import { eventBus } from "../websocket/eventBus.js";
 
+const POSITION_WEIGHTS: Record<number, number> = { 1: 3, 2: 2, 3: 1 };
+
 export async function resolvePredictions(
     raceId: string,
     resultId: string,
@@ -50,17 +52,25 @@ export async function resolvePredictions(
         id: string;
         spectatorId: string;
         stakeAmount: number;
+        predictedPosition: number;
     }[] = [];
     const incorrectIds: string[] = [];
     let totalPool = 0;
-    let totalCorrectStake = 0;
+    let totalWeightedCorrectStake = 0;
 
     for (const p of pendingPredictions) {
         totalPool += p.stakeAmount ?? 0;
         const actualPosition = resultMap.get(p.predictedEntryId);
         if (actualPosition === p.predictedPosition) {
-            correctList.push({ ...p, stakeAmount: p.stakeAmount ?? 0 });
-            totalCorrectStake += p.stakeAmount ?? 0;
+            const stake = p.stakeAmount ?? 0;
+            const weight = POSITION_WEIGHTS[p.predictedPosition] ?? 1;
+            correctList.push({
+                id: p.id,
+                spectatorId: p.spectatorId,
+                stakeAmount: stake,
+                predictedPosition: p.predictedPosition,
+            });
+            totalWeightedCorrectStake += stake * weight;
         } else {
             incorrectIds.push(p.id);
         }
@@ -87,8 +97,10 @@ export async function resolvePredictions(
             if (i === correctList.length - 1) {
                 share = totalPool - distributed;
             } else {
+                const weight = POSITION_WEIGHTS[p.predictedPosition] ?? 1;
+                const weightedStake = p.stakeAmount * weight;
                 share = Math.floor(
-                    (totalPool * p.stakeAmount) / totalCorrectStake,
+                    (totalPool * weightedStake) / totalWeightedCorrectStake,
                 );
                 distributed += share;
             }
