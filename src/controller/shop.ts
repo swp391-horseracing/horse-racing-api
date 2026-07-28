@@ -87,20 +87,22 @@ export const purchaseItem = async (
         const { itemId } = req.body;
         const userId = req.user!.id;
 
-        const [item] = await db
-            .select()
-            .from(shopItems)
-            .where(eq(shopItems.id, itemId));
-
-        if (!item || !item.isActive) {
-            return res.status(404).json({ message: "Item not found" });
-        }
-
         const result = await db.transaction(async (tx) => {
+            const [item] = await tx
+                .select()
+                .from(shopItems)
+                .where(eq(shopItems.id, itemId))
+                .for("update");
+
+            if (!item || !item.isActive) {
+                throw new Error("Item not found");
+            }
+
             const [wallet] = await tx
                 .select()
                 .from(wallets)
-                .where(eq(wallets.userId, userId));
+                .where(eq(wallets.userId, userId))
+                .for("update");
 
             if (!wallet) {
                 throw new Error("Wallet not found");
@@ -133,19 +135,23 @@ export const purchaseItem = async (
                 .values({ userId, itemId: item.id })
                 .returning();
 
-            return { inventory: inventory!, balance: newBalance };
+            return {
+                inventory: inventory!,
+                balance: newBalance,
+                item: {
+                    id: item.id,
+                    name: item.name,
+                    description: item.description,
+                    price: item.price,
+                    imageUrl: item.imageUrl,
+                },
+            };
         });
 
         res.status(201).json({
-            item: {
-                id: item.id,
-                name: item.name,
-                description: item.description,
-                price: item.price,
-                imageUrl: item.imageUrl,
-            },
+            item: result.item,
             balance: result.balance,
-            purchasedAt: result.inventory!.purchasedAt,
+            purchasedAt: result.inventory.purchasedAt,
         });
     } catch (err) {
         if (err instanceof Error) {
@@ -154,6 +160,9 @@ export const purchaseItem = async (
             }
             if (err.message === "Wallet not found") {
                 return res.status(404).json({ message: "Wallet not found" });
+            }
+            if (err.message === "Item not found") {
+                return res.status(404).json({ message: "Item not found" });
             }
         }
         next(err);
