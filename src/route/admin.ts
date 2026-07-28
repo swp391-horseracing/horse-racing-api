@@ -23,6 +23,7 @@ import {
     updateRace,
     updateRaceStatus,
     updateRegistrationStatus,
+    updateRacePointsConfig,
     updateShopItem,
     updateTournament,
     updateTournamentStatus,
@@ -50,6 +51,7 @@ import {
     createShopItemSchema,
     updateShopItemSchema,
 } from "../validator/shop.js";
+import { updateRacePointsConfigSchema } from "../validator/admin.js";
 import { createUpload } from "../middleware/upload.js";
 
 const shopItemImageUpload = createUpload({ maxSizeMB: 5 });
@@ -235,6 +237,14 @@ router.delete(
     authMiddleware,
     authorize(Role.ADMIN),
     deleteShopItem,
+);
+
+router.patch(
+    "/races/:raceId/points-config",
+    authMiddleware,
+    authorize(Role.ADMIN),
+    validate(updateRacePointsConfigSchema),
+    updateRacePointsConfig,
 );
 
 export default router;

@@ -3,6 +3,7 @@ import { races } from "../schema/races.js";
 import { raceResults } from "../schema/raceResults.js";
 import { raceResultEntries } from "../schema/raceResultEntries.js";
 import { raceEntries } from "../schema/raceEntries.js";
+import { raceConfigs } from "../schema/raceConfig.js";
 import { and, eq } from "drizzle-orm";
 import {
     getSimulation,
@@ -223,6 +224,19 @@ class TickEmitter {
         if (this.testRaces.has(raceId)) return;
 
         await db.transaction(async (tx) => {
+            const [config] = await tx
+                .select()
+                .from(raceConfigs)
+                .where(eq(raceConfigs.raceId, raceId));
+
+            const getPositionPoints = (position: number) => {
+                if (!config) return Math.max(10 - position, 1);
+                if (position === 1) return config.firstPlacePoints;
+                if (position === 2) return config.secondPlacePoints;
+                if (position === 3) return config.thirdPlacePoints;
+                return Math.max(10 - position, 1);
+            };
+
             const [inserted] = await tx
                 .insert(raceResults)
                 .values({ raceId })
@@ -272,8 +286,8 @@ class TickEmitter {
                         finishStatus: finished
                             ? ("finished" as const)
                             : ("dnf" as const),
-                        points: finished ? Math.max(10 - f.position, 1) : 0,
-                        basePoints: finished ? Math.max(10 - f.position, 1) : 0,
+                        points: finished ? getPositionPoints(f.position) : 0,
+                        basePoints: finished ? getPositionPoints(f.position) : 0,
                     };
                 });
 
