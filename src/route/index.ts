@@ -10,6 +10,7 @@ import adminRoutes from "./admin.js";
 import jockeyRoutes from "./jockey.js";
 import refereeRoutes from "./referee.js";
 import courseRoutes from "./course.js";
+import shopRoutes from "./shop.js";
 
 const router = Router();
 
@@ -24,6 +25,7 @@ router.use("/races", raceRoutes);
 router.use("/courses", courseRoutes);
 router.use("/horses", horseRoutes);
 router.use("/tournaments", tournamentRoutes);
+router.use("/shop", shopRoutes);
 
 router.get("/health", (_req, res) => res.json({ status: "ok" }));
 

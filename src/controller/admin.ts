@@ -7,7 +7,7 @@ import {
     violationTypeConfigQuerySchema,
 } from "../validator/admin.js";
 import { users } from "../schema/users.js";
-import { and, desc, eq, ilike, inArray, sql } from "drizzle-orm";
+import { and, desc, eq, ilike, inArray, ne, sql } from "drizzle-orm";
 import { getPagination, paginatedResponse } from "../utils/paginate.js";
 import db from "../config/db.js";
 import { tournaments } from "../schema/tournament.js";
@@ -27,6 +27,10 @@ import { eventBus } from "../websocket/eventBus.js";
 import { tournamentRegistrations } from "../schema/tournamentRegistrations.js";
 import { tickEmitter } from "../race/tickEmitter.js";
 import { precomputeRaceFromDb } from "../cron/precompute.js";
+import { shopItems } from "../schema/shopItems.js";
+import crypto from "crypto";
+import { uploadFile, deleteFile, getSignedUrlByKey } from "../utils/s3.js";
+import { randomHex } from "../utils/randomHex.js";
 
 export const getUsers = async (
     req: Request,
@@ -1555,6 +1559,129 @@ export const stopSimulateRace = async (
         tickEmitter.stopRace(raceId);
 
         res.json({ message: "Race simulation stopped", raceId });
+    } catch (err) {
+        next(err);
+    }
+};
+
+export const createShopItem = async (
+    req: Request,
+    res: Response,
+    next: NextFunction,
+) => {
+    let uploadedKey: string | null = null;
+
+    try {
+        const [existing] = await db
+            .select()
+            .from(shopItems)
+            .where(eq(shopItems.name, req.body.name));
+
+        if (existing) {
+            return res.status(409).json({ message: "An item with this name already exists" });
+        }
+
+        if (req.file) {
+            const ext = req.file.mimetype.split("/")[1];
+            const key = `shop-items/${crypto.randomUUID()}/${randomHex(16)}.${ext}`;
+            await uploadFile(key, req.file);
+            uploadedKey = key;
+            req.body.imageUrl = key;
+        }
+
+        const [item] = await db.insert(shopItems).values(req.body).returning();
+
+        if (item?.imageUrl) {
+            item.imageUrl = await getSignedUrlByKey(item.imageUrl);
+        }
+
+        res.status(201).json({ item });
+    } catch (err) {
+        if (uploadedKey) {
+            await deleteFile(uploadedKey);
+        }
+        next(err);
+    }
+};
+
+export const updateShopItem = async (
+    req: Request,
+    res: Response,
+    next: NextFunction,
+) => {
+    let uploadedKey: string | null = null;
+
+    try {
+        const itemId = req.params.itemId as string;
+
+        if (req.body.name) {
+            const [duplicate] = await db
+                .select()
+                .from(shopItems)
+                .where(and(eq(shopItems.name, req.body.name), ne(shopItems.id, itemId)));
+
+            if (duplicate) {
+                return res.status(409).json({ message: "An item with this name already exists" });
+            }
+        }
+
+        if (req.file) {
+            const ext = req.file.mimetype.split("/")[1];
+            const key = `shop-items/${crypto.randomUUID()}/${randomHex(16)}.${ext}`;
+            await uploadFile(key, req.file);
+            uploadedKey = key;
+            req.body.imageUrl = key;
+        }
+
+        const [item] = await db
+            .update(shopItems)
+            .set({ ...req.body, updatedAt: sql`now()` })
+            .where(eq(shopItems.id, itemId))
+            .returning();
+
+        if (!item) {
+            if (uploadedKey) {
+                await deleteFile(uploadedKey);
+            }
+            return res.status(404).json({ message: "Item not found" });
+        }
+
+        if (uploadedKey && item.imageUrl && item.imageUrl !== uploadedKey) {
+            await deleteFile(item.imageUrl);
+        }
+
+        if (item?.imageUrl) {
+            item.imageUrl = await getSignedUrlByKey(item.imageUrl);
+        }
+
+        res.json({ item });
+    } catch (err) {
+        if (uploadedKey) {
+            await deleteFile(uploadedKey);
+        }
+        next(err);
+    }
+};
+
+export const deleteShopItem = async (
+    req: Request,
+    res: Response,
+    next: NextFunction,
+) => {
+    try {
+        const itemId = req.params.itemId as string;
+
+        const [item] = await db
+            .update(shopItems)
+            .set({ isActive: false, updatedAt: sql`now()` })
+            .where(eq(shopItems.id, itemId))
+            .returning();
+
+        if (!item) {
+            return res.status(404).json({ message: "Item not found" });
+        }
+
+        res.json({ message: "Item deactivated" });
     } catch (err) {
         next(err);
     }
