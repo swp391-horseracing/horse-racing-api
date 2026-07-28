@@ -287,7 +287,9 @@ class TickEmitter {
                             ? ("finished" as const)
                             : ("dnf" as const),
                         points: finished ? getPositionPoints(f.position) : 0,
-                        basePoints: finished ? getPositionPoints(f.position) : 0,
+                        basePoints: finished
+                            ? getPositionPoints(f.position)
+                            : 0,
                     };
                 });
 
