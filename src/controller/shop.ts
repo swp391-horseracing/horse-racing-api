@@ -6,6 +6,7 @@ import { userInventory } from "../schema/userInventory.js";
 import { wallets } from "../schema/wallets.js";
 import { walletTransactions } from "../schema/walletTransaction.js";
 import { getPagination, paginatedResponse } from "../utils/paginate.js";
+import { getSignedUrlByKey } from "../utils/s3.js";
 import { listShopItemsQuerySchema } from "../validator/shop.js";
 
 export const listShopItems = async (
@@ -47,8 +48,17 @@ export const listShopItems = async (
             .limit(l)
             .offset(offset);
 
+        const itemsWithUrls = await Promise.all(
+            items.map(async (item) => ({
+                ...item,
+                imageUrl: item.imageUrl
+                    ? await getSignedUrlByKey(item.imageUrl)
+                    : null,
+            })),
+        );
+
         res.json(
-            paginatedResponse(items, Number(totalResult[0]?.count ?? 0), p, l),
+            paginatedResponse(itemsWithUrls, Number(totalResult[0]?.count ?? 0), p, l),
         );
     } catch (err) {
         next(err);
@@ -70,6 +80,10 @@ export const getShopItem = async (
 
         if (!item || !item.isActive) {
             return res.status(404).json({ message: "Item not found" });
+        }
+
+        if (item?.imageUrl) {
+            item.imageUrl = await getSignedUrlByKey(item.imageUrl);
         }
 
         res.json(item);
@@ -143,7 +157,9 @@ export const purchaseItem = async (
                     name: item.name,
                     description: item.description,
                     price: item.price,
-                    imageUrl: item.imageUrl,
+                    imageUrl: item.imageUrl
+                        ? await getSignedUrlByKey(item.imageUrl)
+                        : null,
                 },
             };
         });
@@ -213,8 +229,17 @@ export const getInventory = async (
             .limit(l)
             .offset(offset);
 
+        const itemsWithUrls = await Promise.all(
+            items.map(async (item) => ({
+                ...item,
+                imageUrl: item.imageUrl
+                    ? await getSignedUrlByKey(item.imageUrl)
+                    : null,
+            })),
+        );
+
         res.json(
-            paginatedResponse(items, Number(totalResult?.count ?? 0), p, l),
+            paginatedResponse(itemsWithUrls, Number(totalResult?.count ?? 0), p, l),
         );
     } catch (err) {
         next(err);
