@@ -467,11 +467,14 @@ export const createTournamentRace = async (
             return res.status(500).json({ message: "Failed to create race" });
         }
 
-        const { predictionsEnabled, predictionMinStake } = req.body;
+        const { predictionsEnabled, predictionMinStake, firstPlacePoints, secondPlacePoints, thirdPlacePoints } = req.body;
         await db.insert(raceConfigs).values({
             raceId: newRace.id,
             predictionsEnabled: predictionsEnabled ?? true,
             predictionMinStake: predictionMinStake ?? 50,
+            firstPlacePoints: firstPlacePoints ?? 9,
+            secondPlacePoints: secondPlacePoints ?? 8,
+            thirdPlacePoints: thirdPlacePoints ?? 7,
         });
 
         res.status(201).json(newRace);
@@ -1691,6 +1694,59 @@ export const deleteShopItem = async (
         }
 
         res.json({ message: "Item deactivated" });
+    } catch (err) {
+        next(err);
+    }
+};
+
+export const getRaceConfig = async (
+    req: Request,
+    res: Response,
+    next: NextFunction,
+) => {
+    try {
+        const raceId = req.params.raceId as string;
+        if (!uuidValidate(raceId)) {
+            return res.status(400).json({ message: "Invalid uuid" });
+        }
+
+        const [race] = await db
+            .select({ id: races.id })
+            .from(races)
+            .where(eq(races.id, raceId));
+
+        if (!race) {
+            return res.status(404).json({ message: "Race not found" });
+        }
+
+        await db
+            .insert(raceConfigs)
+            .values({
+                raceId,
+                predictionsEnabled: true,
+                predictionMinStake: 50,
+                firstPlacePoints: 9,
+                secondPlacePoints: 8,
+                thirdPlacePoints: 7,
+            })
+            .onConflictDoNothing();
+
+        const [config] = await db
+            .select({
+                raceId: raceConfigs.raceId,
+                predictionsEnabled: raceConfigs.predictionsEnabled,
+                predictionMinStake: raceConfigs.predictionMinStake,
+                firstPlacePoints: raceConfigs.firstPlacePoints,
+                secondPlacePoints: raceConfigs.secondPlacePoints,
+                thirdPlacePoints: raceConfigs.thirdPlacePoints,
+                raceName: races.name,
+                raceStatus: races.status,
+            })
+            .from(raceConfigs)
+            .innerJoin(races, eq(raceConfigs.raceId, races.id))
+            .where(eq(raceConfigs.raceId, raceId));
+
+        res.json(config);
     } catch (err) {
         next(err);
     }

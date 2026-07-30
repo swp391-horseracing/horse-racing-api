@@ -12,6 +12,7 @@ import {
     getRaceReferee,
     getRaceReport,
     getRegistrations,
+    getRaceConfig,
     getReports,
     getUser,
     getUsers,
@@ -237,6 +238,13 @@ router.delete(
     authMiddleware,
     authorize(Role.ADMIN),
     deleteShopItem,
+);
+
+router.get(
+    "/race-configs/:raceId",
+    authMiddleware,
+    authorize(Role.ADMIN),
+    getRaceConfig,
 );
 
 router.patch(
