@@ -1,5 +1,5 @@
 import { NextFunction, Request, Response } from "express";
-import { eq, and, ilike, sql, gte, lte, desc } from "drizzle-orm";
+import { eq, and, ilike, sql, gte, lte, desc, asc } from "drizzle-orm";
 import { validate as uuidValidate } from "uuid";
 import db from "../config/db.js";
 import { horses } from "../schema/horses.js";
@@ -10,7 +10,10 @@ import { raceResults } from "../schema/raceResults.js";
 import { users } from "../schema/users.js";
 import { courseDistances } from "../schema/courseDistances.js";
 import { raceCourses } from "../schema/raceCourses.js";
-import { horsesQuerySchema } from "../validator/horse.js";
+import {
+    horsesQuerySchema,
+    horseLeaderboardQuerySchema,
+} from "../validator/horse.js";
 import { raceHistoryQuerySchema } from "../validator/race.js";
 import { getPagination, paginatedResponse } from "../utils/paginate.js";
 import { uploadFile, deleteFile, getSignedUrlByKey } from "../utils/s3.js";
@@ -186,6 +189,126 @@ export const getOwnerHorses = async (
             paginatedResponse(
                 horsesWithUrls,
                 Number(count[0]?.count ?? 0),
+                p,
+                l,
+            ),
+        );
+    } catch (err) {
+        next(err);
+    }
+};
+
+export const getHorseLeaderboard = async (
+    req: Request,
+    res: Response,
+    next: NextFunction,
+) => {
+    try {
+        const parsed = horseLeaderboardQuerySchema.safeParse(req.query);
+        if (!parsed.success) {
+            return res.status(400).json({
+                message: "Validation Errors",
+                errors: parsed.error.issues.map((issue) => ({
+                    field: issue.path.join("."),
+                    message: issue.message,
+                })),
+            });
+        }
+
+        const { page, limit } = parsed.data;
+        const { page: p, limit: l, offset } = getPagination({ page, limit });
+
+        const totalPoints = sql<number>`coalesce(sum(${raceResultEntries.points}), 0)`;
+        const wins = sql<number>`count(*) FILTER (WHERE ${raceResultEntries.finishedPosition} = 1)`;
+        const totalRaces = sql<number>`count(*)`;
+
+        const [data, countArr] = await Promise.all([
+            db
+                .select({
+                    horseId: horses.id,
+                    horseName: horses.name,
+                    horseBreed: horses.breed,
+                    horseImageUrl: horses.imageUrl,
+                    horseIsRetired: horses.isRetired,
+                    horseHealthStatus: horses.healthStatus,
+                    ownerId: users.id,
+                    ownerFullName: users.fullName,
+                    ownerAvatarUrl: users.avatar_url,
+                    totalPoints,
+                    wins,
+                    totalRaces,
+                })
+                .from(raceResultEntries)
+                .innerJoin(
+                    raceResults,
+                    eq(raceResultEntries.resultId, raceResults.id),
+                )
+                .innerJoin(
+                    raceEntries,
+                    eq(raceResultEntries.entryId, raceEntries.id),
+                )
+                .innerJoin(horses, eq(raceEntries.horseId, horses.id))
+                .leftJoin(users, eq(horses.ownerId, users.id))
+                .where(eq(raceResults.resultStatus, "published"))
+                .groupBy(horses.id, users.id)
+                .orderBy(
+                    desc(totalPoints),
+                    desc(wins),
+                    desc(totalRaces),
+                    asc(horses.name),
+                )
+                .limit(l)
+                .offset(offset),
+            db
+                .select({ count: sql<number>`count(*)` })
+                .from(
+                    db
+                        .select({ horseId: raceEntries.horseId })
+                        .from(raceResultEntries)
+                        .innerJoin(
+                            raceResults,
+                            eq(raceResultEntries.resultId, raceResults.id),
+                        )
+                        .innerJoin(
+                            raceEntries,
+                            eq(raceResultEntries.entryId, raceEntries.id),
+                        )
+                        .where(eq(raceResults.resultStatus, "published"))
+                        .groupBy(raceEntries.horseId)
+                        .as("leaderboard_horses"),
+                ),
+        ]);
+
+        const leaderboard = await Promise.all(
+            data.map(async (row, index) => ({
+                rank: offset + index + 1,
+                totalPoints: Number(row.totalPoints),
+                totalRaces: Number(row.totalRaces),
+                wins: Number(row.wins),
+                horse: {
+                    id: row.horseId,
+                    name: row.horseName,
+                    breed: row.horseBreed,
+                    imageUrl: row.horseImageUrl
+                        ? await getSignedUrlByKey(row.horseImageUrl)
+                        : null,
+                    healthStatus: row.horseHealthStatus,
+                    isRetired: row.horseIsRetired,
+                },
+                owner: {
+                    id: row.ownerId,
+                    fullName: row.ownerFullName,
+                    avatarUrl: row.ownerAvatarUrl
+                        ? await getSignedUrlByKey(row.ownerAvatarUrl)
+                        : null,
+                },
+            })),
+        );
+
+        return res.json(
+            paginatedResponse(
+                leaderboard,
+                Number(countArr[0]?.count ?? 0),
                 p,
                 l,
             ),

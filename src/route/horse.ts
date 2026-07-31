@@ -2,6 +2,7 @@ import { Router } from "express";
 import {
     getHorses,
     getHorse,
+    getHorseLeaderboard,
     addHorse,
     updateHorse,
     retireHorse,
@@ -23,6 +24,7 @@ const horseImageUpload = createUpload({
 });
 
 router.get("/", getHorses);
+router.get("/leaderboard", getHorseLeaderboard);
 router.get("/owner/:ownerId", getOwnerHorses);
 router.get("/:id", getHorse);
 router.get("/:id/races", getHorseRaceHistory);
