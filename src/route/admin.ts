@@ -160,7 +160,7 @@ router.post(
 router.post(
     "/races/:raceId/start",
     authMiddleware,
-    authorize(Role.ADMIN),
+    authorize(Role.ADMIN, Role.REFEREE),
     startRace,
 );
 
