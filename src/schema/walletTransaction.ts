@@ -47,5 +47,7 @@ export const walletTransactions = pgTable("wallet_transactions", {
 
     description: text("description"),
 
-    createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true })
+        .defaultNow()
+        .notNull(),
 });

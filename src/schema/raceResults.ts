@@ -29,11 +29,15 @@ export const raceResults = pgTable(
         refereeConfirmedBy: uuid("referee_confirmed_by").references(
             () => users.id,
         ),
-        refereeConfirmedAt: timestamp("referee_confirmed_at", { withTimezone: true }),
+        refereeConfirmedAt: timestamp("referee_confirmed_at", {
+            withTimezone: true,
+        }),
         notes: text("notes"),
         publishedBy: uuid("published_by").references(() => users.id),
         publishedAt: timestamp("published_at", { withTimezone: true }),
-        createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+        createdAt: timestamp("created_at", { withTimezone: true })
+            .defaultNow()
+            .notNull(),
         updatedAt: timestamp("updated_at", { withTimezone: true })
             .defaultNow()
             .$onUpdate(() => new Date())

@@ -38,7 +38,9 @@ export const jockeyInvitations = pgTable(
         status: invitationStatusEnums("status").default("pending").notNull(),
         title: varchar("title", { length: 255 }),
         message: text("message"),
-        invitedAt: timestamp("invited_at", { withTimezone: true }).defaultNow().notNull(),
+        invitedAt: timestamp("invited_at", { withTimezone: true })
+            .defaultNow()
+            .notNull(),
         respondedAt: timestamp("responded_at", { withTimezone: true }),
     },
     (table) => [

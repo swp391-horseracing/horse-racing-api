@@ -26,7 +26,9 @@ export const predictions = pgTable(
             .references(() => races.id),
         predictedEntryId: uuid("predicted_entry_id").notNull(),
         predictedPosition: integer("predicted_position").notNull(),
-        placedAt: timestamp("placed_at", { withTimezone: true }).defaultNow().notNull(),
+        placedAt: timestamp("placed_at", { withTimezone: true })
+            .defaultNow()
+            .notNull(),
         isCorrect: boolean("is_correct"),
         rewardAmount: decimal("reward_amount", { precision: 15, scale: 2 }),
         stakeAmount: integer("stake_amount"),

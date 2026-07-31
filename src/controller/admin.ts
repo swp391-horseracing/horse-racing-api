@@ -467,7 +467,13 @@ export const createTournamentRace = async (
             return res.status(500).json({ message: "Failed to create race" });
         }
 
-        const { predictionsEnabled, predictionMinStake, firstPlacePoints, secondPlacePoints, thirdPlacePoints } = req.body;
+        const {
+            predictionsEnabled,
+            predictionMinStake,
+            firstPlacePoints,
+            secondPlacePoints,
+            thirdPlacePoints,
+        } = req.body;
         await db.insert(raceConfigs).values({
             raceId: newRace.id,
             predictionsEnabled: predictionsEnabled ?? true,

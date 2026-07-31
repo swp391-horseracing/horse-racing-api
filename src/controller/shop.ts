@@ -58,7 +58,12 @@ export const listShopItems = async (
         );
 
         res.json(
-            paginatedResponse(itemsWithUrls, Number(totalResult[0]?.count ?? 0), p, l),
+            paginatedResponse(
+                itemsWithUrls,
+                Number(totalResult[0]?.count ?? 0),
+                p,
+                l,
+            ),
         );
     } catch (err) {
         next(err);
@@ -239,7 +244,12 @@ export const getInventory = async (
         );
 
         res.json(
-            paginatedResponse(itemsWithUrls, Number(totalResult?.count ?? 0), p, l),
+            paginatedResponse(
+                itemsWithUrls,
+                Number(totalResult?.count ?? 0),
+                p,
+                l,
+            ),
         );
     } catch (err) {
         next(err);

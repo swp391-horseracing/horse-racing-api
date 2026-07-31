@@ -14,7 +14,9 @@ export const violationTypeConfig = pgTable("violation_type_config", {
         .notNull(),
     pointsDeducted: integer("points_deducted").notNull(),
     description: text("description"),
-    createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true })
+        .defaultNow()
+        .notNull(),
     updatedAt: timestamp("updated_at", { withTimezone: true })
         .defaultNow()
         .$onUpdate(() => new Date())

@@ -10,5 +10,7 @@ export const userInventory = pgTable("user_inventory", {
     itemId: uuid("item_id")
         .notNull()
         .references(() => shopItems.id, { onDelete: "restrict" }),
-    purchasedAt: timestamp("purchased_at", { withTimezone: true }).defaultNow().notNull(),
+    purchasedAt: timestamp("purchased_at", { withTimezone: true })
+        .defaultNow()
+        .notNull(),
 });

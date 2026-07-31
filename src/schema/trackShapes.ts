@@ -4,7 +4,9 @@ export const trackShapes = pgTable("track_shapes", {
     id: uuid("id").defaultRandom().primaryKey(),
     shape: varchar("shape", { length: 100 }).notNull().unique(),
     description: text("description"),
-    createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true })
+        .defaultNow()
+        .notNull(),
     updatedAt: timestamp("updated_at", { withTimezone: true })
         .defaultNow()
         .$onUpdate(() => new Date())

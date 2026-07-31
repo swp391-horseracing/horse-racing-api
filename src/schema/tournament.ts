@@ -33,8 +33,12 @@ export const tournaments = pgTable(
         location: varchar("location", { length: 100 }),
         startDate: timestamp("start_date", { withTimezone: true }).notNull(),
         endDate: timestamp("end_date", { withTimezone: true }).notNull(),
-        registrationOpenDate: timestamp("registration_open_date", { withTimezone: true }),
-        registrationCloseDate: timestamp("registration_close_date", { withTimezone: true }),
+        registrationOpenDate: timestamp("registration_open_date", {
+            withTimezone: true,
+        }),
+        registrationCloseDate: timestamp("registration_close_date", {
+            withTimezone: true,
+        }),
         maximumParticipants: integer("maximum_participants"),
         minimumParticipants: integer("minimum_participants"),
         prizePool: numeric("prize_pool", { precision: 12, scale: 2 }),

@@ -34,7 +34,9 @@ export const violations = pgTable("violations", {
     note: text("note"),
     pointsDeducted: integer("points_deducted"),
     previousFinishStatus: finishStatusEnum("previous_finish_status"),
-    recordedAt: timestamp("recorded_at", { withTimezone: true }).defaultNow().notNull(),
+    recordedAt: timestamp("recorded_at", { withTimezone: true })
+        .defaultNow()
+        .notNull(),
     updatedAt: timestamp("updated_at", { withTimezone: true })
         .defaultNow()
         .$onUpdate(() => new Date())

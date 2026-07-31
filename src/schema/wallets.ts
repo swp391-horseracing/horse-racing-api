@@ -16,9 +16,13 @@ export const wallets = pgTable(
 
         balance: integer("balance").notNull().default(1000),
 
-        createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+        createdAt: timestamp("created_at", { withTimezone: true })
+            .defaultNow()
+            .notNull(),
 
-        updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
+        updatedAt: timestamp("updated_at", { withTimezone: true })
+            .defaultNow()
+            .notNull(),
     },
     (table) => [
         check("chk_wallets_balance_non_negative", sql`${table.balance} >= 0`),

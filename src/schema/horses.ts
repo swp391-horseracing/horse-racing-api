@@ -37,7 +37,9 @@ export const horses = pgTable("horses", {
     isRetired: boolean("isRetired"),
     baseSpeed: real("base_speed").default(12).notNull(),
     stamina: real("stamina").default(150).notNull(),
-    createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true })
+        .defaultNow()
+        .notNull(),
     updatedAt: timestamp("updated_at", { withTimezone: true })
         .defaultNow()
         .$onUpdate(() => new Date())
