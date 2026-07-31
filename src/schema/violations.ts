@@ -26,7 +26,7 @@ export const violations = pgTable("violations", {
     refereeId: uuid("referee_id")
         .references(() => users.id)
         .notNull(),
-    occurredAt: timestamp("occurred_at").notNull(),
+    occurredAt: timestamp("occurred_at", { withTimezone: true }).notNull(),
     violationTypeConfigId: uuid("violation_type_config_id")
         .references(() => violationTypeConfig.id)
         .notNull(),
@@ -34,8 +34,8 @@ export const violations = pgTable("violations", {
     note: text("note"),
     pointsDeducted: integer("points_deducted"),
     previousFinishStatus: finishStatusEnum("previous_finish_status"),
-    recordedAt: timestamp("recorded_at").defaultNow().notNull(),
-    updatedAt: timestamp("updated_at")
+    recordedAt: timestamp("recorded_at", { withTimezone: true }).defaultNow().notNull(),
+    updatedAt: timestamp("updated_at", { withTimezone: true })
         .defaultNow()
         .$onUpdate(() => new Date())
         .notNull(),

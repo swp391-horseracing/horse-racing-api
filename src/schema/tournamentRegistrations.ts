@@ -32,9 +32,9 @@ export const tournamentRegistrations = pgTable(
             .references(() => users.id)
             .notNull(),
         status: registrationStatusEnums("status").default("pending").notNull(),
-        submittedAt: timestamp("submitted_at").defaultNow().notNull(),
+        submittedAt: timestamp("submitted_at", { withTimezone: true }).defaultNow().notNull(),
         reviewedBy: uuid("reviewed_by").references(() => users.id),
-        reviewedAt: timestamp("reviewed_at"),
+        reviewedAt: timestamp("reviewed_at", { withTimezone: true }),
         rejectReason: varchar("reject_reason", { length: 500 }),
     },
     (table) => [

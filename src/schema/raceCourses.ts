@@ -36,8 +36,8 @@ export const raceCourses = pgTable("race_courses", {
     grandstandCapacity: integer("grandstand_capacity").notNull(),
 
     status: courseStatusEnum("status").notNull().default("active"),
-    createdAt: timestamp("created_at").defaultNow().notNull(),
-    updatedAt: timestamp("updated_at")
+    createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+    updatedAt: timestamp("updated_at", { withTimezone: true })
         .defaultNow()
         .$onUpdate(() => new Date())
         .notNull(),

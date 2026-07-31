@@ -17,5 +17,5 @@ export const notifications = pgTable("notifications", {
     referenceId: varchar("reference_id", { length: 50 }).notNull(),
     referenceType: varchar("reference_type", { length: 50 }).notNull(),
     isRead: boolean("is_read").default(false),
-    createdAt: timestamp("created_at").defaultNow(),
+    createdAt: timestamp("created_at", { withTimezone: true }).defaultNow(),
 });

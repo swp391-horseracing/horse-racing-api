@@ -32,8 +32,8 @@ export const raceResultEntries = pgTable(
             .notNull(),
         points: integer().notNull().default(0),
         basePoints: integer("base_points"),
-        createdAt: timestamp("created_at").defaultNow().notNull(),
-        updatedAt: timestamp("updated_at")
+        createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+        updatedAt: timestamp("updated_at", { withTimezone: true })
             .defaultNow()
             .$onUpdate(() => new Date())
             .notNull(),

@@ -31,10 +31,10 @@ export const tournaments = pgTable(
         description: text("description"),
         rules: text("rules"),
         location: varchar("location", { length: 100 }),
-        startDate: timestamp("start_date").notNull(),
-        endDate: timestamp("end_date").notNull(),
-        registrationOpenDate: timestamp("registration_open_date"),
-        registrationCloseDate: timestamp("registration_close_date"),
+        startDate: timestamp("start_date", { withTimezone: true }).notNull(),
+        endDate: timestamp("end_date", { withTimezone: true }).notNull(),
+        registrationOpenDate: timestamp("registration_open_date", { withTimezone: true }),
+        registrationCloseDate: timestamp("registration_close_date", { withTimezone: true }),
         maximumParticipants: integer("maximum_participants"),
         minimumParticipants: integer("minimum_participants"),
         prizePool: numeric("prize_pool", { precision: 12, scale: 2 }),
@@ -46,8 +46,8 @@ export const tournaments = pgTable(
         createdBy: uuid("created_by")
             .references(() => users.id)
             .notNull(),
-        createdAt: timestamp().defaultNow(),
-        updatedAt: timestamp("updated_at")
+        createdAt: timestamp("createdAt", { withTimezone: true }).defaultNow(),
+        updatedAt: timestamp("updated_at", { withTimezone: true })
             .defaultNow()
             .$onUpdate(() => new Date()),
     },

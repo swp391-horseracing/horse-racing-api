@@ -15,7 +15,7 @@ export const refereeAssignments = pgTable(
         assignedBy: uuid("assigned_by")
             .references(() => users.id)
             .notNull(),
-        assignedAt: timestamp("assigned_at").defaultNow().notNull(),
+        assignedAt: timestamp("assigned_at", { withTimezone: true }).defaultNow().notNull(),
     },
     (table) => ({
         raceRefereeUnique: unique("referee_assignments_race_referee_unique").on(
