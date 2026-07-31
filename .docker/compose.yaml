@@ -66,6 +66,7 @@ services:
       REDIS_URL: ${REDIS_URL}
       DAILY_REWARD_POINTS: ${DAILY_REWARD_POINTS}
       RACE_SPEED_MULTIPLIER: ${RACE_SPEED_MULTIPLIER}
+      TZ: ${TZ}
     ports:
       - ${PORT}:${PORT}
     networks:

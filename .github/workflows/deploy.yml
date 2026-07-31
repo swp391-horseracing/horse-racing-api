@@ -65,6 +65,8 @@ jobs:
       NODE_ENV: ${{ secrets.NODE_ENV }}
       DAILY_REWARD_POINTS: ${{ secrets.DAILY_REWARD_POINTS }}
       RACE_SPEED_MULTIPLIER: ${{ secrets.RACE_SPEED_MULTIPLIER }}
+
+      TZ: ${{ secrets.TZ }}
     steps:
       - name: Checkout code
         uses: actions/checkout@v3
