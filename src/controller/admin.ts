@@ -1494,9 +1494,9 @@ export const startRace = async (
             return res.status(404).json({ message: "Race not found" });
         }
 
-        if (!["draft", "scheduled"].includes(race.status)) {
+        if (!["draft", "scheduled", "pre_race"].includes(race.status)) {
             return res.status(409).json({
-                message: `Cannot start race with status '${race.status}'. Must be 'draft' or 'scheduled'.`,
+                message: `Cannot start race with status '${race.status}'. Must be 'draft', 'pre_race' or 'scheduled'.`,
             });
         }
 
@@ -1510,7 +1510,7 @@ export const startRace = async (
             .where(
                 and(
                     eq(races.id, raceId),
-                    inArray(races.status, ["draft", "scheduled"]),
+                    inArray(races.status, ["draft", "scheduled", "pre_race"]),
                 ),
             )
             .returning({ id: races.id });

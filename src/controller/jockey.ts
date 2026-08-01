@@ -276,7 +276,7 @@ export const getJockeyLeaderboard = async (
                         eq(users.role, "jockey"),
                     ),
                 )
-                .groupBy(users.id, jockeyProfile.userId)
+                .groupBy(users.id, jockeyProfile.id)
                 .orderBy(desc(wins), asc(totalRaces), asc(users.fullName))
                 .limit(l)
                 .offset(offset),
