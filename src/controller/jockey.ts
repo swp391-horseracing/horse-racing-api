@@ -49,6 +49,7 @@ export const getJockeys = async (
                 .select({
                     id: users.id,
                     fullName: users.fullName,
+                    email: users.email,
                     avatarUrl: users.avatar_url,
                     weightKg: jockeyProfile.weightKg,
                     experienceYear: jockeyProfile.experienceYear,
