@@ -1,7 +1,10 @@
 import { NextFunction, Request, Response } from "express";
-import { jockeyQuerySchema } from "../validator/jockey.js";
+import {
+    jockeyQuerySchema,
+    jockeyLeaderboardQuerySchema,
+} from "../validator/jockey.js";
 import { getPagination, paginatedResponse } from "../utils/paginate.js";
-import { and, eq, ilike, ne, sql, desc } from "drizzle-orm";
+import { and, eq, ilike, ne, sql, desc, asc } from "drizzle-orm";
 import { validate as uuidValidate } from "uuid";
 import { users } from "../schema/users.js";
 import { raceEntries } from "../schema/raceEntries.js";
@@ -14,6 +17,7 @@ import { raceCourses } from "../schema/raceCourses.js";
 import { jockeyProfile } from "../schema/jockeyProfile.js";
 import { raceHistoryQuerySchema } from "../validator/race.js";
 import db from "../config/db.js";
+import { getSignedUrlByKey } from "../utils/s3.js";
 
 export const getJockeys = async (
     req: Request,
@@ -214,6 +218,118 @@ export const getJockeyRaceHistory = async (
             },
             ...paginatedResponse(data, Number(countArr[0]?.count ?? 0), p, l),
         });
+    } catch (err) {
+        next(err);
+    }
+};
+
+export const getJockeyLeaderboard = async (
+    req: Request,
+    res: Response,
+    next: NextFunction,
+) => {
+    try {
+        const parsed = jockeyLeaderboardQuerySchema.safeParse(req.query);
+        if (!parsed.success) {
+            return res.status(400).json({
+                message: "Validation Errors",
+                errors: parsed.error.issues.map((issue) => ({
+                    field: issue.path.join("."),
+                    message: issue.message,
+                })),
+            });
+        }
+
+        const { page, limit } = parsed.data;
+        const { page: p, limit: l, offset } = getPagination({ page, limit });
+
+        const wins = sql<number>`count(*) FILTER (WHERE ${raceResultEntries.finishedPosition} = 1)`;
+        const totalRaces = sql<number>`count(*)`;
+        const totalPoints = sql<number>`coalesce(sum(${raceResultEntries.points}), 0)`;
+
+        const [data, countArr] = await Promise.all([
+            db
+                .select({
+                    jockeyId: users.id,
+                    fullName: users.fullName,
+                    avatarUrl: users.avatar_url,
+                    weightKg: jockeyProfile.weightKg,
+                    experienceYear: jockeyProfile.experienceYear,
+                    wins,
+                    totalRaces,
+                    totalPoints,
+                })
+                .from(raceResultEntries)
+                .innerJoin(
+                    raceResults,
+                    eq(raceResultEntries.resultId, raceResults.id),
+                )
+                .innerJoin(
+                    raceEntries,
+                    eq(raceResultEntries.entryId, raceEntries.id),
+                )
+                .innerJoin(users, eq(raceEntries.jockeyId, users.id))
+                .leftJoin(jockeyProfile, eq(jockeyProfile.userId, users.id))
+                .where(
+                    and(
+                        eq(raceResults.resultStatus, "published"),
+                        eq(users.role, "jockey"),
+                    ),
+                )
+                .groupBy(users.id, jockeyProfile.userId)
+                .orderBy(desc(wins), asc(totalRaces), asc(users.fullName))
+                .limit(l)
+                .offset(offset),
+            db.select({ count: sql<number>`count(*)` }).from(
+                db
+                    .select({ jockeyId: raceEntries.jockeyId })
+                    .from(raceResultEntries)
+                    .innerJoin(
+                        raceResults,
+                        eq(raceResultEntries.resultId, raceResults.id),
+                    )
+                    .innerJoin(
+                        raceEntries,
+                        eq(raceResultEntries.entryId, raceEntries.id),
+                    )
+                    .innerJoin(users, eq(raceEntries.jockeyId, users.id))
+                    .where(
+                        and(
+                            eq(raceResults.resultStatus, "published"),
+                            eq(users.role, "jockey"),
+                        ),
+                    )
+                    .groupBy(raceEntries.jockeyId)
+                    .as("leaderboard_jockeys"),
+            ),
+        ]);
+
+        const leaderboard = await Promise.all(
+            data.map(async (row, index) => ({
+                rank: offset + index + 1,
+                wins: Number(row.wins),
+                totalRaces: Number(row.totalRaces),
+                totalPoints: Number(row.totalPoints),
+                jockey: {
+                    id: row.jockeyId,
+                    fullName: row.fullName,
+                    avatarUrl: row.avatarUrl
+                        ? await getSignedUrlByKey(row.avatarUrl)
+                        : null,
+                    weightKg: row.weightKg,
+                    experienceYear: row.experienceYear,
+                },
+            })),
+        );
+
+        return res.json(
+            paginatedResponse(
+                leaderboard,
+                Number(countArr[0]?.count ?? 0),
+                p,
+                l,
+            ),
+        );
     } catch (err) {
         next(err);
     }
