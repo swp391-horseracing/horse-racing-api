@@ -49,7 +49,7 @@ const MIN_LATE_SURGE_PROBABILITY = 0.15; // even a tired horse keeps a small cha
 const MAX_LATE_SURGE_PROBABILITY = 0.95; // a horse with plenty of stamina almost always surges
 const SURGE_STAMINA_COST = 4; // surging costs extra stamina
 const SURGE_STAMINA_BONUS = 0.8; // max bonus to surge magnitude based on remaining stamina %
-const VIOLATION_CHANCE = 0.000005;
+const VIOLATION_CHANCE = 0;
 
 function random(min: number, max: number) {
     return Math.random() * (max - min) + min;
@@ -140,6 +140,7 @@ export function generateReplay(
 ): HorseReplay[] {
     const RACE_DISTANCE = distance;
     const MAX_RACE_TIME = raceTime;
+    console.log(MAX_RACE_TIME);
 
     const result: HorseReplay[] = entries.map((entry) => {
         const vMax = entry.horse.baseSpeed; // vMax(i)
@@ -169,7 +170,7 @@ export function generateReplay(
             { time: 0, distance: 0, speed: 0, stamina: e },
         ];
 
-        while (distance < RACE_DISTANCE && elapsed < MAX_RACE_TIME) {
+        while (distance < RACE_DISTANCE) {
             const progress = distance / RACE_DISTANCE;
 
             if (!lateDecisionMade && progress >= LATE_RACE_THRESHOLD) {
