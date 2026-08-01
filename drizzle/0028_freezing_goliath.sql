@@ -1,0 +1,2 @@
+ALTER TABLE "predictions" DROP CONSTRAINT "uq_spectator_race";--> statement-breakpoint
+ALTER TABLE "predictions" ADD CONSTRAINT "uq_spectator_entry" UNIQUE("spectator_id","race_id","predicted_entry_id");

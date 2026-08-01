@@ -39,7 +39,11 @@ export const predictions = pgTable(
             foreignColumns: [raceEntries.id, raceEntries.raceId],
         }),
 
-        unique("uq_spectator_race").on(table.spectatorId, table.raceId),
+        unique("uq_spectator_entry").on(
+            table.spectatorId,
+            table.raceId,
+            table.predictedEntryId,
+        ),
 
         check(
             "chk_predicted_position",

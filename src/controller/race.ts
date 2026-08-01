@@ -289,8 +289,7 @@ export const createPrediction = async (
             });
         }
 
-        const { predictedEntryId, predictedPosition, stakeAmount } =
-            parsed.data;
+        const { predictions: predictionList } = parsed.data;
 
         const [race] = await db
             .select({
@@ -326,45 +325,73 @@ export const createPrediction = async (
         }
 
         const minStake = config?.minStake ?? 50;
-        if (stakeAmount < minStake) {
+        const belowMinStake = predictionList.find(
+            (p) => p.stakeAmount < minStake,
+        );
+        if (belowMinStake) {
             return res.status(400).json({
                 message: `Minimum stake for this race is ${minStake} points`,
             });
         }
 
-        const [entry] = await db
+        const entryIds = predictionList.map((p) => p.predictedEntryId);
+
+        const raceEntriesRows = await db
             .select({ id: raceEntries.id })
             .from(raceEntries)
             .where(
                 and(
                     eq(raceEntries.raceId, raceId),
-                    eq(raceEntries.id, predictedEntryId),
+                    inArray(raceEntries.id, entryIds),
                 ),
             );
 
-        if (!entry) {
+        if (raceEntriesRows.length !== entryIds.length) {
             return res.status(400).json({
                 message: "Predicted entry does not exist in this race",
             });
         }
 
+        const existing = await db
+            .select({ predictedEntryId: predictions.predictedEntryId })
+            .from(predictions)
+            .where(
+                and(
+                    eq(predictions.spectatorId, user.id),
+                    eq(predictions.raceId, raceId),
+                    inArray(predictions.predictedEntryId, entryIds),
+                ),
+            );
+
+        if (existing.length > 0) {
+            return res.status(409).json({
+                message:
+                    "You have already predicted one or more of these horses",
+            });
+        }
+
+        const totalStake = predictionList.reduce(
+            (sum, p) => sum + p.stakeAmount,
+            0,
+        );
+
         const wallet = await ensureWallet(user.id);
 
-        const [prediction] = await db.transaction(async (tx) => {
+        const inserted = await db.transaction(async (tx) => {
             const [locked] = await tx
                 .select({ id: wallets.id, balance: wallets.balance })
                 .from(wallets)
                 .where(eq(wallets.id, wallet.id))
                 .for("update");
 
-            if (!locked || locked.balance < stakeAmount) {
+            if (!locked || locked.balance < totalStake) {
                 throw new InsufficientBalanceError();
             }
 
             const [updatedWallet] = await tx
                 .update(wallets)
                 .set({
-                    balance: sql`${wallets.balance} - ${stakeAmount}`,
+                    balance: sql`${wallets.balance} - ${totalStake}`,
                     updatedAt: new Date(),
                 })
                 .where(eq(wallets.id, wallet.id))
@@ -374,7 +401,7 @@ export const createPrediction = async (
                 walletId: wallet.id,
                 type: "prediction",
                 status: "completed",
-                amount: -stakeAmount,
+                amount: -totalStake,
                 balanceBefore: locked.balance,
                 balanceAfter: updatedWallet!.balance,
                 referenceId: raceId,
@@ -383,17 +410,19 @@ export const createPrediction = async (
 
             return tx
                 .insert(predictions)
-                .values({
-                    spectatorId: user.id,
-                    raceId,
-                    predictedEntryId,
-                    predictedPosition,
-                    stakeAmount,
-                })
+                .values(
+                    predictionList.map((p) => ({
+                        spectatorId: user.id,
+                        raceId,
+                        predictedEntryId: p.predictedEntryId,
+                        predictedPosition: p.predictedPosition,
+                        stakeAmount: p.stakeAmount,
+                    })),
+                )
                 .returning();
         });
 
-        return res.status(201).json({ prediction });
+        return res.status(201).json({ predictions: inserted });
     } catch (err: unknown) {
         if (err instanceof InsufficientBalanceError) {
             return res
@@ -408,9 +437,9 @@ export const createPrediction = async (
                 "string" &&
             (err as { cause: { code: string } }).cause.code === "23505"
         ) {
-            return res
-                .status(409)
-                .json({ message: "You have already predicted this race" });
+            return res.status(409).json({
+                message: "You have already predicted one of these horses",
+            });
         }
         next(err);
     }
